@@ -8,6 +8,9 @@ public interface PacConstants {
     static final int CREDENTIAL_TYPE = 2;
     static final int SERVER_CHECKSUM = 6;
     static final int PRIVSVR_CHECKSUM = 7;
+    
+    static final int CLIENT_INFO_TYPE = 10;
+    static final int S4U_DELEGATION_INFO = 11;
 
     static final int LOGON_EXTRA_SIDS = 0x20;
     static final int LOGON_RESOURCE_GROUPS = 0x200;

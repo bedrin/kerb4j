@@ -5,7 +5,7 @@ import org.jaaslounge.decoding.DecodingException;
 /**
  * Structure representing the PAC_CREDENTIAL_TYPE record
  * 
- * @author jbbugeau
+ * @author bugeaud at gmail dot com
  */
 public class PacCredentialType {
 
@@ -21,7 +21,7 @@ public class PacCredentialType {
     }
 
     public boolean isCredentialTypeCorrect() {
-        return credentialType != null && credentialType.length < MINIMAL_BUFFER_SIZE;
+        return credentialType != null && credentialType.length > MINIMAL_BUFFER_SIZE;
     }
 
 }
