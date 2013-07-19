@@ -21,9 +21,9 @@
 
     <modules>
         <module>api</module>
-        <module>core</module>
+        <!--<module>core</module>-->
         <module>decoding</module>
-        <module>sso</module>
+        <!--<module>sso</module>-->
     </modules>
 
     <dependencies>

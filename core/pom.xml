@@ -29,6 +29,7 @@
             <groupId>org.jaaslounge.patched</groupId>
             <artifactId>jcifs-ext</artifactId>
             <version>0.9.4-patched</version>
+			<systemPath>${basedir}/lib/jcifs-ext-0.9.4-patched.jar</systemPath>
         </dependency>
     </dependencies>
 </project>

@@ -20,8 +20,8 @@
 
         <dependency>
             <groupId>com.ibm.websphere</groupId>
-            <artifactId>was-public</artifactId>
-            <version>7.0</version>
+            <artifactId>security-api</artifactId>
+            <version>5.0</version>
         </dependency>
     </dependencies>
 </project>
