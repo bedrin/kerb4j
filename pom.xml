@@ -3,13 +3,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>ping</groupId>
-    <artifactId>jaaslounge-decoding</artifactId>
-    <version>2.0-p1-SNAPSHOT</version>
+    <groupId>io.github.kerb4j</groupId>
+    <artifactId>kerb4j</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>JaasLounge Decoding</name>
-    <description>JaasLounge decoding tools</description>
+    <name>Kerb4J</name>
+    <description>Helper classes for working with Kerberos and SPNEGO in Java</description>
 
     <dependencies>
         <dependency>
