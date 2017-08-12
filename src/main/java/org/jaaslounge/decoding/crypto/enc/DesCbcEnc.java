@@ -1,0 +1,111 @@
+/**
+ *  Licensed to the Apache Software Foundation (ASF) under one
+ *  or more contributor license agreements.  See the NOTICE file
+ *  distributed with this work for additional information
+ *  regarding copyright ownership.  The ASF licenses this file
+ *  to you under the Apache License, Version 2.0 (the
+ *  "License"); you may not use this file except in compliance
+ *  with the License.  You may obtain a copy of the License at
+ *  
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *  
+ *  Unless required by applicable law or agreed to in writing,
+ *  software distributed under the License is distributed on an
+ *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *  KIND, either express or implied.  See the License for the
+ *  specific language governing permissions and limitations
+ *  under the License. 
+ *  
+ */
+package org.jaaslounge.decoding.crypto.enc;
+
+import org.jaaslounge.decoding.crypto.KrbErrorCode;
+import org.jaaslounge.decoding.crypto.cksum.provider.Md5Provider;
+import org.jaaslounge.decoding.crypto.cksum.util.Confounder;
+import org.jaaslounge.decoding.crypto.cksum.HashProvider;
+import org.jaaslounge.decoding.crypto.enc.provider.DesProvider;
+import org.jaaslounge.decoding.crypto.key.DesKeyMaker;
+import org.jaaslounge.decoding.crypto.KrbException;
+
+abstract class DesCbcEnc extends AbstractEncTypeHandler {
+
+    DesCbcEnc(HashProvider hashProvider) {
+        super(new DesProvider(), hashProvider, 16);
+        keyMaker(new DesKeyMaker(this.encProvider()));
+    }
+
+    @Override
+    public byte[] prf(byte[] key, byte[] seed) throws KrbException {
+        byte[] output;
+        Md5Provider md5Provider = new Md5Provider();
+        md5Provider.hash(seed);
+        output = md5Provider.output();
+        encProvider().encrypt(key, output);
+        return output;
+    }
+
+    @Override
+    protected int paddingLength(int inputLen) {
+        int payloadLen = confounderSize() + checksumSize() + inputLen;
+        int padding = paddingSize();
+
+        if (padding == 0 || (payloadLen % padding) == 0) {
+            return 0;
+        }
+
+        return padding - (payloadLen % padding);
+    }
+
+    @Override
+    protected void encryptWith(byte[] workBuffer, int[] workLens,
+                                 byte[] key, byte[] iv, int usage) throws KrbException {
+        int confounderLen = workLens[0];
+        int checksumLen = workLens[1];
+        int dataLen = workLens[2];
+        int paddingLen = workLens[3];
+
+        // confounder
+        byte[] confounder = Confounder.makeBytes(confounderLen);
+        System.arraycopy(confounder, 0, workBuffer, 0, confounderLen);
+
+        // padding
+        for (int i = confounderLen + checksumLen + dataLen; i < paddingLen; ++i) {
+            workBuffer[i] = 0;
+        }
+
+        // checksum
+        hashProvider().hash(workBuffer);
+        byte[] cksum = hashProvider().output();
+        System.arraycopy(cksum, 0, workBuffer, confounderLen, checksumLen);
+
+        encProvider().encrypt(key, iv, workBuffer);
+    }
+
+    @Override
+    protected byte[] decryptWith(byte[] workBuffer, int[] workLens,
+                                 byte[] key, byte[] iv, int usage) throws KrbException {
+        int confounderLen = workLens[0];
+        int checksumLen = workLens[1];
+        int dataLen = workLens[2];
+
+        encProvider().decrypt(key, iv, workBuffer);
+
+        byte[] checksum = new byte[checksumLen];
+        for (int i = 0; i < checksumLen; i++) {
+            checksum[i] = workBuffer[confounderLen + i];
+            workBuffer[confounderLen + i] = 0;
+        }
+
+        hashProvider().hash(workBuffer);
+        byte[] newChecksum = hashProvider().output();
+        if (!checksumEqual(checksum, newChecksum)) {
+            throw new KrbException(KrbErrorCode.KRB_AP_ERR_BAD_INTEGRITY);
+        }
+
+        byte[] data = new byte[dataLen];
+        System.arraycopy(workBuffer, confounderLen + checksumLen,
+                data, 0, dataLen);
+
+        return data;
+    }
+}

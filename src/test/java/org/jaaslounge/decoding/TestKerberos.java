@@ -124,6 +124,28 @@ public class TestKerberos {
             Assert.fail(e.getMessage());
         }
     }
+
+    @Test
+    public void testAes256Ticket() {
+        try {
+            KerberosToken token = new KerberosToken(aes256Token, aes256Keys);
+            //KerberosToken token = new KerberosToken(aes128Token, aes128Keys);
+
+            Assert.assertNotNull(token);
+            Assert.assertNotNull(token.getApRequest());
+
+            KerberosTicket ticket = token.getApRequest().getTicket();
+            Assert.assertNotNull(ticket);
+            Assert.assertEquals(ticket, token.getTicket());
+            Assert.assertEquals("HTTP/server.test.domain.com", ticket.getServerPrincipalName());
+            Assert.assertEquals("DOMAIN.COM", ticket.getServerRealm());
+            Assert.assertEquals("user.test", ticket.getUserPrincipalName());
+            Assert.assertEquals("DOMAIN.COM", ticket.getUserRealm());
+        } catch(DecodingException e) {
+            e.printStackTrace();
+            Assert.fail(e.getMessage());
+        }
+    }
     
     @Test
     public void testCorruptTicket() {

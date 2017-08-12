@@ -7,7 +7,12 @@ import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
+import org.jaaslounge.decoding.crypto.KrbException;
+import org.jaaslounge.decoding.crypto.CheckSumHandler;
+import org.jaaslounge.decoding.crypto.CheckSumType;
 import org.jaaslounge.decoding.DecodingException;
+
+import static org.jaaslounge.decoding.crypto.KeyUsage.APP_DATA_CKSUM;
 
 public class Pac
 {
@@ -74,20 +79,21 @@ public class Pac
             throw new DecodingException("pac.token.malformed", null, e);
         }
 
-        byte[] checksum = null;
+        byte[] checksum;
 
-        if (serverSignature.getType() == 15 || serverSignature.getType() == 16)
+        if (serverSignature.getType() == CheckSumType.HMAC_SHA1_96_AES128.getValue() ||
+                serverSignature.getType() == CheckSumType.HMAC_SHA1_96_AES256.getValue())
+        // TODO: support other encryption types!
         {
-            // TODO: reimplement
-           /* try
+            try
             {
-                CheckSum chkSum = CheckSumHandler.checksumWithKey(CheckSumType.fromValue(serverSignature.getType()), checksumData, key.getEncoded(), APP_DATA_CKSUM);
-                checksum = chkSum.getChecksum();
+                checksum = CheckSumHandler.getCheckSumHandler(CheckSumType.fromValue(serverSignature.getType()), false).
+                        checksumWithKey(checksumData, key.getEncoded(), APP_DATA_CKSUM.getValue());
             }
             catch (KrbException e)
             {
                 throw new DecodingException("pac.check.fail", null, e);
-            }*/
+            }
         }
         else
         {
