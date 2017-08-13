@@ -1,13 +1,13 @@
 package com.kerb4j.spnego;
 
-import java.io.IOException;
-import java.util.Enumeration;
-
 import com.kerb4j.Kerb4JException;
+import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1TaggedObject;
-import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.DERSequence;
+
+import java.io.IOException;
+import java.util.Enumeration;
 
 public final class DecodingUtil {
 
@@ -46,19 +46,19 @@ public final class DecodingUtil {
         return as(type, enumeration.nextElement());
     }
 
-    public static <T extends DERObject> T as(Class<T> type, ASN1InputStream stream)
+    public static <T extends ASN1Encodable> T as(Class<T> type, ASN1InputStream stream)
             throws Kerb4JException, IOException {
 
         return as(type, stream.readObject());
     }
 
-    public static <T extends DERObject> T as(Class<T> type, ASN1TaggedObject tagged)
+    public static <T extends ASN1Encodable> T as(Class<T> type, ASN1TaggedObject tagged)
             throws Kerb4JException {
 
         return as(type, tagged.getObject());
     }
 
-    public static <T extends DERObject> T as(Class<T> type, DERSequence sequence, int index)
+    public static <T extends ASN1Encodable> T as(Class<T> type, DERSequence sequence, int index)
             throws Kerb4JException {
 
         return as(type, sequence.getObjectAt(index));

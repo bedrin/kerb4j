@@ -5,15 +5,15 @@ import org.apache.kerby.kerberos.kerb.KrbCodec;
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.kerby.kerberos.kerb.type.ap.ApReq;
 import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.DERApplicationSpecific;
 import org.bouncycastle.asn1.DERObjectIdentifier;
-import org.jaaslounge.decoding.kerberos.KerberosApRequest;
-import org.jaaslounge.decoding.kerberos.KerberosConstants;
-import org.jaaslounge.decoding.kerberos.KerberosTicket;
 
 import javax.security.auth.kerberos.KerberosKey;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+
+import static com.kerb4j.spnego.SpnegoConstants.KERBEROS_MECHANISM;
 
 /**
  * https://tools.ietf.org/html/rfc1964
@@ -53,8 +53,8 @@ public class SpnegoKerberosMechToken {
             stream.close();
 
             stream = new ASN1InputStream(new ByteArrayInputStream(derToken.getContents()));
-            DERObjectIdentifier kerberosOid = DecodingUtil.as(DERObjectIdentifier.class, stream);
-            if(!kerberosOid.getId().equals(KerberosConstants.KERBEROS_OID))
+            ASN1ObjectIdentifier kerberosOid = DecodingUtil.as(ASN1ObjectIdentifier.class, stream);
+            if(!kerberosOid.getId().equals(KERBEROS_MECHANISM))
                 throw new Kerb4JException("kerberos.token.invalid", null, null);
 
             int read = 0;

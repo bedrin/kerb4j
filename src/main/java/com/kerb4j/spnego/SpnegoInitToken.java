@@ -5,13 +5,7 @@ import java.io.IOException;
 import java.util.Enumeration;
 
 import com.kerb4j.Kerb4JException;
-import org.bouncycastle.asn1.ASN1InputStream;
-import org.bouncycastle.asn1.ASN1OctetString;
-import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.ASN1TaggedObject;
-import org.bouncycastle.asn1.DERApplicationSpecific;
-import org.bouncycastle.asn1.DERBitString;
-import org.bouncycastle.asn1.DERObjectIdentifier;
+import org.bouncycastle.asn1.*;
 
 public class SpnegoInitToken extends SpnegoToken {
 
@@ -35,7 +29,7 @@ public class SpnegoInitToken extends SpnegoToken {
                 throw new Kerb4JException("spnego.token.malformed", null, null);
 
             stream = new ASN1InputStream(new ByteArrayInputStream(constructed.getContents()));
-            DERObjectIdentifier spnegoOid = DecodingUtil.as(DERObjectIdentifier.class, stream);
+            ASN1ObjectIdentifier spnegoOid = DecodingUtil.as(ASN1ObjectIdentifier.class, stream);
             if(!spnegoOid.getId().equals(SpnegoConstants.SPNEGO_OID))
                 throw new Kerb4JException("spnego.token.invalid", null, null);
 
@@ -49,8 +43,8 @@ public class SpnegoInitToken extends SpnegoToken {
                     sequence = ASN1Sequence.getInstance(tagged, true);
                     mechanisms = new String[sequence.size()];
                     for(int i = mechanisms.length - 1; i >= 0; i--) {
-                        DERObjectIdentifier mechanismOid = DecodingUtil.as(
-                                DERObjectIdentifier.class, sequence.getObjectAt(i));
+                        ASN1ObjectIdentifier mechanismOid = DecodingUtil.as(
+                                ASN1ObjectIdentifier.class, sequence.getObjectAt(i));
                         mechanisms[i] = mechanismOid.getId();
                     }
                     if(sequence.size() > 0)
