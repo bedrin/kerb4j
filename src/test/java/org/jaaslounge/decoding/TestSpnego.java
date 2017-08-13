@@ -2,13 +2,26 @@ package org.jaaslounge.decoding;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
+import java.util.List;
 
+import org.apache.kerby.kerberos.kerb.KrbCodec;
+import org.apache.kerby.kerberos.kerb.crypto.EncryptionHandler;
+import org.apache.kerby.kerberos.kerb.type.ad.AuthorizationData;
+import org.apache.kerby.kerberos.kerb.type.ad.AuthorizationDataEntry;
+import org.apache.kerby.kerberos.kerb.type.ad.AuthorizationType;
+import org.apache.kerby.kerberos.kerb.type.ap.Authenticator;
+import org.apache.kerby.kerberos.kerb.type.base.EncryptedData;
+import org.apache.kerby.kerberos.kerb.type.base.KeyUsage;
+import org.apache.kerby.kerberos.kerb.type.base.KrbToken;
+import org.apache.kerby.kerberos.kerb.type.ticket.EncTicketPart;
 import org.jaaslounge.decoding.kerberos.KerberosAuthData;
 import org.jaaslounge.decoding.kerberos.KerberosPacAuthData;
 import org.jaaslounge.decoding.kerberos.KerberosToken;
 import org.jaaslounge.decoding.pac.PacLogonInfo;
 import org.jaaslounge.decoding.spnego.SpnegoConstants;
 import org.jaaslounge.decoding.spnego.SpnegoInitToken;
+import org.jaaslounge.decoding.spnego.SpnegoKerberosMechToken;
 import org.jaaslounge.decoding.spnego.SpnegoToken;
 import org.junit.Assert;
 import org.junit.Before;
@@ -16,6 +29,8 @@ import org.junit.Test;
 
 import javax.security.auth.kerberos.KerberosKey;
 
+import static org.apache.kerby.kerberos.kerb.type.ad.AuthorizationType.AD_IF_RELEVANT;
+import static org.apache.kerby.kerberos.kerb.type.ad.AuthorizationType.AD_WIN2K_PAC;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
@@ -130,6 +145,7 @@ public class TestSpnego {
         byte[] kerberosTokenData = spnegoToken.getMechanismToken();
 
         KerberosToken token = new KerberosToken(kerberosTokenData, aes256Keys);
+
         for (KerberosAuthData authData : token.getTicket().getEncData().getUserAuthorizations()) {
             if (authData instanceof KerberosPacAuthData) {
                 PacLogonInfo logonInfo = ((KerberosPacAuthData) authData).getPac().getLogonInfo();
@@ -138,6 +154,66 @@ public class TestSpnego {
                 fail();
             }
         }
+
+    }
+
+    @Test
+    public void testAes256Token2() throws DecodingException {
+
+        SpnegoToken spnegoToken = SpnegoToken.parse(aes256Token);
+
+        Assert.assertNotNull(spnegoToken);
+        Assert.assertTrue(spnegoToken instanceof SpnegoInitToken);
+        Assert.assertNotNull(spnegoToken.getMechanismToken());
+        Assert.assertTrue(spnegoToken.getMechanismToken().length < aes256Token.length);
+        Assert.assertNotNull(spnegoToken.getMechanism());
+        Assert.assertEquals(SpnegoConstants.LEGACY_KERBEROS_MECHANISM, spnegoToken.getMechanism());
+
+        byte[] kerberosTokenData = spnegoToken.getMechanismToken();
+
+        SpnegoKerberosMechToken token = new SpnegoKerberosMechToken(kerberosTokenData, aes256Keys);
+
+        try {
+
+            EncryptedData encryptedData = token.getApRequest().getTicket().getEncryptedEncPart();
+
+            byte[] decrypt = EncryptionHandler.getEncHandler(aes256Keys[0].getKeyType()).decrypt(
+                    encryptedData.getCipher(),
+                    aes256Keys[0].getEncoded(),
+                    KeyUsage.KDC_REP_TICKET.getValue()
+            );
+            EncTicketPart tgsRep = KrbCodec.decode(decrypt, EncTicketPart.class);
+            System.out.println(tgsRep);
+
+            AuthorizationDataEntry authorizationDataEntry = tgsRep.getAuthorizationData().getElements().get(0);
+            List<KerberosAuthData> kerberosAuthDataList = KerberosAuthData.parse(
+                    authorizationDataEntry.getAuthzType().getValue(),
+                    authorizationDataEntry.getAuthzData(),
+                    aes256Keys[0]
+            );
+
+            for (KerberosAuthData authData : kerberosAuthDataList) {
+                if (authData instanceof KerberosPacAuthData) {
+                    PacLogonInfo logonInfo = ((KerberosPacAuthData) authData).getPac().getLogonInfo();
+                    assertNotNull(logonInfo);
+                } else {
+                    fail();
+                }
+            }
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        /*for (KerberosAuthData authData : token.getTicket().getEncData().getUserAuthorizations()) {
+            if (authData instanceof KerberosPacAuthData) {
+                PacLogonInfo logonInfo = ((KerberosPacAuthData) authData).getPac().getLogonInfo();
+                assertNotNull(logonInfo);
+            } else {
+                fail();
+            }
+        }*/
 
     }
 

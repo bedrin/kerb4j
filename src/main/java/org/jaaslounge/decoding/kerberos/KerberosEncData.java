@@ -1,15 +1,13 @@
 package org.jaaslounge.decoding.kerberos;
 
+import org.apache.kerby.kerberos.kerb.KrbCodec;
 import org.apache.kerby.kerberos.kerb.KrbException;
-import org.apache.kerby.kerberos.kerb.crypto.EncTypeHandler;
 import org.apache.kerby.kerberos.kerb.crypto.EncryptionHandler;
-import org.apache.kerby.kerberos.kerb.type.base.EncryptedData;
-import org.apache.kerby.kerberos.kerb.type.base.EncryptionType;
 import org.apache.kerby.kerberos.kerb.type.base.KeyUsage;
+import org.apache.kerby.kerberos.kerb.type.ticket.EncTicketPart;
 import org.bouncycastle.asn1.*;
 import org.jaaslounge.decoding.DecodingException;
 import org.jaaslounge.decoding.DecodingUtil;
-import sun.security.krb5.EncryptionKey;
 
 import javax.crypto.Cipher;
 import javax.crypto.Mac;
@@ -131,6 +129,28 @@ public class KerberosEncData {
                     DEROctetString authData = DecodingUtil.as(DEROctetString.class, DecodingUtil
                             .as(DERTaggedObject.class, authElement, 1));
 
+                    /*
+
+                    // TODO: use snippet below to get PAC data using Kerby API
+
+                    try {
+                        AuthorizationDataEntry authorizationDataEntry = KrbCodec.decode(token, EncTicketPart.class).getAuthorizationData().getElements().get(0);
+                        AuthorizationType authzType = authorizationDataEntry.getAuthzType();
+
+                        if (AD_IF_RELEVANT == authzType) {
+                            AuthorizationDataEntry authorizationDataEntry1 = authorizationDataEntry.getAuthzDataAs(AuthorizationData.class).getElements().get(0);
+                            System.out.println(authorizationDataEntry1.getAuthzType());
+                            System.out.println(Arrays.toString(authorizationDataEntry1.getAuthzData()));
+                        } else if (AD_WIN2K_PAC == authzType) {
+                            System.out.println(Arrays.toString(authorizationDataEntry.getAuthzData()));
+                        }
+
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                     */
+
                     userAuthorizations.addAll(KerberosAuthData.parse(
                             authType.getValue().intValue(), authData.getOctets(), key));
                 }
@@ -176,21 +196,15 @@ public class KerberosEncData {
         }
         else
         {
-            /*CipherTextHandler handler = new CipherTextHandler();
-            EncryptionType encType = EncryptionType.getTypeByValue(type);
-            EncryptionKey encKey = new EncryptionKey(encType, key.getEncoded());
-            EncryptedData encData = new EncryptedData(encType, data);*/
             try
             {
-                EncTypeHandler handler = EncryptionHandler.getEncHandler(type);
-
-                EncryptionType encType = EncryptionType.fromValue(type);
-                EncryptionKey encKey = new EncryptionKey(type, key.getEncoded());
-
-                decrypt = handler.decrypt(data, key.getEncoded(), KeyUsage.KDC_REP_TICKET.getValue());
+                decrypt = EncryptionHandler.getEncHandler(type).decrypt(data, key.getEncoded(), KeyUsage.KDC_REP_TICKET.getValue());
+                EncTicketPart tgsRep = KrbCodec.decode(decrypt, EncTicketPart.class);
+                System.out.println(tgsRep);
             } catch (KrbException e) {
                 e.printStackTrace();
             }
+
         }
         return decrypt;
     }

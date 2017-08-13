@@ -1,10 +1,16 @@
-package org.jaaslounge.decoding.kerberos;
+package org.jaaslounge.decoding.spnego;
 
+import org.apache.kerby.kerberos.kerb.KrbCodec;
+import org.apache.kerby.kerberos.kerb.KrbException;
+import org.apache.kerby.kerberos.kerb.type.ap.ApReq;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.DERApplicationSpecific;
 import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.jaaslounge.decoding.DecodingException;
 import org.jaaslounge.decoding.DecodingUtil;
+import org.jaaslounge.decoding.kerberos.KerberosApRequest;
+import org.jaaslounge.decoding.kerberos.KerberosConstants;
+import org.jaaslounge.decoding.kerberos.KerberosTicket;
 
 import javax.security.auth.kerberos.KerberosKey;
 import java.io.ByteArrayInputStream;
@@ -27,15 +33,15 @@ import java.io.IOException;
  -- is not required
  }
  */
-public class KerberosToken {
+public class SpnegoKerberosMechToken {
 
-    private KerberosApRequest apRequest;
+    private ApReq apRequest;
 
-    public KerberosToken(byte[] token) throws DecodingException {
+    public SpnegoKerberosMechToken(byte[] token) throws DecodingException {
         this(token, null);
     }
 
-    public KerberosToken(byte[] token, KerberosKey[] keys) throws DecodingException {
+    public SpnegoKerberosMechToken(byte[] token, KerberosKey[] keys) throws DecodingException {
 
         if(token.length <= 0)
             throw new DecodingException("kerberos.token.empty", null, null);
@@ -65,17 +71,16 @@ public class KerberosToken {
 
             stream.close();
 
-            apRequest = new KerberosApRequest(krbToken.getContents(), keys);
+            apRequest = KrbCodec.decode(krbToken.getEncoded(), ApReq.class);
+
         } catch(IOException e) {
+            throw new DecodingException("kerberos.token.malformed", null, e);
+        } catch (KrbException e) {
             throw new DecodingException("kerberos.token.malformed", null, e);
         }
     }
 
-    public KerberosTicket getTicket() {
-        return apRequest.getTicket();
-    }
-
-    public KerberosApRequest getApRequest() {
+    public ApReq getApRequest() {
         return apRequest;
     }
 

@@ -1,20 +1,14 @@
 package org.jaaslounge.decoding.kerberos;
 
+import org.bouncycastle.asn1.*;
+import org.jaaslounge.decoding.DecodingException;
+import org.jaaslounge.decoding.DecodingUtil;
+
+import javax.security.auth.kerberos.KerberosKey;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Enumeration;
-
-import javax.security.auth.kerberos.KerberosKey;
-
-import org.bouncycastle.asn1.ASN1InputStream;
-import org.bouncycastle.asn1.ASN1TaggedObject;
-import org.bouncycastle.asn1.DERApplicationSpecific;
-import org.bouncycastle.asn1.DERBitString;
-import org.bouncycastle.asn1.DERInteger;
-import org.bouncycastle.asn1.DERSequence;
-import org.jaaslounge.decoding.DecodingException;
-import org.jaaslounge.decoding.DecodingUtil;
 
 public class KerberosApRequest {
 

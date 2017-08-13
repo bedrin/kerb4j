@@ -1,23 +1,16 @@
 package org.jaaslounge.decoding.kerberos;
 
+import org.bouncycastle.asn1.*;
+import org.jaaslounge.decoding.DecodingException;
+import org.jaaslounge.decoding.DecodingUtil;
+
+import javax.security.auth.kerberos.KerberosKey;
+import javax.security.auth.login.LoginException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.util.Enumeration;
-
-import javax.security.auth.kerberos.KerberosKey;
-import javax.security.auth.login.LoginException;
-
-import org.bouncycastle.asn1.ASN1InputStream;
-import org.bouncycastle.asn1.ASN1TaggedObject;
-import org.bouncycastle.asn1.DERGeneralString;
-import org.bouncycastle.asn1.DERInteger;
-import org.bouncycastle.asn1.DEROctetString;
-import org.bouncycastle.asn1.DERSequence;
-import org.bouncycastle.asn1.DERTaggedObject;
-import org.jaaslounge.decoding.DecodingException;
-import org.jaaslounge.decoding.DecodingUtil;
 
 public class KerberosTicket {
 
