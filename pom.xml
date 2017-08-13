@@ -12,11 +12,6 @@
     <description>Helper classes for working with Kerberos and SPNEGO in Java</description>
 
     <dependencies>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk15on</artifactId>
-            <version>1.57</version>
-        </dependency>
 
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -29,6 +24,7 @@
             <artifactId>kerb-crypto</artifactId>
             <version>1.0.0</version>
         </dependency>
+
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>

@@ -1,19 +1,15 @@
 package com.kerb4j.spnego;
 
 import com.kerb4j.Kerb4JException;
-import org.apache.kerby.kerberos.kerb.KrbCodec;
-import org.apache.kerby.kerberos.kerb.KrbException;
+import org.apache.kerby.asn1.parse.Asn1Container;
+import org.apache.kerby.asn1.parse.Asn1ParseResult;
+import org.apache.kerby.asn1.parse.Asn1Parser;
+import org.apache.kerby.asn1.type.Asn1ObjectIdentifier;
 import org.apache.kerby.kerberos.kerb.type.ap.ApReq;
-import org.bouncycastle.asn1.ASN1InputStream;
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
-import org.bouncycastle.asn1.DERApplicationSpecific;
-import org.bouncycastle.asn1.DERObjectIdentifier;
 
 import javax.security.auth.kerberos.KerberosKey;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-
-import static com.kerb4j.spnego.SpnegoConstants.KERBEROS_MECHANISM;
+import java.nio.ByteBuffer;
 
 /**
  * https://tools.ietf.org/html/rfc1964
@@ -46,35 +42,33 @@ public class SpnegoKerberosMechToken {
             throw new Kerb4JException("kerberos.token.empty", null, null);
 
         try {
-            ASN1InputStream stream = new ASN1InputStream(new ByteArrayInputStream(token));
-            DERApplicationSpecific derToken = DecodingUtil.as(DERApplicationSpecific.class, stream);
-            if(derToken == null || !derToken.isConstructed())
+
+            Asn1ParseResult asn1ParseResult = Asn1Parser.parse(ByteBuffer.wrap(token));
+
+            Asn1ParseResult item1 = ((Asn1Container) asn1ParseResult).getChildren().get(0);
+            Asn1ObjectIdentifier asn1ObjectIdentifier = new Asn1ObjectIdentifier();
+            asn1ObjectIdentifier.decode(item1);
+
+            if(!asn1ObjectIdentifier.getValue().equals(SpnegoConstants.KERBEROS_MECHANISM))
                 throw new Kerb4JException("kerberos.token.malformed", null, null);
-            stream.close();
 
-            stream = new ASN1InputStream(new ByteArrayInputStream(derToken.getContents()));
-            ASN1ObjectIdentifier kerberosOid = DecodingUtil.as(ASN1ObjectIdentifier.class, stream);
-            if(!kerberosOid.getId().equals(KERBEROS_MECHANISM))
-                throw new Kerb4JException("kerberos.token.invalid", null, null);
-
+            Asn1ParseResult item2 = ((Asn1Container) asn1ParseResult).getChildren().get(1);
             int read = 0;
-            int readLow = stream.read() & 0xff;
-            int readHigh = stream.read() & 0xff;
+            int readLow = item2.getBodyBuffer().get(item2.getOffset()) & 0xff;
+            int readHigh = item2.getBodyBuffer().get(item2.getOffset() + 1) & 0xff;
             read = (readHigh << 8) + readLow;
             if(read != 0x01)
                 throw new Kerb4JException("kerberos.token.malformed", null, null);
 
-            DERApplicationSpecific krbToken = DecodingUtil.as(DERApplicationSpecific.class, stream);
-            if(krbToken == null || !krbToken.isConstructed())
-                throw new Kerb4JException("kerberos.token.malformed", null, null);
+            Asn1ParseResult item3 = ((Asn1Container) asn1ParseResult).getChildren().get(2);
 
-            stream.close();
+            ApReq apReq = new ApReq();
+            apReq.decode(item3);
+            apRequest = apReq;
 
-            apRequest = KrbCodec.decode(krbToken.getEncoded(), ApReq.class);
+            //apRequest = KrbCodec.decode(krbToken.getEncoded(), ApReq.class);
 
         } catch(IOException e) {
-            throw new Kerb4JException("kerberos.token.malformed", null, e);
-        } catch (KrbException e) {
             throw new Kerb4JException("kerberos.token.malformed", null, e);
         }
     }
