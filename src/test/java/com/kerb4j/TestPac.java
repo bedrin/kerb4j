@@ -67,7 +67,7 @@ public class TestPac {
             Assert.assertEquals("DOMAIN", pac.getLogonInfo().getDomainName());
             Assert.assertEquals("WS2008", pac.getLogonInfo().getServerName());
 
-        } catch(DecodingException e) {
+        } catch(Kerb4JException e) {
             e.printStackTrace();
             Assert.fail(e.getMessage());
         }
@@ -89,7 +89,7 @@ public class TestPac {
             Assert.assertEquals("DOMAIN", pac.getLogonInfo().getDomainName());
             Assert.assertEquals("WS2008", pac.getLogonInfo().getServerName());
 
-        } catch(DecodingException e) {
+        } catch(Kerb4JException e) {
             e.printStackTrace();
             Assert.fail(e.getMessage());
         }
@@ -100,8 +100,8 @@ public class TestPac {
         Pac pac = null;
         try {
             pac = new Pac(corruptData, rc4Key);
-            Assert.fail("Should have thrown DecodingException.");
-        } catch(DecodingException e) {
+            Assert.fail("Should have thrown Kerb4JException.");
+        } catch(Kerb4JException e) {
             Assert.assertNotNull(e);
             Assert.assertNull(pac);
         }
@@ -112,8 +112,8 @@ public class TestPac {
         Pac pac = null;
         try {
             pac = new Pac(new byte[0], rc4Key);
-            Assert.fail("Should have thrown DecodingException.");
-        } catch(DecodingException e) {
+            Assert.fail("Should have thrown Kerb4JException.");
+        } catch(Kerb4JException e) {
             Assert.assertNotNull(e);
             Assert.assertNull(pac);
         }
@@ -125,7 +125,7 @@ public class TestPac {
         try {
             pac = new Pac(null, rc4Key);
             Assert.fail("Should have thrown NullPointerException.");
-        } catch(DecodingException e) {
+        } catch(Kerb4JException e) {
             e.printStackTrace();
             Assert.fail(e.getMessage());
         } catch(NullPointerException e) {
@@ -139,8 +139,8 @@ public class TestPac {
         Pac pac = null;
         try {
             pac = new Pac(rc4Data, corruptKey);
-            Assert.fail("Should have thrown DecodingException.");
-        } catch(DecodingException e) {
+            Assert.fail("Should have thrown Kerb4JException.");
+        } catch(Kerb4JException e) {
             Assert.assertNotNull(e);
             Assert.assertNull(pac);
         }

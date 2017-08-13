@@ -1,6 +1,6 @@
 package com.kerb4j.pac;
 
-import com.kerb4j.DecodingException;
+import com.kerb4j.Kerb4JException;
 
 public class PacUnicodeString {
 
@@ -27,14 +27,14 @@ public class PacUnicodeString {
         return pointer;
     }
 
-    public String check(String string) throws DecodingException {
+    public String check(String string) throws Kerb4JException {
         if(pointer == 0 && string != null)
-            throw new DecodingException("pac.string.notempty", null, null);
+            throw new Kerb4JException("pac.string.notempty", null, null);
 
         int expected = length / 2;
         if(string.length() != expected) {
             Object[] args = new Object[]{expected, string.length()};
-            throw new DecodingException("pac.string.invalid.size", args, null);
+            throw new Kerb4JException("pac.string.invalid.size", args, null);
         }
 
         return string;

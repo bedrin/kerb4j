@@ -1,6 +1,6 @@
 package com.kerb4j.pac;
 
-import com.kerb4j.DecodingException;
+import com.kerb4j.Kerb4JException;
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.kerby.kerberos.kerb.crypto.CheckSumHandler;
 import org.apache.kerby.kerberos.kerb.type.base.CheckSumType;
@@ -18,7 +18,7 @@ public class Pac {
     private PacSignature serverSignature;
     private PacSignature kdcSignature;
 
-    public Pac(byte[] data, Key key) throws DecodingException
+    public Pac(byte[] data, Key key) throws Kerb4JException
     {
         byte[] checksumData = data.clone();
         try
@@ -27,7 +27,7 @@ public class Pac {
                     new ByteArrayInputStream(data)));
 
             if (data.length <= 8)
-                throw new DecodingException("pac.token.empty", null, null);
+                throw new Kerb4JException("pac.token.empty", null, null);
 
             int bufferCount = pacStream.readInt();
             int version = pacStream.readInt();
@@ -35,7 +35,7 @@ public class Pac {
             if (version != PacConstants.PAC_VERSION)
             {
                 Object[] args = new Object[]{version};
-                throw new DecodingException("pac.version.invalid", args, null);
+                throw new Kerb4JException("pac.version.invalid", args, null);
             }
 
             for (int bufferIndex = 0; bufferIndex < bufferCount; bufferIndex++)
@@ -74,7 +74,7 @@ public class Pac {
         }
         catch (IOException e)
         {
-            throw new DecodingException("pac.token.malformed", null, e);
+            throw new Kerb4JException("pac.token.malformed", null, e);
         }
 
         byte[] checksum;
@@ -86,11 +86,11 @@ public class Pac {
         }
         catch (KrbException e)
         {
-            throw new DecodingException("pac.check.fail", null, e);
+            throw new Kerb4JException("pac.check.fail", null, e);
         }
 
         if (!Arrays.equals(serverSignature.getChecksum(), checksum))
-            throw new DecodingException("pac.signature.invalid", null, null);
+            throw new Kerb4JException("pac.signature.invalid", null, null);
     }
 
     public PacLogonInfo getLogonInfo()

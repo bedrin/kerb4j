@@ -3,7 +3,7 @@ package com.kerb4j;
 import java.text.MessageFormat;
 import java.util.ResourceBundle;
 
-public class DecodingException extends Exception {
+public class Kerb4JException extends Exception {
 	private static final long serialVersionUID = 1L;
 
 	private static final ResourceBundle MESSAGES = ResourceBundle
@@ -11,23 +11,23 @@ public class DecodingException extends Exception {
 
 	private final Throwable cause;
 
-	public DecodingException() {
+	public Kerb4JException() {
 		this( null, null);
 	}
 
-	public DecodingException(String message) {
+	public Kerb4JException(String message) {
 		this(message, null);
 	}
 
-	public DecodingException(Throwable cause) {
+	public Kerb4JException(Throwable cause) {
 		this(null, cause);
 	}
 
-	public DecodingException(String key, Object[] args, Throwable cause) {
+	public Kerb4JException(String key, Object[] args, Throwable cause) {
 		this(MessageFormat.format(MESSAGES.getString(key), args), cause);
 	}
 
-	public DecodingException(String message, Throwable cause) {
+	public Kerb4JException(String message, Throwable cause) {
 		super(message);
 		this.cause = cause;
 	}

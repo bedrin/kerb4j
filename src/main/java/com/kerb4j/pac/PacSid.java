@@ -1,6 +1,6 @@
 package com.kerb4j.pac;
 
-import com.kerb4j.DecodingException;
+import com.kerb4j.Kerb4JException;
 
 public class PacSid {
 
@@ -11,10 +11,10 @@ public class PacSid {
     private byte[] authority;
     private byte[] subs;
 
-    public PacSid(byte[] bytes) throws DecodingException {
+    public PacSid(byte[] bytes) throws Kerb4JException {
         if(bytes.length < 8 || ((bytes.length - 8) % 4) != 0
                 || ((bytes.length - 8) / 4) != bytes[1])
-            throw new DecodingException("pac.sid.malformed.size", null, null);
+            throw new Kerb4JException("pac.sid.malformed.size", null, null);
 
         this.revision = bytes[0];
         this.subCount = bytes[1];
@@ -82,10 +82,10 @@ public class PacSid {
         return builder.toString();
     }
 
-    public static PacSid createFromSubs(byte[] bytes) throws DecodingException {
+    public static PacSid createFromSubs(byte[] bytes) throws Kerb4JException {
         if((bytes.length % 4) != 0) {
             Object[] args = new Object[]{bytes.length};
-            throw new DecodingException("pac.subauthority.malformed.size", args, null);
+            throw new Kerb4JException("pac.subauthority.malformed.size", args, null);
         }
 
         byte[] sidBytes = new byte[8 + bytes.length];

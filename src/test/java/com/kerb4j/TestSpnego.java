@@ -80,7 +80,7 @@ public class TestSpnego {
             Assert.assertTrue(spnegoToken.getMechanismToken().length < rc4Token.length);
             Assert.assertNotNull(spnegoToken.getMechanism());
             Assert.assertEquals(SpnegoConstants.LEGACY_KERBEROS_MECHANISM, spnegoToken.getMechanism());
-        } catch(DecodingException e) {
+        } catch(Kerb4JException e) {
             e.printStackTrace();
             fail(e.getMessage());
         }
@@ -97,7 +97,7 @@ public class TestSpnego {
             Assert.assertTrue(spnegoToken.getMechanismToken().length < desToken.length);
             Assert.assertNotNull(spnegoToken.getMechanism());
             Assert.assertEquals(SpnegoConstants.LEGACY_KERBEROS_MECHANISM, spnegoToken.getMechanism());
-        } catch(DecodingException e) {
+        } catch(Kerb4JException e) {
             e.printStackTrace();
             fail(e.getMessage());
         }
@@ -114,14 +114,14 @@ public class TestSpnego {
             Assert.assertTrue(spnegoToken.getMechanismToken().length < aes128Token.length);
             Assert.assertNotNull(spnegoToken.getMechanism());
             Assert.assertEquals(SpnegoConstants.LEGACY_KERBEROS_MECHANISM, spnegoToken.getMechanism());
-        } catch(DecodingException e) {
+        } catch(Kerb4JException e) {
             e.printStackTrace();
             fail(e.getMessage());
         }
     }
 
     @Test
-    public void testAes256Token() throws DecodingException {
+    public void testAes256Token() throws Kerb4JException {
 
         SpnegoToken spnegoToken = SpnegoToken.parse(aes256Token);
 
@@ -186,8 +186,8 @@ public class TestSpnego {
         SpnegoToken spnegoToken = null;
         try {
             spnegoToken = SpnegoToken.parse(new byte[0]);
-            fail("Should have thrown DecodingException.");
-        } catch(DecodingException e) {
+            fail("Should have thrown Kerb4JException.");
+        } catch(Kerb4JException e) {
             Assert.assertNotNull(e);
             Assert.assertNull(spnegoToken);
         }
@@ -198,8 +198,8 @@ public class TestSpnego {
         SpnegoToken spnegoToken = null;
         try {
             spnegoToken = SpnegoToken.parse(corruptToken);
-            fail("Should have thrown DecodingException.");
-        } catch(DecodingException e) {
+            fail("Should have thrown Kerb4JException.");
+        } catch(Kerb4JException e) {
             Assert.assertNotNull(e);
             Assert.assertNull(spnegoToken);
         }
@@ -211,7 +211,7 @@ public class TestSpnego {
         try {
             spnegoToken = SpnegoToken.parse(null);
             fail("Should have thrown NullPointerException.");
-        } catch(DecodingException e) {
+        } catch(Kerb4JException e) {
             e.printStackTrace();
             fail(e.getMessage());
         } catch(NullPointerException e) {

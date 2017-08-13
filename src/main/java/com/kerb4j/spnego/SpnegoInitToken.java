@@ -4,8 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Enumeration;
 
-import com.kerb4j.DecodingException;
-import com.kerb4j.DecodingUtil;
+import com.kerb4j.Kerb4JException;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Sequence;
@@ -27,18 +26,18 @@ public class SpnegoInitToken extends SpnegoToken {
     private String[] mechanisms;
     private int contextFlags;
 
-    public SpnegoInitToken(byte[] token) throws DecodingException {
+    public SpnegoInitToken(byte[] token) throws Kerb4JException {
         try {
             ASN1InputStream stream = new ASN1InputStream(new ByteArrayInputStream(token));
             DERApplicationSpecific constructed = DecodingUtil.as(DERApplicationSpecific.class,
                     stream);
             if(constructed == null || !constructed.isConstructed())
-                throw new DecodingException("spnego.token.malformed", null, null);
+                throw new Kerb4JException("spnego.token.malformed", null, null);
 
             stream = new ASN1InputStream(new ByteArrayInputStream(constructed.getContents()));
             DERObjectIdentifier spnegoOid = DecodingUtil.as(DERObjectIdentifier.class, stream);
             if(!spnegoOid.getId().equals(SpnegoConstants.SPNEGO_OID))
-                throw new DecodingException("spnego.token.invalid", null, null);
+                throw new Kerb4JException("spnego.token.invalid", null, null);
 
             ASN1TaggedObject tagged = DecodingUtil.as(ASN1TaggedObject.class, stream);
             ASN1Sequence sequence = ASN1Sequence.getInstance(tagged, true);
@@ -72,11 +71,11 @@ public class SpnegoInitToken extends SpnegoToken {
                     break;
                 default:
                     Object[] args = new Object[]{tagged.getTagNo()};
-                    throw new DecodingException("spnego.field.invalid", args, null);
+                    throw new Kerb4JException("spnego.field.invalid", args, null);
                 }
             }
         } catch(IOException e) {
-            throw new DecodingException("spnego.token.malformed", null, e);
+            throw new Kerb4JException("spnego.token.malformed", null, e);
         }
     }
 

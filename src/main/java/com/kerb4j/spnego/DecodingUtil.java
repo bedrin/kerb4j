@@ -1,8 +1,9 @@
-package com.kerb4j;
+package com.kerb4j.spnego;
 
 import java.io.IOException;
 import java.util.Enumeration;
 
+import com.kerb4j.Kerb4JException;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1TaggedObject;
 import org.bouncycastle.asn1.DERObject;
@@ -29,36 +30,36 @@ public final class DecodingUtil {
         return bytes;
     }
 
-    public static <T> T as(Class<T> type, Object object) throws DecodingException {
+    public static <T> T as(Class<T> type, Object object) throws Kerb4JException {
 
         if(!type.isInstance(object)) {
             Object[] args = new Object[]{type, object.getClass()};
-            throw new DecodingException("object.cast.fail", args, null);
+            throw new Kerb4JException("object.cast.fail", args, null);
         }
 
         return type.cast(object);
     }
 
     public static <T extends Object> T as(Class<T> type, Enumeration<?> enumeration)
-            throws DecodingException {
+            throws Kerb4JException {
 
         return as(type, enumeration.nextElement());
     }
 
     public static <T extends DERObject> T as(Class<T> type, ASN1InputStream stream)
-            throws DecodingException, IOException {
+            throws Kerb4JException, IOException {
 
         return as(type, stream.readObject());
     }
 
     public static <T extends DERObject> T as(Class<T> type, ASN1TaggedObject tagged)
-            throws DecodingException {
+            throws Kerb4JException {
 
         return as(type, tagged.getObject());
     }
 
     public static <T extends DERObject> T as(Class<T> type, DERSequence sequence, int index)
-            throws DecodingException {
+            throws Kerb4JException {
 
         return as(type, sequence.getObjectAt(index));
     }

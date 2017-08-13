@@ -1,6 +1,6 @@
 package com.kerb4j.spnego;
 
-import com.kerb4j.DecodingException;
+import com.kerb4j.Kerb4JException;
 
 public abstract class SpnegoToken {
 
@@ -11,11 +11,11 @@ public abstract class SpnegoToken {
     protected byte[] mechanismList;
     protected String mechanism;
 
-    public static SpnegoToken parse(byte[] token) throws DecodingException {
+    public static SpnegoToken parse(byte[] token) throws Kerb4JException {
         SpnegoToken spnegoToken = null;
 
         if(token.length <= 0)
-            throw new DecodingException("spnego.token.empty", null, null);
+            throw new Kerb4JException("spnego.token.empty", null, null);
 
         switch (token[0]) {
         case (byte)0x60:
@@ -27,7 +27,7 @@ public abstract class SpnegoToken {
         default:
             spnegoToken = null;
             Object[] args = new Object[]{token[0]};
-            throw new DecodingException("spnego.token.invalid", args, null);
+            throw new Kerb4JException("spnego.token.invalid", args, null);
         }
 
         return spnegoToken;

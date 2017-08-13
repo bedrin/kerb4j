@@ -4,14 +4,14 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 
-import com.kerb4j.DecodingException;
+import com.kerb4j.Kerb4JException;
 
 public class PacSignature {
 
     private int type;
     private byte[] checksum;
 
-    public PacSignature(byte[] data) throws DecodingException {
+    public PacSignature(byte[] data) throws Kerb4JException {
         try {
             PacDataInputStream bufferStream = new PacDataInputStream(new DataInputStream(
                     new ByteArrayInputStream(data)));
@@ -20,7 +20,7 @@ public class PacSignature {
             checksum = new byte[bufferStream.available()];
             bufferStream.readFully(checksum);
         } catch(IOException e) {
-            throw new DecodingException("pac.signature.malformed", null, e);
+            throw new Kerb4JException("pac.signature.malformed", null, e);
         }
     }
 

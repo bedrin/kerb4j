@@ -4,8 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Enumeration;
 
-import com.kerb4j.DecodingException;
-import com.kerb4j.DecodingUtil;
+import com.kerb4j.Kerb4JException;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Sequence;
@@ -22,13 +21,13 @@ public class SpnegoTargToken extends SpnegoToken {
 
     private int result = UNSPECIFIED_RESULT;
 
-    public SpnegoTargToken(byte[] token) throws DecodingException {
+    public SpnegoTargToken(byte[] token) throws Kerb4JException {
         ASN1InputStream stream = new ASN1InputStream(new ByteArrayInputStream(token));
         ASN1TaggedObject tagged;
         try {
             tagged = DecodingUtil.as(ASN1TaggedObject.class, stream);
         } catch(IOException e) {
-            throw new DecodingException("spnego.token.malformed", null, e);
+            throw new Kerb4JException("spnego.token.malformed", null, e);
         }
 
         ASN1Sequence sequence = ASN1Sequence.getInstance(tagged, true);
@@ -54,7 +53,7 @@ public class SpnegoTargToken extends SpnegoToken {
                 break;
             default:
                 Object[] args = new Object[]{tagged.getTagNo()};
-                throw new DecodingException("spnego.field.invalid", args, null);
+                throw new Kerb4JException("spnego.field.invalid", args, null);
             }
         }
     }
