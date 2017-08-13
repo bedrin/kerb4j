@@ -1,6 +1,6 @@
-package org.jaaslounge.decoding.spnego;
+package com.kerb4j.spnego;
 
-import org.jaaslounge.decoding.DecodingException;
+import com.kerb4j.DecodingException;
 
 public abstract class SpnegoToken {
 

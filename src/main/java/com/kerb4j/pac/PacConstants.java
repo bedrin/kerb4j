@@ -1,4 +1,4 @@
-package org.jaaslounge.decoding.pac;
+package com.kerb4j.pac;
 
 public interface PacConstants {
 

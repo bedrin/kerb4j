@@ -1,13 +1,13 @@
-package org.jaaslounge.decoding.spnego;
+package com.kerb4j.spnego;
 
+import com.kerb4j.DecodingException;
+import com.kerb4j.DecodingUtil;
 import org.apache.kerby.kerberos.kerb.KrbCodec;
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.kerby.kerberos.kerb.type.ap.ApReq;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.DERApplicationSpecific;
 import org.bouncycastle.asn1.DERObjectIdentifier;
-import org.jaaslounge.decoding.DecodingException;
-import org.jaaslounge.decoding.DecodingUtil;
 import org.jaaslounge.decoding.kerberos.KerberosApRequest;
 import org.jaaslounge.decoding.kerberos.KerberosConstants;
 import org.jaaslounge.decoding.kerberos.KerberosTicket;

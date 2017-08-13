@@ -1,5 +1,7 @@
-package org.jaaslounge.decoding;
+package com.kerb4j;
 
+import com.kerb4j.pac.PacLogonInfo;
+import com.kerb4j.spnego.SpnegoToken;
 import org.apache.kerby.kerberos.kerb.KrbCodec;
 import org.apache.kerby.kerberos.kerb.crypto.EncryptionHandler;
 import org.apache.kerby.kerberos.kerb.type.ad.AuthorizationData;
@@ -7,12 +9,10 @@ import org.apache.kerby.kerberos.kerb.type.ad.AuthorizationDataEntry;
 import org.apache.kerby.kerberos.kerb.type.base.EncryptedData;
 import org.apache.kerby.kerberos.kerb.type.base.KeyUsage;
 import org.apache.kerby.kerberos.kerb.type.ticket.EncTicketPart;
-import org.jaaslounge.decoding.pac.Pac;
-import org.jaaslounge.decoding.pac.PacLogonInfo;
-import org.jaaslounge.decoding.spnego.SpnegoConstants;
-import org.jaaslounge.decoding.spnego.SpnegoInitToken;
-import org.jaaslounge.decoding.spnego.SpnegoKerberosMechToken;
-import org.jaaslounge.decoding.spnego.SpnegoToken;
+import com.kerb4j.pac.Pac;
+import com.kerb4j.spnego.SpnegoConstants;
+import com.kerb4j.spnego.SpnegoInitToken;
+import com.kerb4j.spnego.SpnegoKerberosMechToken;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

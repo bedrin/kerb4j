@@ -1,11 +1,11 @@
-package org.jaaslounge.decoding;
+package com.kerb4j;
 
 import java.io.IOException;
 import java.io.InputStream;
 
 import javax.crypto.spec.SecretKeySpec;
 
-import org.jaaslounge.decoding.pac.Pac;
+import com.kerb4j.pac.Pac;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

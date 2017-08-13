@@ -1,4 +1,4 @@
-package org.jaaslounge.decoding.pac;
+package com.kerb4j.pac;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -6,7 +6,7 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.Date;
 
-import org.jaaslounge.decoding.DecodingException;
+import com.kerb4j.DecodingException;
 
 public class PacDataInputStream {
 

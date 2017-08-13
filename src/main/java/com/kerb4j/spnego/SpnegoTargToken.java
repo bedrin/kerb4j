@@ -1,17 +1,17 @@
-package org.jaaslounge.decoding.spnego;
+package com.kerb4j.spnego;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Enumeration;
 
+import com.kerb4j.DecodingException;
+import com.kerb4j.DecodingUtil;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.ASN1TaggedObject;
 import org.bouncycastle.asn1.DEREnumerated;
 import org.bouncycastle.asn1.DERObjectIdentifier;
-import org.jaaslounge.decoding.DecodingException;
-import org.jaaslounge.decoding.DecodingUtil;
 
 public class SpnegoTargToken extends SpnegoToken {
 

@@ -1,10 +1,10 @@
-package org.jaaslounge.decoding.pac;
+package com.kerb4j.pac;
 
+import com.kerb4j.DecodingException;
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.kerby.kerberos.kerb.crypto.CheckSumHandler;
 import org.apache.kerby.kerberos.kerb.type.base.CheckSumType;
 import org.apache.kerby.kerberos.kerb.type.base.KeyUsage;
-import org.jaaslounge.decoding.DecodingException;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;

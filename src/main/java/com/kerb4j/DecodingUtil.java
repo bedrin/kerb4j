@@ -1,4 +1,4 @@
-package org.jaaslounge.decoding;
+package com.kerb4j;
 
 import java.io.IOException;
 import java.util.Enumeration;

@@ -1,4 +1,4 @@
-package org.jaaslounge.decoding;
+package com.kerb4j;
 
 import java.text.MessageFormat;
 import java.util.ResourceBundle;

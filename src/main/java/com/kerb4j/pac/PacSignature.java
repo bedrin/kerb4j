@@ -1,10 +1,10 @@
-package org.jaaslounge.decoding.pac;
+package com.kerb4j.pac;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 
-import org.jaaslounge.decoding.DecodingException;
+import com.kerb4j.DecodingException;
 
 public class PacSignature {
 

@@ -1,6 +1,6 @@
-package org.jaaslounge.decoding.pac;
+package com.kerb4j.pac;
 
-import org.jaaslounge.decoding.DecodingException;
+import com.kerb4j.DecodingException;
 
 public class PacSid {
 

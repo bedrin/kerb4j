@@ -1,4 +1,4 @@
-package org.jaaslounge.decoding.spnego;
+package com.kerb4j.spnego;
 
 public interface SpnegoConstants {
 
