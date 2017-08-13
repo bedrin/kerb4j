@@ -7,12 +7,11 @@ import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
-import org.jaaslounge.decoding.crypto.KrbException;
-import org.jaaslounge.decoding.crypto.CheckSumHandler;
-import org.jaaslounge.decoding.crypto.CheckSumType;
+import org.apache.kerby.kerberos.kerb.KrbException;
+import org.apache.kerby.kerberos.kerb.crypto.CheckSumHandler;
+import org.apache.kerby.kerberos.kerb.type.base.CheckSumType;
+import org.apache.kerby.kerberos.kerb.type.base.KeyUsage;
 import org.jaaslounge.decoding.DecodingException;
-
-import static org.jaaslounge.decoding.crypto.KeyUsage.APP_DATA_CKSUM;
 
 public class Pac
 {
@@ -87,8 +86,8 @@ public class Pac
         {
             try
             {
-                checksum = CheckSumHandler.getCheckSumHandler(CheckSumType.fromValue(serverSignature.getType()), false).
-                        checksumWithKey(checksumData, key.getEncoded(), APP_DATA_CKSUM.getValue());
+                checksum = CheckSumHandler.getCheckSumHandler(CheckSumType.fromValue(serverSignature.getType())).
+                        checksumWithKey(checksumData, key.getEncoded(), KeyUsage.APP_DATA_CKSUM.getValue());
             }
             catch (KrbException e)
             {

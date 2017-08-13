@@ -1,14 +1,15 @@
 package org.jaaslounge.decoding.kerberos;
 
-import org.apache.directory.server.kerberos.shared.crypto.encryption.CipherTextHandler;
-import org.apache.directory.server.kerberos.shared.crypto.encryption.KeyUsage;
-import org.apache.directory.shared.kerberos.codec.types.EncryptionType;
-import org.apache.directory.shared.kerberos.components.EncryptedData;
-import org.apache.directory.shared.kerberos.components.EncryptionKey;
-import org.apache.directory.shared.kerberos.exceptions.KerberosException;
+import org.apache.kerby.kerberos.kerb.KrbException;
+import org.apache.kerby.kerberos.kerb.crypto.EncTypeHandler;
+import org.apache.kerby.kerberos.kerb.crypto.EncryptionHandler;
+import org.apache.kerby.kerberos.kerb.type.base.EncryptedData;
+import org.apache.kerby.kerberos.kerb.type.base.EncryptionType;
+import org.apache.kerby.kerberos.kerb.type.base.KeyUsage;
 import org.bouncycastle.asn1.*;
 import org.jaaslounge.decoding.DecodingException;
 import org.jaaslounge.decoding.DecodingUtil;
+import sun.security.krb5.EncryptionKey;
 
 import javax.crypto.Cipher;
 import javax.crypto.Mac;
@@ -175,17 +176,20 @@ public class KerberosEncData {
         }
         else
         {
-            CipherTextHandler handler = new CipherTextHandler();
+            /*CipherTextHandler handler = new CipherTextHandler();
             EncryptionType encType = EncryptionType.getTypeByValue(type);
             EncryptionKey encKey = new EncryptionKey(encType, key.getEncoded());
-            EncryptedData encData = new EncryptedData(encType, data);
+            EncryptedData encData = new EncryptedData(encType, data);*/
             try
             {
-                decrypt = handler.decrypt(encKey, encData, KeyUsage.getTypeByOrdinal(2));
-            }
-            catch (KerberosException e)
-            {
-                throw new GeneralSecurityException("Failed to decrypt token: " + e.getMessage());
+                EncTypeHandler handler = EncryptionHandler.getEncHandler(type);
+
+                EncryptionType encType = EncryptionType.fromValue(type);
+                EncryptionKey encKey = new EncryptionKey(type, key.getEncoded());
+
+                decrypt = handler.decrypt(data, key.getEncoded(), KeyUsage.KDC_REP_TICKET.getValue());
+            } catch (KrbException e) {
+                e.printStackTrace();
             }
         }
         return decrypt;
