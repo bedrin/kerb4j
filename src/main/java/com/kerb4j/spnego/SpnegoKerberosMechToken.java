@@ -13,20 +13,20 @@ import java.nio.ByteBuffer;
 
 /**
  * https://tools.ietf.org/html/rfc1964
- *
- *    Per RFC-1508, Appendix B, the initial context establishment token
- will be enclosed within framing as follows:
-
- InitialContextToken ::=
- [APPLICATION 0] IMPLICIT SEQUENCE {
- thisMech        MechType
- -- MechType is OBJECT IDENTIFIER
- -- representing "Kerberos V5"
- innerContextToken ANY DEFINED BY thisMech
- -- contents mechanism-specific;
- -- ASN.1 usage within innerContextToken
- -- is not required
- }
+ * <p>
+ * Per RFC-1508, Appendix B, the initial context establishment token
+ * will be enclosed within framing as follows:
+ * <p>
+ * InitialContextToken ::=
+ * [APPLICATION 0] IMPLICIT SEQUENCE {
+ * thisMech        MechType
+ * -- MechType is OBJECT IDENTIFIER
+ * -- representing "Kerberos V5"
+ * innerContextToken ANY DEFINED BY thisMech
+ * -- contents mechanism-specific;
+ * -- ASN.1 usage within innerContextToken
+ * -- is not required
+ * }
  */
 public class SpnegoKerberosMechToken {
 
@@ -38,7 +38,7 @@ public class SpnegoKerberosMechToken {
 
     public SpnegoKerberosMechToken(byte[] token, KerberosKey[] keys) throws Kerb4JException {
 
-        if(token.length <= 0)
+        if (token.length <= 0)
             throw new Kerb4JException("kerberos.token.empty", null, null);
 
         try {
@@ -49,7 +49,7 @@ public class SpnegoKerberosMechToken {
             Asn1ObjectIdentifier asn1ObjectIdentifier = new Asn1ObjectIdentifier();
             asn1ObjectIdentifier.decode(item1);
 
-            if(!asn1ObjectIdentifier.getValue().equals(SpnegoConstants.KERBEROS_MECHANISM))
+            if (!asn1ObjectIdentifier.getValue().equals(SpnegoConstants.KERBEROS_MECHANISM))
                 throw new Kerb4JException("kerberos.token.malformed", null, null);
 
             Asn1ParseResult item2 = ((Asn1Container) asn1ParseResult).getChildren().get(1);
@@ -57,7 +57,7 @@ public class SpnegoKerberosMechToken {
             int readLow = item2.getBodyBuffer().get(item2.getOffset()) & 0xff;
             int readHigh = item2.getBodyBuffer().get(item2.getOffset() + 1) & 0xff;
             read = (readHigh << 8) + readLow;
-            if(read != 0x01)
+            if (read != 0x01)
                 throw new Kerb4JException("kerberos.token.malformed", null, null);
 
             Asn1ParseResult item3 = ((Asn1Container) asn1ParseResult).getChildren().get(2);
@@ -68,7 +68,7 @@ public class SpnegoKerberosMechToken {
 
             //apRequest = KrbCodec.decode(krbToken.getEncoded(), ApReq.class);
 
-        } catch(IOException e) {
+        } catch (IOException e) {
             throw new Kerb4JException("kerberos.token.malformed", null, e);
         }
     }

@@ -1,10 +1,10 @@
 package com.kerb4j.pac;
 
+import com.kerb4j.Kerb4JException;
+
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
-
-import com.kerb4j.Kerb4JException;
 
 public class PacSignature {
 
@@ -19,7 +19,7 @@ public class PacSignature {
             type = bufferStream.readInt();
             checksum = new byte[bufferStream.available()];
             bufferStream.readFully(checksum);
-        } catch(IOException e) {
+        } catch (IOException e) {
             throw new Kerb4JException("pac.signature.malformed", null, e);
         }
     }

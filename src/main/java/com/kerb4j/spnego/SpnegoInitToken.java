@@ -22,33 +22,9 @@ import static com.kerb4j.spnego.SpnegoInitToken.AuthorizationDataEntryField.*;
 public class SpnegoInitToken extends KrbSequenceType {
 
     /**
-     * The possible fields
+     * The AuthorizationDataEntry's fields
      */
-    protected enum AuthorizationDataEntryField implements EnumType {
-        MECH_TYPES,
-        REQ_FLAGS,
-        MECH_TOKEN,
-        MECH_LIST_MIC;
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public int getValue() {
-            return ordinal();
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public String getName() {
-            return name();
-        }
-    }
-
-    /** The AuthorizationDataEntry's fields */
-    private static Asn1FieldInfo[] fieldInfos = new Asn1FieldInfo[] {
+    private static Asn1FieldInfo[] fieldInfos = new Asn1FieldInfo[]{
             new ExplicitField(MECH_TYPES, KrbObjectIds.class),
             new ExplicitField(REQ_FLAGS, Asn1Flags.class),
             new ExplicitField(MECH_TOKEN, Asn1OctetString.class),
@@ -61,10 +37,10 @@ public class SpnegoInitToken extends KrbSequenceType {
 
         try {
 
-            if(token.length <= 0)
+            if (token.length <= 0)
                 throw new Kerb4JException("spnego.token.empty", null, null);
 
-            if ((byte)0x60 != token[0]) {
+            if ((byte) 0x60 != token[0]) {
                 throw new Kerb4JException("spnego.token.invalid", new Object[]{token[0]}, null);
             }
 
@@ -74,14 +50,14 @@ public class SpnegoInitToken extends KrbSequenceType {
             Asn1ObjectIdentifier asn1ObjectIdentifier = new Asn1ObjectIdentifier();
             asn1ObjectIdentifier.decode(item1);
 
-            if(!asn1ObjectIdentifier.getValue().equals(SpnegoConstants.SPNEGO_OID))
+            if (!asn1ObjectIdentifier.getValue().equals(SpnegoConstants.SPNEGO_OID))
                 throw new Kerb4JException("spnego.token.invalid", null, null);
 
             Asn1ParseResult item2 = ((Asn1Container) asn1ParseResult).getChildren().get(1);
 
             decode(((Asn1Container) item2).getChildren().get(0));
 
-        } catch(IOException e) {
+        } catch (IOException e) {
             throw new Kerb4JException("spnego.token.malformed", null, e);
         }
     }
@@ -110,6 +86,32 @@ public class SpnegoInitToken extends KrbSequenceType {
 
     public byte[] getMechListMIC() {
         return getFieldAsOctets(MECH_LIST_MIC);
+    }
+
+    /**
+     * The possible fields
+     */
+    protected enum AuthorizationDataEntryField implements EnumType {
+        MECH_TYPES,
+        REQ_FLAGS,
+        MECH_TOKEN,
+        MECH_LIST_MIC;
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public int getValue() {
+            return ordinal();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public String getName() {
+            return name();
+        }
     }
 
 }

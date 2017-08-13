@@ -1,12 +1,12 @@
 package com.kerb4j.pac;
 
+import com.kerb4j.Kerb4JException;
+
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.Date;
-
-import com.kerb4j.Kerb4JException;
 
 public class PacDataInputStream {
 
@@ -21,7 +21,7 @@ public class PacDataInputStream {
     public void align(int mask) throws IOException {
         int position = size - dis.available();
         int shift = position & mask - 1;
-        if(mask != 0 && shift != 0)
+        if (mask != 0 && shift != 0)
             dis.skip(mask - shift);
     }
 
@@ -48,7 +48,7 @@ public class PacDataInputStream {
 
     public short readShort() throws IOException {
         align(2);
-        return Short.reverseBytes((short)dis.readShort());
+        return Short.reverseBytes((short) dis.readShort());
     }
 
     public int readInt() throws IOException {
@@ -62,15 +62,15 @@ public class PacDataInputStream {
     }
 
     public int readUnsignedByte() throws IOException {
-        return ((int)readByte()) & 0xff;
+        return ((int) readByte()) & 0xff;
     }
 
     public long readUnsignedInt() throws IOException {
-        return ((long)readInt()) & 0xffffffffL;
+        return ((long) readInt()) & 0xffffffffL;
     }
 
     public int readUnsignedShort() throws IOException {
-        return ((int)readShort()) & 0xffff;
+        return ((int) readShort()) & 0xffff;
     }
 
     public Date readFiletime() throws IOException {
@@ -78,7 +78,7 @@ public class PacDataInputStream {
 
         long last = readUnsignedInt();
         long first = readUnsignedInt();
-        if(first != 0x7fffffffL && last != 0xffffffffL) {
+        if (first != 0x7fffffffL && last != 0xffffffffL) {
             BigInteger lastBigInt = BigInteger.valueOf(last);
             BigInteger firstBigInt = BigInteger.valueOf(first);
             BigInteger completeBigInt = lastBigInt.add(firstBigInt.shiftLeft(32));
@@ -95,7 +95,7 @@ public class PacDataInputStream {
         short maxLength = readShort();
         int pointer = readInt();
 
-        if(maxLength < length) {
+        if (maxLength < length) {
             throw new Kerb4JException("pac.string.malformed.size", null, null);
         }
 
@@ -107,13 +107,13 @@ public class PacDataInputStream {
         int unusedChars = readInt();
         int usedChars = readInt();
 
-        if(unusedChars > totalChars || usedChars > totalChars - unusedChars)
+        if (unusedChars > totalChars || usedChars > totalChars - unusedChars)
             throw new Kerb4JException("pac.string.malformed.size", null, null);
 
         dis.skip(unusedChars * 2);
         char[] chars = new char[usedChars];
-        for(int l = 0; l < usedChars; l++)
-            chars[l] = (char)readShort();
+        for (int l = 0; l < usedChars; l++)
+            chars[l] = (char) readShort();
 
         return new String(chars);
     }

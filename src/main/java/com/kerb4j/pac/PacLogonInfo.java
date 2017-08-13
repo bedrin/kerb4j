@@ -1,11 +1,11 @@
 package com.kerb4j.pac;
 
+import com.kerb4j.Kerb4JException;
+
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.Date;
-
-import com.kerb4j.Kerb4JException;
 
 public class PacLogonInfo {
 
@@ -113,14 +113,14 @@ public class PacLogonInfo {
 
             // Groups data
             PacGroup[] groups = new PacGroup[0];
-            if(groupPointer != 0) {
+            if (groupPointer != 0) {
                 int realGroupCount = pacStream.readInt();
-                if(realGroupCount != groupCount) {
+                if (realGroupCount != groupCount) {
                     Object[] args = new Object[]{groupCount, realGroupCount};
                     throw new Kerb4JException("pac.groups.invalid.size", args, null);
                 }
                 groups = new PacGroup[groupCount];
-                for(int i = 0; i < groupCount; i++) {
+                for (int i = 0; i < groupCount; i++) {
                     pacStream.align(4);
                     PacSid id = pacStream.readId();
                     int attributes = pacStream.readInt();
@@ -134,25 +134,25 @@ public class PacLogonInfo {
 
             // ID for domain (used with relative IDs to get SIDs)
             PacSid domainId = null;
-            if(domainIdPointer != 0)
+            if (domainIdPointer != 0)
                 domainId = pacStream.readSid();
 
             // Extra SIDs data
             PacSidAttributes[] extraSidAtts = new PacSidAttributes[0];
-            if(hasExtraSids && extraSidPointer != 0) {
+            if (hasExtraSids && extraSidPointer != 0) {
                 int realExtraSidCount = pacStream.readInt();
-                if(realExtraSidCount != extraSidCount) {
+                if (realExtraSidCount != extraSidCount) {
                     Object[] args = new Object[]{extraSidCount, realExtraSidCount};
                     throw new Kerb4JException("pac.extrasids.invalid.size", args, null);
                 }
                 extraSidAtts = new PacSidAttributes[extraSidCount];
                 int[] pointers = new int[extraSidCount];
                 int[] attributes = new int[extraSidCount];
-                for(int i = 0; i < extraSidCount; i++) {
+                for (int i = 0; i < extraSidCount; i++) {
                     pointers[i] = pacStream.readInt();
                     attributes[i] = pacStream.readInt();
                 }
-                for(int i = 0; i < extraSidCount; i++) {
+                for (int i = 0; i < extraSidCount; i++) {
                     PacSid sid = (pointers[i] != 0) ? pacStream.readSid() : null;
                     extraSidAtts[i] = new PacSidAttributes(sid, attributes[i]);
                 }
@@ -160,25 +160,21 @@ public class PacLogonInfo {
 
             // ID for resource domain (used with relative IDs to get SIDs)
             PacSid resourceDomainId = null;
-            if(resourceDomainIdPointer != 0)
+            if (resourceDomainIdPointer != 0)
                 resourceDomainId = pacStream.readSid();
 
             // Resource groups data
             PacGroup[] resourceGroups = new PacGroup[0];
-            if (resourceSIDCompressionEnabled(resourceDomainId))
-            {
+            if (resourceSIDCompressionEnabled(resourceDomainId)) {
                 // Resource groups data
-                if (hasResourceGroups && resourceGroupPointer != 0)
-                {
+                if (hasResourceGroups && resourceGroupPointer != 0) {
                     int realResourceGroupCount = pacStream.readInt();
-                    if (realResourceGroupCount != resourceGroupCount)
-                    {
+                    if (realResourceGroupCount != resourceGroupCount) {
                         Object[] args = new Object[]{resourceGroupCount, realResourceGroupCount};
                         throw new Kerb4JException("pac.resourcegroups.invalid.size", args, null);
                     }
                     resourceGroups = new PacGroup[resourceGroupCount];
-                    for (int i = 0; i < resourceGroupCount; i++)
-                    {
+                    for (int i = 0; i < resourceGroupCount; i++) {
                         byte[] relativeId = new byte[4]; // is an unsigned int
                         pacStream.readFully(relativeId);
                         int attributes = (int) pacStream.readInt();
@@ -187,21 +183,16 @@ public class PacLogonInfo {
                         resourceGroups[i] = new PacGroup(id, attributes);
                     }
                 }
-            }
-            else
-            {
+            } else {
 
-                if (hasResourceGroups && resourceGroupPointer != 0)
-                {
+                if (hasResourceGroups && resourceGroupPointer != 0) {
                     int realResourceGroupCount = pacStream.readInt();
-                    if (realResourceGroupCount != resourceGroupCount)
-                    {
+                    if (realResourceGroupCount != resourceGroupCount) {
                         Object[] args = new Object[]{resourceGroupCount, realResourceGroupCount};
                         throw new Kerb4JException("pac.resourcegroups.invalid.size", args, null);
                     }
                     resourceGroups = new PacGroup[resourceGroupCount];
-                    for (int i = 0; i < resourceGroupCount; i++)
-                    {
+                    for (int i = 0; i < resourceGroupCount; i++) {
                         PacSid id = pacStream.readSid();
                         int attributes = pacStream.readInt();
                         resourceGroups[i] = new PacGroup(id, attributes);
@@ -211,31 +202,31 @@ public class PacLogonInfo {
 
             // Extract Extra SIDs
             extraSids = new PacSid[extraSidAtts.length];
-            for(int i = 0; i < extraSidAtts.length; i++) {
+            for (int i = 0; i < extraSidAtts.length; i++) {
                 extraSids[i] = extraSidAtts[i].getId();
             }
 
             // Compute Resource Group IDs with Resource Domain ID to get SIDs
             resourceGroupSids = new PacSid[resourceGroups.length];
-            for(int i = 0; i < resourceGroups.length; i++) {
+            for (int i = 0; i < resourceGroups.length; i++) {
                 resourceGroupSids[i] = PacSid.append(resourceDomainId, resourceGroups[i].getId());
             }
 
             // Compute User IDs with Domain ID to get User SIDs
             // First extra is user if userId is empty
-            if(!userId.isEmpty() && !userId.isBlank()) {
+            if (!userId.isEmpty() && !userId.isBlank()) {
                 userSid = PacSid.append(domainId, userId);
-            } else if(extraSids.length > 0) {
+            } else if (extraSids.length > 0) {
                 userSid = extraSids[0];
             }
             groupSid = PacSid.append(domainId, groupId);
 
             // Compute Group IDs with Domain ID to get Group SIDs
             groupSids = new PacSid[groups.length];
-            for(int i = 0; i < groups.length; i++) {
+            for (int i = 0; i < groups.length; i++) {
                 groupSids[i] = PacSid.append(domainId, groups[i].getId());
             }
-        } catch(IOException e) {
+        } catch (IOException e) {
             throw new Kerb4JException("pac.logoninfo.malformed", null, e);
         }
     }
@@ -332,8 +323,7 @@ public class PacLogonInfo {
         return userFlags;
     }
 
-    private boolean resourceSIDCompressionEnabled(PacSid resourceDomainId)
-    {
+    private boolean resourceSIDCompressionEnabled(PacSid resourceDomainId) {
         return resourceDomainId != null;
     }
 

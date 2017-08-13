@@ -18,11 +18,9 @@ public class Pac {
     private PacSignature serverSignature;
     private PacSignature kdcSignature;
 
-    public Pac(byte[] data, Key key) throws Kerb4JException
-    {
+    public Pac(byte[] data, Key key) throws Kerb4JException {
         byte[] checksumData = data.clone();
-        try
-        {
+        try {
             PacDataInputStream pacStream = new PacDataInputStream(new DataInputStream(
                     new ByteArrayInputStream(data)));
 
@@ -32,14 +30,12 @@ public class Pac {
             int bufferCount = pacStream.readInt();
             int version = pacStream.readInt();
 
-            if (version != PacConstants.PAC_VERSION)
-            {
+            if (version != PacConstants.PAC_VERSION) {
                 Object[] args = new Object[]{version};
                 throw new Kerb4JException("pac.version.invalid", args, null);
             }
 
-            for (int bufferIndex = 0; bufferIndex < bufferCount; bufferIndex++)
-            {
+            for (int bufferIndex = 0; bufferIndex < bufferCount; bufferIndex++) {
                 final int sigTypeLength = 4;
 
                 int bufferType = pacStream.readInt();
@@ -48,8 +44,7 @@ public class Pac {
                 byte[] bufferData = new byte[bufferSize];
                 System.arraycopy(data, (int) bufferOffset, bufferData, 0, bufferSize);
 
-                switch (bufferType)
-                {
+                switch (bufferType) {
                     case PacConstants.LOGON_INFO:
                         // PAC Credential Information
                         logonInfo = new PacLogonInfo(bufferData);
@@ -71,21 +66,16 @@ public class Pac {
                     default:
                 }
             }
-        }
-        catch (IOException e)
-        {
+        } catch (IOException e) {
             throw new Kerb4JException("pac.token.malformed", null, e);
         }
 
         byte[] checksum;
 
-        try
-        {
+        try {
             checksum = CheckSumHandler.getCheckSumHandler(CheckSumType.fromValue(serverSignature.getType())).
                     checksumWithKey(checksumData, key.getEncoded(), KeyUsage.APP_DATA_CKSUM.getValue());
-        }
-        catch (KrbException e)
-        {
+        } catch (KrbException e) {
             throw new Kerb4JException("pac.check.fail", null, e);
         }
 
@@ -93,18 +83,15 @@ public class Pac {
             throw new Kerb4JException("pac.signature.invalid", null, null);
     }
 
-    public PacLogonInfo getLogonInfo()
-    {
+    public PacLogonInfo getLogonInfo() {
         return logonInfo;
     }
 
-    public PacSignature getServerSignature()
-    {
+    public PacSignature getServerSignature() {
         return serverSignature;
     }
 
-    public PacSignature getKdcSignature()
-    {
+    public PacSignature getKdcSignature() {
         return kdcSignature;
     }
 }

@@ -28,11 +28,11 @@ public class PacUnicodeString {
     }
 
     public String check(String string) throws Kerb4JException {
-        if(pointer == 0 && string != null)
+        if (pointer == 0 && string != null)
             throw new Kerb4JException("pac.string.notempty", null, null);
 
         int expected = length / 2;
-        if(string.length() != expected) {
+        if (string.length() != expected) {
             Object[] args = new Object[]{expected, string.length()};
             throw new Kerb4JException("pac.string.invalid.size", args, null);
         }
