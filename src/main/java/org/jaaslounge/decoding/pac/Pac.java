@@ -1,20 +1,19 @@
 package org.jaaslounge.decoding.pac;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.security.Key;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
-
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.kerby.kerberos.kerb.crypto.CheckSumHandler;
 import org.apache.kerby.kerberos.kerb.type.base.CheckSumType;
 import org.apache.kerby.kerberos.kerb.type.base.KeyUsage;
 import org.jaaslounge.decoding.DecodingException;
 
-public class Pac
-{
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.security.Key;
+import java.util.Arrays;
+
+public class Pac {
+
     private PacLogonInfo logonInfo;
     private PacSignature serverSignature;
     private PacSignature kdcSignature;
@@ -80,35 +79,14 @@ public class Pac
 
         byte[] checksum;
 
-        if (serverSignature.getType() == CheckSumType.HMAC_SHA1_96_AES128.getValue() ||
-                serverSignature.getType() == CheckSumType.HMAC_SHA1_96_AES256.getValue())
-        // TODO: support other encryption types!
+        try
         {
-            try
-            {
-                checksum = CheckSumHandler.getCheckSumHandler(CheckSumType.fromValue(serverSignature.getType())).
-                        checksumWithKey(checksumData, key.getEncoded(), KeyUsage.APP_DATA_CKSUM.getValue());
-            }
-            catch (KrbException e)
-            {
-                throw new DecodingException("pac.check.fail", null, e);
-            }
+            checksum = CheckSumHandler.getCheckSumHandler(CheckSumType.fromValue(serverSignature.getType())).
+                    checksumWithKey(checksumData, key.getEncoded(), KeyUsage.APP_DATA_CKSUM.getValue());
         }
-        else
+        catch (KrbException e)
         {
-            PacMac mac = new PacMac();
-            try
-            {
-                mac.init(key);
-                mac.update(checksumData);
-            }
-            catch (NoSuchAlgorithmException e)
-            {
-                throw new DecodingException("pac.check.fail", null, e);
-
-            }
-
-            checksum = mac.doFinal();
+            throw new DecodingException("pac.check.fail", null, e);
         }
 
         if (!Arrays.equals(serverSignature.getChecksum(), checksum))
