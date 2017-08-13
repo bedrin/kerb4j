@@ -1,73 +1,48 @@
 package com.kerb4j.spnego;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.util.Enumeration;
-
 import com.kerb4j.Kerb4JException;
-import org.bouncycastle.asn1.*;
+import org.apache.kerby.asn1.parse.Asn1Container;
+import org.apache.kerby.asn1.parse.Asn1ParseResult;
+import org.apache.kerby.asn1.parse.Asn1Parser;
+import org.apache.kerby.asn1.type.Asn1ObjectIdentifier;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class SpnegoInitToken extends SpnegoToken {
-
-    public static final int DELEGATION = 0x40;
-    public static final int MUTUAL_AUTHENTICATION = 0x20;
-    public static final int REPLAY_DETECTION = 0x10;
-    public static final int SEQUENCE_CHECKING = 0x08;
-    public static final int ANONYMITY = 0x04;
-    public static final int CONFIDENTIALITY = 0x02;
-    public static final int INTEGRITY = 0x01;
 
     private String[] mechanisms;
     private int contextFlags;
 
     public SpnegoInitToken(byte[] token) throws Kerb4JException {
         try {
-            ASN1InputStream stream = new ASN1InputStream(new ByteArrayInputStream(token));
-            DERApplicationSpecific constructed = DecodingUtil.as(DERApplicationSpecific.class,
-                    stream);
-            if(constructed == null || !constructed.isConstructed())
-                throw new Kerb4JException("spnego.token.malformed", null, null);
 
-            stream = new ASN1InputStream(new ByteArrayInputStream(constructed.getContents()));
-            ASN1ObjectIdentifier spnegoOid = DecodingUtil.as(ASN1ObjectIdentifier.class, stream);
-            if(!spnegoOid.getId().equals(SpnegoConstants.SPNEGO_OID))
+            Asn1ParseResult asn1ParseResult = Asn1Parser.parse(ByteBuffer.wrap(token));
+
+            Asn1ParseResult item1 = ((Asn1Container) asn1ParseResult).getChildren().get(0);
+            Asn1ObjectIdentifier asn1ObjectIdentifier = new Asn1ObjectIdentifier();
+            asn1ObjectIdentifier.decode(item1);
+
+            if(!asn1ObjectIdentifier.getValue().equals(SpnegoConstants.SPNEGO_OID))
                 throw new Kerb4JException("spnego.token.invalid", null, null);
 
-            ASN1TaggedObject tagged = DecodingUtil.as(ASN1TaggedObject.class, stream);
-            ASN1Sequence sequence = ASN1Sequence.getInstance(tagged, true);
-            Enumeration<?> fields = sequence.getObjects();
-            while(fields.hasMoreElements()) {
-                tagged = DecodingUtil.as(ASN1TaggedObject.class, fields);
-                switch (tagged.getTagNo()) {
-                case 0:
-                    sequence = ASN1Sequence.getInstance(tagged, true);
-                    mechanisms = new String[sequence.size()];
-                    for(int i = mechanisms.length - 1; i >= 0; i--) {
-                        ASN1ObjectIdentifier mechanismOid = DecodingUtil.as(
-                                ASN1ObjectIdentifier.class, sequence.getObjectAt(i));
-                        mechanisms[i] = mechanismOid.getId();
-                    }
-                    if(sequence.size() > 0)
-                        mechanism = mechanisms[0];
-                    break;
-                case 1:
-                    DERBitString derFlags = DERBitString.getInstance(tagged, true);
-                    contextFlags = derFlags.getBytes()[0] & 0xff;
-                    break;
-                case 2:
-                    ASN1OctetString mechanismTokenString = ASN1OctetString
-                            .getInstance(tagged, true);
-                    mechanismToken = mechanismTokenString.getOctets();
-                    break;
-                case 3:
-                    ASN1OctetString mechanismListString = ASN1OctetString.getInstance(tagged, true);
-                    mechanismList = mechanismListString.getOctets();
-                    break;
-                default:
-                    Object[] args = new Object[]{tagged.getTagNo()};
-                    throw new Kerb4JException("spnego.field.invalid", args, null);
-                }
-            }
+            Asn1ParseResult item2 = ((Asn1Container) asn1ParseResult).getChildren().get(1);
+
+            NegTokenInit negTokenInit = new NegTokenInit();
+            negTokenInit.decode(((Asn1Container) item2).getChildren().get(0));
+
+            mechanisms =
+                    null == negTokenInit.getMechTypes() ? new String[0] :
+                    negTokenInit.getMechTypes().toArray(new String[negTokenInit.getMechTypes().size()]);
+
+            mechanism = mechanisms.length > 0 ? mechanisms[0] : null;
+
+            contextFlags = null == negTokenInit.getReqFlags() ? 0 : negTokenInit.getReqFlags().getFlags();
+
+            mechanismToken = negTokenInit.getMechToken();
+
+            mechanismList = negTokenInit.getMechListMIC();
+
         } catch(IOException e) {
             throw new Kerb4JException("spnego.token.malformed", null, e);
         }
