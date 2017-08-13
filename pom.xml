@@ -11,6 +11,13 @@
     <name>Kerb4J</name>
     <description>Helper classes for working with Kerberos and SPNEGO in Java</description>
 
+    <licenses>
+        <license>
+            <name>GNU LIBRARY GENERAL PUBLIC LICENSE Version 2, June 1991</name>
+            <url>https://www.gnu.org/licenses/old-licenses/lgpl-2.0.txt</url>
+        </license>
+    </licenses>
+
     <dependencies>
 
         <dependency>
