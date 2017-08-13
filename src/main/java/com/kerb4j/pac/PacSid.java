@@ -33,6 +33,55 @@ public class PacSid {
         System.arraycopy(sid.subs, 0, this.subs, 0, sid.subs.length);
     }
 
+    public static String convertSidToStringSid(byte[] sid) {
+        int offset, size;
+
+        // sid[0] is the Revision, we allow only version 1, because it's the
+        // only that exists right now.
+        if (sid[0] != 1)
+            throw new IllegalArgumentException("SID revision must be 1");
+
+        StringBuilder stringSidBuilder = new StringBuilder("S-1-");
+
+        // The next byte specifies the numbers of sub authorities (number of
+        // dashes minus two)
+        int subAuthorityCount = sid[1] & 0xFF;
+
+        // IdentifierAuthority (6 bytes starting from the second) (big endian)
+        long identifierAuthority = 0;
+        offset = 2;
+        size = 6;
+        for (int i = 0; i < size; i++) {
+            identifierAuthority |= (long) (sid[offset + i] & 0xFF) << (8 * (size - 1 - i));
+            // The & 0xFF is necessary because byte is signed in Java
+        }
+        if (identifierAuthority < Math.pow(2, 32)) {
+            stringSidBuilder.append(Long.toString(identifierAuthority));
+        } else {
+            stringSidBuilder.append("0x").append(
+                    Long.toHexString(identifierAuthority).toUpperCase());
+        }
+
+        // Iterate all the SubAuthority (little-endian)
+        offset = 8;
+        size = 4; // 32-bits (4 bytes) for each SubAuthority
+        for (int i = 0; i < subAuthorityCount; i++, offset += size) {
+            long subAuthority = 0;
+            for (int j = 0; j < size; j++) {
+                subAuthority |= (long) (sid[offset + j] & 0xFF) << (8 * j);
+                // The & 0xFF is necessary because byte is signed in Java
+            }
+            stringSidBuilder.append("-").append(subAuthority);
+        }
+
+        return stringSidBuilder.toString();
+    }
+
+    // https://msdn.microsoft.com/en-us/library/ff632068.aspx
+    public String toHumanReadableString() {
+        return convertSidToStringSid(getBytes());
+    }
+
     public String toString() {
         StringBuilder builder = new StringBuilder();
 

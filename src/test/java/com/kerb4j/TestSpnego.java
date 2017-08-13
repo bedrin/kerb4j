@@ -2,6 +2,7 @@ package com.kerb4j;
 
 import com.kerb4j.pac.Pac;
 import com.kerb4j.pac.PacLogonInfo;
+import com.kerb4j.pac.PacSid;
 import com.kerb4j.spnego.SpnegoConstants;
 import com.kerb4j.spnego.SpnegoInitToken;
 import com.kerb4j.spnego.SpnegoKerberosMechToken;
@@ -21,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class TestSpnego {
@@ -74,9 +76,9 @@ public class TestSpnego {
             SpnegoInitToken spnegoToken = new SpnegoInitToken(rc4Token);
 
             Assert.assertNotNull(spnegoToken);
-            Assert.assertTrue(spnegoToken instanceof SpnegoInitToken);
+            assertTrue(spnegoToken instanceof SpnegoInitToken);
             Assert.assertNotNull(spnegoToken.getMechToken());
-            Assert.assertTrue(spnegoToken.getMechToken().length < rc4Token.length);
+            assertTrue(spnegoToken.getMechToken().length < rc4Token.length);
             Assert.assertNotNull(spnegoToken.getMechanism());
             Assert.assertEquals(SpnegoConstants.LEGACY_KERBEROS_MECHANISM, spnegoToken.getMechanism());
         } catch(Kerb4JException e) {
@@ -91,9 +93,9 @@ public class TestSpnego {
             SpnegoInitToken spnegoToken = new SpnegoInitToken(desToken);
 
             Assert.assertNotNull(spnegoToken);
-            Assert.assertTrue(spnegoToken instanceof SpnegoInitToken);
+            assertTrue(spnegoToken instanceof SpnegoInitToken);
             Assert.assertNotNull(spnegoToken.getMechToken());
-            Assert.assertTrue(spnegoToken.getMechToken().length < desToken.length);
+            assertTrue(spnegoToken.getMechToken().length < desToken.length);
             Assert.assertNotNull(spnegoToken.getMechanism());
             Assert.assertEquals(SpnegoConstants.LEGACY_KERBEROS_MECHANISM, spnegoToken.getMechanism());
         } catch(Kerb4JException e) {
@@ -108,9 +110,9 @@ public class TestSpnego {
             SpnegoInitToken spnegoToken = new SpnegoInitToken(aes128Token);
 
             Assert.assertNotNull(spnegoToken);
-            Assert.assertTrue(spnegoToken instanceof SpnegoInitToken);
+            assertTrue(spnegoToken instanceof SpnegoInitToken);
             Assert.assertNotNull(spnegoToken.getMechToken());
-            Assert.assertTrue(spnegoToken.getMechToken().length < aes128Token.length);
+            assertTrue(spnegoToken.getMechToken().length < aes128Token.length);
             Assert.assertNotNull(spnegoToken.getMechanism());
             Assert.assertEquals(SpnegoConstants.LEGACY_KERBEROS_MECHANISM, spnegoToken.getMechanism());
         } catch(Kerb4JException e) {
@@ -125,9 +127,9 @@ public class TestSpnego {
         SpnegoInitToken spnegoToken = new SpnegoInitToken(aes256Token);
 
         Assert.assertNotNull(spnegoToken);
-        Assert.assertTrue(spnegoToken instanceof SpnegoInitToken);
+        assertTrue(spnegoToken instanceof SpnegoInitToken);
         Assert.assertNotNull(spnegoToken.getMechToken());
-        Assert.assertTrue(spnegoToken.getMechToken().length < aes256Token.length);
+        assertTrue(spnegoToken.getMechToken().length < aes256Token.length);
         Assert.assertNotNull(spnegoToken.getMechanism());
         Assert.assertEquals(SpnegoConstants.LEGACY_KERBEROS_MECHANISM, spnegoToken.getMechanism());
 
@@ -164,19 +166,20 @@ public class TestSpnego {
             assertNotNull(logonInfo);
             assertNotNull(logonInfo.getGroupSids());
 
+            boolean found = false;
+
+            for (PacSid groupSid : logonInfo.getGroupSids()) {
+                if ("S-1-5-21-4028881986-3284141023-698984075-513".equals(groupSid.toHumanReadableString())) {
+                    found = true;
+                }
+            }
+
+            assertTrue(found);
+
 
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        /*for (KerberosAuthData authData : token.getTicket().getEncData().getUserAuthorizations()) {
-            if (authData instanceof KerberosPacAuthData) {
-                PacLogonInfo logonInfo = ((KerberosPacAuthData) authData).getPac().getLogonInfo();
-                assertNotNull(logonInfo);
-            } else {
-                fail();
-            }
-        }*/
 
     }
 
