@@ -9,6 +9,7 @@
     <packaging>jar</packaging>
 
     <name>Kerb4J</name>
+    <url>http://kerb4j.com/</url>
     <description>Helper classes for working with Kerberos and SPNEGO in Java</description>
 
     <licenses>
@@ -17,6 +18,12 @@
             <url>https://www.gnu.org/licenses/old-licenses/lgpl-2.0.txt</url>
         </license>
     </licenses>
+
+    <scm>
+        <connection>scm:git:https://github.com/bedrin/kerb4j.git</connection>
+        <developerConnection>scm:git:https://github.com/bedrin/kerb4j.git</developerConnection>
+        <url>https://github.com/bedrin/kerb4j</url>
+    </scm>
 
     <dependencies>
 
