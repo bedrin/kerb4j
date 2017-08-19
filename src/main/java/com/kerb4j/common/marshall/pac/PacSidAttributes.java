@@ -1,11 +1,11 @@
-package com.kerb4j.marshall.pac;
+package com.kerb4j.common.marshall.pac;
 
-public class PacGroup {
+public class PacSidAttributes {
 
     private PacSid id;
     private int attributes;
 
-    public PacGroup(PacSid id, int attributes) {
+    public PacSidAttributes(PacSid id, int attributes) {
         super();
         this.id = id;
         this.attributes = attributes;

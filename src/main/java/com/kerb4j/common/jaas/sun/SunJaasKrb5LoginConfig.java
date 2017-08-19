@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.kerb4j.jaas.sun;
+package com.kerb4j.common.jaas.sun;
 
 import com.sun.security.auth.module.Krb5LoginModule;
 import org.slf4j.Logger;

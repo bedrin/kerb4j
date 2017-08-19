@@ -1,4 +1,4 @@
-package com.kerb4j.marshall.spnego;
+package com.kerb4j.common.marshall.spnego;
 
 public interface SpnegoConstants {
 

@@ -1,4 +1,4 @@
-package com.kerb4j.marshall.pac;
+package com.kerb4j.common.marshall.pac;
 
 public interface PacConstants {
 

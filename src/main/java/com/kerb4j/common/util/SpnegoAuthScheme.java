@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-package net.sourceforge.spnego;
+package com.kerb4j.common.util;
 
 import java.util.Base64;
 
@@ -29,7 +29,7 @@ import java.util.Base64;
  * @author Darwin V. Felix
  *
  */
-final class SpnegoAuthScheme {
+public class SpnegoAuthScheme {
     
     /** Zero length byte array. */
     private static final transient byte[] EMPTY_BYTE_ARRAY = new byte[0];

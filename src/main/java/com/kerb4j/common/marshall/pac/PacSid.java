@@ -1,6 +1,6 @@
-package com.kerb4j.marshall.pac;
+package com.kerb4j.common.marshall.pac;
 
-import com.kerb4j.marshall.Kerb4JException;
+import com.kerb4j.common.marshall.Kerb4JException;
 
 public class PacSid {
 

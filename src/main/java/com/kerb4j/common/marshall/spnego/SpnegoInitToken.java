@@ -1,6 +1,6 @@
-package com.kerb4j.marshall.spnego;
+package com.kerb4j.common.marshall.spnego;
 
-import com.kerb4j.marshall.Kerb4JException;
+import com.kerb4j.common.marshall.Kerb4JException;
 import org.apache.kerby.asn1.Asn1FieldInfo;
 import org.apache.kerby.asn1.EnumType;
 import org.apache.kerby.asn1.ExplicitField;
@@ -17,7 +17,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.kerb4j.marshall.spnego.SpnegoInitToken.AuthorizationDataEntryField.*;
+import static com.kerb4j.common.marshall.spnego.SpnegoInitToken.AuthorizationDataEntryField.*;
 
 public class SpnegoInitToken extends KrbSequenceType {
 
