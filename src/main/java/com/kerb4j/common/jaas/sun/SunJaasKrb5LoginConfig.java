@@ -41,13 +41,13 @@ public class SunJaasKrb5LoginConfig extends Configuration {
 
 	private final AppConfigurationEntry[] appConfigurationEntries;
 
-	public static SunJaasKrb5LoginConfig createTicketCacheClientConfig(String principal, String keyTabLocationAsString) {
+	public static SunJaasKrb5LoginConfig createKeyTabClientConfig(String principal, String keyTabLocation) {
 		Map<String, String> options = new HashMap<>();
 
 		options.put("principal", principal);
 
 		options.put("useKeyTab", "true");
-		options.put("keyTab", keyTabLocationAsString);
+		options.put("keyTab", keyTabLocation);
 		options.put("storeKey", "true");
 
 		options.put("doNotPrompt", "true");
@@ -64,6 +64,14 @@ public class SunJaasKrb5LoginConfig extends Configuration {
 		options.put("renewTGT", "true");
 
 		options.put("doNotPrompt", "true");
+
+		return new SunJaasKrb5LoginConfig(options);
+	}
+
+	public static SunJaasKrb5LoginConfig createUsernameAndPasswordClientConfig() {
+		Map<String, String> options = new HashMap<>();
+
+		options.put("storeKey", "true");
 
 		return new SunJaasKrb5LoginConfig(options);
 	}

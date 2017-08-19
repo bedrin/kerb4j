@@ -1,0 +1,44 @@
+package com.kerb4j.common.jaas.sun;
+
+import com.kerb4j.common.util.SpnegoProvider;
+
+import javax.security.auth.Subject;
+import javax.security.auth.callback.CallbackHandler;
+import javax.security.auth.login.Configuration;
+import javax.security.auth.login.LoginContext;
+import javax.security.auth.login.LoginException;
+
+public class Krb5LoginContext extends LoginContext {
+
+    private final static String UNUSED_CONFIGURATION_NAME = "";
+
+    private Krb5LoginContext(String name, Subject subject, CallbackHandler callbackHandler, Configuration config) throws LoginException {
+        super(name, subject, callbackHandler, config);
+    }
+
+    public static Krb5LoginContext loginWithKeyTab(String principal, String keyTabLocation) throws LoginException {
+        Krb5LoginContext krb5LoginContext = new Krb5LoginContext(UNUSED_CONFIGURATION_NAME, null, null,
+                SunJaasKrb5LoginConfig.createKeyTabClientConfig(principal, keyTabLocation)
+        );
+        krb5LoginContext.login();
+        return krb5LoginContext;
+    }
+
+    public static Krb5LoginContext loginWithTicketCache(String principal) throws LoginException {
+        Krb5LoginContext krb5LoginContext = new Krb5LoginContext(UNUSED_CONFIGURATION_NAME, null, null,
+                SunJaasKrb5LoginConfig.createTicketCacheClientConfig(principal)
+        );
+        krb5LoginContext.login();
+        return krb5LoginContext;
+    }
+
+    public static Krb5LoginContext loginWithUsernameAndPassword(String username, String password) throws LoginException {
+        Krb5LoginContext krb5LoginContext = new Krb5LoginContext(UNUSED_CONFIGURATION_NAME, null,
+                SpnegoProvider.getUsernameAndPasswordHandler(username, password),
+                SunJaasKrb5LoginConfig.createUsernameAndPasswordClientConfig()
+        );
+        krb5LoginContext.login();
+        return krb5LoginContext;
+    }
+
+}

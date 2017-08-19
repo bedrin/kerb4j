@@ -34,10 +34,10 @@ import java.util.Base64;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 
+import com.kerb4j.common.jaas.sun.Krb5LoginContext;
 import com.kerb4j.common.util.Constants;
 import com.kerb4j.common.util.SpnegoAuthScheme;
 import com.kerb4j.common.util.SpnegoProvider;
@@ -182,19 +182,12 @@ public final class SpnegoClient {
     private transient boolean autoDisposeCreds = true;
 
     /**
-     * Creates an instance where the LoginContext relies on a keytab 
-     * file being specified by "java.security.auth.login.config" or 
-     * where LoginContext relies on tgtsessionkey.
+     * Creates an instance with provided LoginContext
      * 
-     * @param loginModuleName loginModuleName
-     * @throws LoginException LoginException
+     * @param loginContext loginContext
      */
-    public SpnegoClient(final String loginModuleName)
-        throws LoginException {
-
-        this.loginContext = new LoginContext(loginModuleName);
-        this.loginContext.login();
-        this.credential = null;
+    public SpnegoClient(LoginContext loginContext) {
+        this(loginContext, null, false);
     }
     
     /**
@@ -203,42 +196,54 @@ public final class SpnegoClient {
      *  
      * @param creds credentials to use
      */
-    public SpnegoClient(final GSSCredential creds) {
-        this(creds, true);
+    public SpnegoClient(GSSCredential creds) {
+        this(null, creds, true);
     }
     
     /**
      * Create an instance where the GSSCredential is specified by the parameter 
      * and whether the GSSCredential should be disposed after use.
      * 
+     * @param loginContext loginContext to use
      * @param creds credentials to use
-     * @param dispose true if GSSCredential should be diposed after use
+     * @param dispose true if GSSCredential should be disposed after use
      */
-    public SpnegoClient(final GSSCredential creds, final boolean dispose) {
-        this.loginContext = null;
+    private SpnegoClient(LoginContext loginContext, GSSCredential creds, boolean dispose) {
+        this.loginContext = loginContext;
         this.credential = creds;
         this.autoDisposeCreds = dispose;
     }
 
     /**
-     * Creates an instance where the LoginContext does not require a keytab
-     * file. However, the "java.security.auth.login.config" property must still
-     * be set prior to instantiating this object.
+     * Creates an instance where authentication is done using username and password
      * 
-     * @param loginModuleName  loginModuleName
      * @param username username
      * @param password password
      * @throws LoginException LoginException
      */
-    public SpnegoClient(final String loginModuleName,
-                        final String username, final String password) throws LoginException {
+    public SpnegoClient loginWithUsernamePassword(String username, String password) throws LoginException {
+        return new SpnegoClient(Krb5LoginContext.loginWithUsernameAndPassword(username, password), null, false);
+    }
 
-        final CallbackHandler handler = SpnegoProvider.getUsernamePasswordHandler(
-                username, password);
+    /**
+     * Creates an instance where authentication is done using keytab file
+     *
+     * @param principal principal
+     * @param keyTabLocation keyTabLocation
+     * @throws LoginException LoginException
+     */
+    public SpnegoClient loginWithKeyTab(String principal, String keyTabLocation) throws LoginException {
+        return new SpnegoClient(Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation), null, false);
+    }
 
-        this.loginContext = new LoginContext(loginModuleName, handler);
-        this.loginContext.login();
-        this.credential = null;
+    /**
+     * Creates an instance where authentication is done using ticket cache
+     *
+     * @param principal principal
+     * @throws LoginException LoginException
+     */
+    public SpnegoClient loginWithTicketCache(String principal) throws LoginException {
+        return new SpnegoClient(Krb5LoginContext.loginWithTicketCache(principal), null, false);
     }
 
     /**

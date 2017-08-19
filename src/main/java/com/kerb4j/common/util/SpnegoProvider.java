@@ -1,16 +1,16 @@
-/** 
+/**
  * Copyright (C) 2009 "Darwin V. Felix" <darwinfelix@users.sourceforge.net>
- * 
+ *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
- * 
+ *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
@@ -30,6 +30,7 @@ import javax.security.auth.callback.PasswordCallback;
 import java.net.URL;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.util.Arrays;
 
 /**
  * This is a Utility Class that can be used for finer grained control 
@@ -200,26 +201,22 @@ public final class SpnegoProvider {
      * @param password client password
      * @return CallbackHandler to be used for establishing a LoginContext
      */
-    public static CallbackHandler getUsernamePasswordHandler(
-        final String username, final String password) {
+    public static CallbackHandler getUsernameAndPasswordHandler(String username, String password) {
 
         LOGGER.trace("username=" + username + "; password=" + password.hashCode());
 
-        final CallbackHandler handler = callback -> {
-            for (int i=0; i<callback.length; i++) {
-                if (callback[i] instanceof NameCallback) {
-                    final NameCallback nameCallback = (NameCallback) callback[i];
-                    nameCallback.setName(username);
-                } else if (callback[i] instanceof PasswordCallback) {
-                    final PasswordCallback passCallback = (PasswordCallback) callback[i];
-                    passCallback.setPassword(password.toCharArray());
-                } else {
-                    LOGGER.warn("Unsupported Callback i=" + i + "; class="
-                            + callback[i].getClass().getName());
-                }
+        return callbacks -> Arrays.stream(callbacks).forEach(callback -> {
+            if (callback instanceof NameCallback) {
+                final NameCallback nameCallback = (NameCallback) callback;
+                nameCallback.setName(username);
+            } else if (callback instanceof PasswordCallback) {
+                final PasswordCallback passCallback = (PasswordCallback) callback;
+                passCallback.setPassword(password.toCharArray());
+            } else {
+                LOGGER.warn("Unsupported Callback class=" + callback.getClass().getName());
             }
-        };
+        });
 
-        return handler;
     }
+
 }
