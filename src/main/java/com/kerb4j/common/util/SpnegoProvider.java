@@ -18,7 +18,7 @@
 
 package com.kerb4j.common.util;
 
-import com.kerb4j.client.SpnegoHttpURLConnection;
+import com.kerb4j.client.SpnegoClient;
 import org.ietf.jgss.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +41,7 @@ import java.security.PrivilegedExceptionAction;
  * </p>
  * 
  * <p>
- * Take a look at the {@link SpnegoHttpURLConnection} class before
+ * Take a look at the {@link SpnegoClient} class before
  * attempting to implement your own HTTP client.
  * </p>
  * 

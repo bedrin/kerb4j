@@ -66,10 +66,10 @@ import org.slf4j.LoggerFactory;
  *         System.setProperty("sun.security.krb5.debug", "true");
  *         System.setProperty("java.security.auth.login.config", "login.conf");
  *         
- *         SpnegoHttpURLConnection spnego = null;
+ *         SpnegoClient spnego = null;
  *         
  *         try {
- *             spnego = new SpnegoHttpURLConnection("spnego-client", "dfelix", "myp@s5");
+ *             spnego = new SpnegoClient("spnego-client", "dfelix", "myp@s5");
  *             spnego.connect(new URL("http://medusa:8080/index.jsp"));
  *             
  *             System.out.println(spnego.getResponseCode());
@@ -113,9 +113,9 @@ import org.slf4j.LoggerFactory;
  * @author Darwin V. Felix
  * 
  */
-public final class SpnegoHttpURLConnection {
+public final class SpnegoClient {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoHttpURLConnection.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoClient.class);
     
     /** GSSContext is not thread-safe. */
     private static final Lock LOCK = new ReentrantLock();
@@ -189,7 +189,7 @@ public final class SpnegoHttpURLConnection {
      * @param loginModuleName loginModuleName
      * @throws LoginException LoginException
      */
-    public SpnegoHttpURLConnection(final String loginModuleName)
+    public SpnegoClient(final String loginModuleName)
         throws LoginException {
 
         this.loginContext = new LoginContext(loginModuleName);
@@ -203,7 +203,7 @@ public final class SpnegoHttpURLConnection {
      *  
      * @param creds credentials to use
      */
-    public SpnegoHttpURLConnection(final GSSCredential creds) {
+    public SpnegoClient(final GSSCredential creds) {
         this(creds, true);
     }
     
@@ -214,7 +214,7 @@ public final class SpnegoHttpURLConnection {
      * @param creds credentials to use
      * @param dispose true if GSSCredential should be diposed after use
      */
-    public SpnegoHttpURLConnection(final GSSCredential creds, final boolean dispose) {
+    public SpnegoClient(final GSSCredential creds, final boolean dispose) {
         this.loginContext = null;
         this.credential = creds;
         this.autoDisposeCreds = dispose;
@@ -230,8 +230,8 @@ public final class SpnegoHttpURLConnection {
      * @param password password
      * @throws LoginException LoginException
      */
-    public SpnegoHttpURLConnection(final String loginModuleName,
-        final String username, final String password) throws LoginException {
+    public SpnegoClient(final String loginModuleName,
+                        final String username, final String password) throws LoginException {
 
         final CallbackHandler handler = SpnegoProvider.getUsernamePasswordHandler(
                 username, password);
@@ -308,7 +308,7 @@ public final class SpnegoHttpURLConnection {
         try {
             byte[] data;
             
-            SpnegoHttpURLConnection.LOCK.lock();
+            SpnegoClient.LOCK.lock();
             try {
                 // work-around to GSSContext/AD timestamp vs sequence field replay bug
                 try { Thread.sleep(31); } catch (InterruptedException e) { assert true; }
@@ -323,7 +323,7 @@ public final class SpnegoHttpURLConnection {
                 
                 data = context.initSecContext(EMPTY_BYTE, 0, 0);
             } finally {
-                SpnegoHttpURLConnection.LOCK.unlock();
+                SpnegoClient.LOCK.unlock();
             }
             
             this.conn = (HttpURLConnection) url.openConnection();
@@ -361,11 +361,11 @@ public final class SpnegoHttpURLConnection {
                 data = scheme.getToken();
     
                 if (Constants.NEGOTIATE_HEADER.equalsIgnoreCase(scheme.getScheme())) {
-                    SpnegoHttpURLConnection.LOCK.lock();
+                    SpnegoClient.LOCK.lock();
                     try {
                         data = context.initSecContext(data, 0, data.length);
                     } finally {
-                        SpnegoHttpURLConnection.LOCK.unlock();
+                        SpnegoClient.LOCK.unlock();
                     }
 
                     // TODO : support context loops where i>1
@@ -395,11 +395,11 @@ public final class SpnegoHttpURLConnection {
     private void dispose(final GSSContext context) {
         if (null != context) {
             try {
-                SpnegoHttpURLConnection.LOCK.lock();
+                SpnegoClient.LOCK.lock();
                 try {
                     context.dispose();
                 } finally {
-                    SpnegoHttpURLConnection.LOCK.unlock();
+                    SpnegoClient.LOCK.unlock();
                 }
             } catch (GSSException gsse) {
                 LOGGER.error("call to dispose context failed.", gsse);
