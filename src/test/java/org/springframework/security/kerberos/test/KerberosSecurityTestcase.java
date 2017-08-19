@@ -17,6 +17,7 @@ package org.springframework.security.kerberos.test;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 
 import java.io.File;
 import java.util.Properties;
@@ -35,6 +36,11 @@ public class KerberosSecurityTestcase {
 	private MiniKdc kdc;
 	private File workDir;
 	private Properties conf;
+
+	@BeforeClass
+	public static void debugKerberos() {
+		System.setProperty("sun.security.krb5.debug", "true");
+	}
 
 	@Before
 	public void startMiniKdc() throws Exception {

@@ -16,19 +16,25 @@
 package org.springframework.security.kerberos.client;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.net.HttpURLConnection;
 import java.net.InetAddress;
+import java.net.URL;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import com.kerb4j.client.SpnegoClient;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.boot.SpringApplication;
@@ -142,7 +148,7 @@ public class KerberosRestTemplateTests extends KerberosSecurityTestcase {
 
 		MiniKdc kdc = getKdc();
 		File workDir = getWorkDir();
-		String host = InetAddress.getLocalHost().getCanonicalHostName();
+		String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase(); // doesn't work without toLowerCse
 
 		String serverPrincipal = "HTTP/" + host;
 		File serverKeytab = new File(workDir, "server.keytab");
@@ -162,10 +168,13 @@ public class KerberosRestTemplateTests extends KerberosSecurityTestcase {
 		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
 		int port = portInitListener.port;
 
-		/*KerberosRestTemplate restTemplate = new KerberosRestTemplate(clientKeytab.getAbsolutePath(), clientPrincipal);
+		SpnegoClient spnegoClient = SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath());
 
-		String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
-		assertThat(response, is("home"));*/
+		HttpURLConnection huc = spnegoClient.connect(new URL("http://" + host + ":" + port + "/hello"));
+		BufferedReader br = new BufferedReader(new InputStreamReader(huc.getInputStream()));
+
+		assertEquals(200, huc.getResponseCode());
+		assertEquals("home", br.readLine());
     }
 
 	protected static class PortInitListener implements ApplicationListener<EmbeddedServletContainerInitializedEvent> {

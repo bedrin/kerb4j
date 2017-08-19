@@ -221,7 +221,7 @@ public final class SpnegoClient {
      * @param password password
      * @throws LoginException LoginException
      */
-    public SpnegoClient loginWithUsernamePassword(String username, String password) throws LoginException {
+    public static SpnegoClient loginWithUsernamePassword(String username, String password) throws LoginException {
         return new SpnegoClient(Krb5LoginContext.loginWithUsernameAndPassword(username, password), null, false);
     }
 
@@ -232,7 +232,7 @@ public final class SpnegoClient {
      * @param keyTabLocation keyTabLocation
      * @throws LoginException LoginException
      */
-    public SpnegoClient loginWithKeyTab(String principal, String keyTabLocation) throws LoginException {
+    public static SpnegoClient loginWithKeyTab(String principal, String keyTabLocation) throws LoginException {
         return new SpnegoClient(Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation), null, false);
     }
 
@@ -242,7 +242,7 @@ public final class SpnegoClient {
      * @param principal principal
      * @throws LoginException LoginException
      */
-    public SpnegoClient loginWithTicketCache(String principal) throws LoginException {
+    public static SpnegoClient loginWithTicketCache(String principal) throws LoginException {
         return new SpnegoClient(Krb5LoginContext.loginWithTicketCache(principal), null, false);
     }
 
