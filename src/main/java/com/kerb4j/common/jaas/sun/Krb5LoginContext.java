@@ -18,7 +18,7 @@ public class Krb5LoginContext extends LoginContext {
 
     public static Krb5LoginContext loginWithKeyTab(String principal, String keyTabLocation) throws LoginException {
         Krb5LoginContext krb5LoginContext = new Krb5LoginContext(UNUSED_CONFIGURATION_NAME, null, null,
-                SunJaasKrb5LoginConfig.createKeyTabClientConfig(principal, keyTabLocation)
+                Krb5LoginConfig.createKeyTabClientConfig(principal, keyTabLocation)
         );
         krb5LoginContext.login();
         return krb5LoginContext;
@@ -26,7 +26,7 @@ public class Krb5LoginContext extends LoginContext {
 
     public static Krb5LoginContext loginWithTicketCache(String principal) throws LoginException {
         Krb5LoginContext krb5LoginContext = new Krb5LoginContext(UNUSED_CONFIGURATION_NAME, null, null,
-                SunJaasKrb5LoginConfig.createTicketCacheClientConfig(principal)
+                Krb5LoginConfig.createTicketCacheClientConfig(principal)
         );
         krb5LoginContext.login();
         return krb5LoginContext;
@@ -35,7 +35,7 @@ public class Krb5LoginContext extends LoginContext {
     public static Krb5LoginContext loginWithUsernameAndPassword(String username, String password) throws LoginException {
         Krb5LoginContext krb5LoginContext = new Krb5LoginContext(UNUSED_CONFIGURATION_NAME, null,
                 SpnegoProvider.getUsernameAndPasswordHandler(username, password),
-                SunJaasKrb5LoginConfig.createUsernameAndPasswordClientConfig()
+                Krb5LoginConfig.createUsernameAndPasswordClientConfig()
         );
         krb5LoginContext.login();
         return krb5LoginContext;

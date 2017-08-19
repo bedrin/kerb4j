@@ -32,16 +32,16 @@ import java.util.Map;
  * @author Janne Valkealahti
  *
  */
-public class SunJaasKrb5LoginConfig extends Configuration {
+public class Krb5LoginConfig extends Configuration {
 
-	private static final Logger LOG = LoggerFactory.getLogger(SunJaasKrb5LoginConfig.class);
+	private static final Logger LOG = LoggerFactory.getLogger(Krb5LoginConfig.class);
 
 	private static final String SUN_KRB5_LOGIN_MODULE_CLASS_NAME = Krb5LoginModule.class.getCanonicalName();
 	private static final boolean SUN_KRB5_DEBUG = Boolean.getBoolean("sun.security.krb5.debug");
 
 	private final AppConfigurationEntry[] appConfigurationEntries;
 
-	public static SunJaasKrb5LoginConfig createKeyTabClientConfig(String principal, String keyTabLocation) {
+	public static Krb5LoginConfig createKeyTabClientConfig(String principal, String keyTabLocation) {
 		Map<String, String> options = new HashMap<>();
 
 		options.put("principal", principal);
@@ -52,10 +52,10 @@ public class SunJaasKrb5LoginConfig extends Configuration {
 
 		options.put("doNotPrompt", "true");
 
-		return new SunJaasKrb5LoginConfig(options);
+		return new Krb5LoginConfig(options);
 	}
 
-	public static SunJaasKrb5LoginConfig createTicketCacheClientConfig(String principal) {
+	public static Krb5LoginConfig createTicketCacheClientConfig(String principal) {
 		Map<String, String> options = new HashMap<>();
 
 		options.put("principal", principal);
@@ -65,18 +65,18 @@ public class SunJaasKrb5LoginConfig extends Configuration {
 
 		options.put("doNotPrompt", "true");
 
-		return new SunJaasKrb5LoginConfig(options);
+		return new Krb5LoginConfig(options);
 	}
 
-	public static SunJaasKrb5LoginConfig createUsernameAndPasswordClientConfig() {
+	public static Krb5LoginConfig createUsernameAndPasswordClientConfig() {
 		Map<String, String> options = new HashMap<>();
 
 		options.put("storeKey", "true");
 
-		return new SunJaasKrb5LoginConfig(options);
+		return new Krb5LoginConfig(options);
 	}
 
-	protected SunJaasKrb5LoginConfig(Map<String,String> additionalOptions) {
+	protected Krb5LoginConfig(Map<String,String> additionalOptions) {
 		Map<String, String> options = new HashMap<>();
 
 		if (SUN_KRB5_DEBUG) {

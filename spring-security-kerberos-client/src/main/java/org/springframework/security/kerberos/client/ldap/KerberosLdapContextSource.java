@@ -46,7 +46,7 @@ import org.springframework.util.Assert;
  *      &lt;property name=&quot;referral&quot; value=&quot;ignore&quot; /&gt;
  *
  *       &lt;property name=&quot;loginConfig&quot;&gt;
- *           &lt;bean class=&quot;com.kerb4j.common.jaas.sun.SunJaasKrb5LoginConfig&quot;&gt;
+ *           &lt;bean class=&quot;com.kerb4j.common.jaas.sun.Krb5LoginConfig&quot;&gt;
  *               &lt;property name=&quot;servicePrincipal&quot; value=&quot;${authentication.ldap.servicePrincipal}&quot; /&gt;
  *               &lt;property name=&quot;useTicketCache&quot; value=&quot;true&quot; /&gt;
  *               &lt;property name=&quot;isInitiator&quot; value=&quot;true&quot; /&gt;
