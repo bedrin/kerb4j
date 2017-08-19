@@ -40,10 +40,6 @@ public final class SpnegoHttpServletResponse extends HttpServletResponseWrapper 
 
     private transient boolean statusSet = false;
 
-    /**
-     * 
-     * @param response
-     */
     public SpnegoHttpServletResponse(final HttpServletResponse response) {
         super(response);
     }
@@ -69,7 +65,7 @@ public final class SpnegoHttpServletResponse extends HttpServletResponseWrapper 
      * 
      * @param status http status code
      * @param immediate set to true to set content len to zero and flush
-     * @throws IOException 
+     * @throws IOException  IOException
      * 
      * @see #setStatus(int)
      */

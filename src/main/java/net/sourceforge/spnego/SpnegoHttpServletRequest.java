@@ -48,9 +48,6 @@ final class SpnegoHttpServletRequest extends HttpServletRequestWrapper
     
     /**
      * Creates Servlet Request specifying KerberosPrincipal of user.
-     * 
-     * @param request
-     * @param spnegoPrincipal 
      */
     SpnegoHttpServletRequest(final HttpServletRequest request
         , final SpnegoPrincipal spnegoPrincipal) {

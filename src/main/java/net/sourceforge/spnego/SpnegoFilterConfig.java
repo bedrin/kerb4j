@@ -39,25 +39,21 @@ import net.sourceforge.spnego.SpnegoHttpFilter.Constants;
  * in the web.xml file.</>
  * 
  * <p>This class also validates if a keyTab should be used 
- * and if all of the LoginModule options have been set.</p>
- * 
+ *
  * <p>
  * To see a working example and instructions on how to use a keytab, take 
  * a look at the <a href="http://spnego.sourceforge.net/server_keytab.html"
  * target="_blank">creating a server keytab</a> example.
- * </p>
- * 
+ *
  * <p>The class should be used as a Singleton:<br />
  * <code>
  * SpnegoFilterConfig config = SpnegoFilterConfig.getInstance(filter);
  * </code>
- * </p>
- * 
+ *
  * <p>See an example web.xml configuration in the 
  * <a href="http://spnego.sourceforge.net/spnego_tomcat.html" 
  * target="_blank">installing on tomcat</a> documentation. 
- * </p>
- * 
+ *
  * @author Darwin V. Felix
  *
  */
@@ -210,8 +206,6 @@ final class SpnegoFilterConfig { // NOPMD
      *      principal="my_preauth_account";
      * };
      * </pre>
-     * 
-     * @param moduleName
      */
     private void doServerModule(final String moduleName) {
         

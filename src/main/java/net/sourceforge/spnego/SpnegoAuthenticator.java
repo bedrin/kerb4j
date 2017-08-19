@@ -18,18 +18,22 @@
 
 package net.sourceforge.spnego;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.security.PrivilegedActionException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.Map;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import com.kerb4j.Kerb4JException;
+import com.kerb4j.pac.Pac;
+import com.kerb4j.spnego.SpnegoInitToken;
+import com.kerb4j.spnego.SpnegoKerberosMechToken;
+import net.sourceforge.spnego.SpnegoHttpFilter.Constants;
+import org.apache.kerby.kerberos.kerb.KrbCodec;
+import org.apache.kerby.kerberos.kerb.crypto.EncryptionHandler;
+import org.apache.kerby.kerberos.kerb.type.ad.AuthorizationData;
+import org.apache.kerby.kerberos.kerb.type.ad.AuthorizationDataEntry;
+import org.apache.kerby.kerberos.kerb.type.base.EncryptedData;
+import org.apache.kerby.kerberos.kerb.type.base.KeyUsage;
+import org.apache.kerby.kerberos.kerb.type.ticket.EncTicketPart;
+import org.ietf.jgss.GSSContext;
+import org.ietf.jgss.GSSCredential;
+import org.ietf.jgss.GSSException;
+import org.ietf.jgss.GSSManager;
 
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.kerberos.KerberosKey;
@@ -40,19 +44,19 @@ import javax.servlet.FilterConfig;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import net.sourceforge.spnego.SpnegoHttpFilter.Constants;
-import org.apache.commons.collections.IteratorUtils;
-
-import org.ietf.jgss.GSSContext;
-import org.ietf.jgss.GSSCredential;
-import org.ietf.jgss.GSSException;
-import org.ietf.jgss.GSSManager;
-import org.jaaslounge.decoding.DecodingException;
-import org.jaaslounge.decoding.kerberos.KerberosAuthData;
-import org.jaaslounge.decoding.kerberos.KerberosPacAuthData;
-import org.jaaslounge.decoding.kerberos.KerberosToken;
-import org.jaaslounge.decoding.spnego.SpnegoToken;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.security.PrivilegedActionException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.Map;
+import java.util.Base64;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Handles <a href="http://en.wikipedia.org/wiki/SPNEGO">SPNEGO</a> or <a
@@ -60,41 +64,35 @@ import org.jaaslounge.decoding.spnego.SpnegoToken;
  * authentication.
  *
  * <p>
- * <strike>Package scope is deliberate; this Class MUST NOT be used/referenced directly
- * outside of this package.<strike> <b>Be cautious about who you give a reference to.</b>
- * </p>
+ * Package scope is deliberate; this Class MUST NOT be used/referenced directly
+ * outside of this package. <b>Be cautious about who you give a reference to.</b>
  *
  * <p>
  * Basic Authentication must be enabled through the filter configuration. See
  * an example web.xml configuration in the <a href="http://spnego.sourceforge.net/spnego_tomcat.html"
  * target="_blank">installing on tomcat</a> documentation or the
  * {@link SpnegoHttpFilter} javadoc.
- * </p>
  *
  * <p>
  * Localhost is supported but must be enabled through the filter configuration. Allowing
  * requests to come from the DNS http://localhost will obviate the requirement that a
  * service must have an SPN. <b>Note that Kerberos authentication (if localhost) does
- * not occur but instead simply returns the <code>System.getProperty("user.name")</code>
+ * not occur but instead simply returns the {@code System.getProperty("user.name")}
  * or the Server's pre-authentication username.</b>
- * </p>
  *
  * <p>
  * NTLM tokens are NOT supported. However it is still possible to avoid an error
  * being returned by downgrading the authentication from Negotiate NTLM to Basic Auth.
- * </p>
  *
  * <p>
  * See the <a href="http://spnego.sourceforge.net/reference_docs.html"
  * target="_blank">reference docs</a> on how to configure the web.xml to prompt
  * when if a request is being made using NTLM.
- * </p>
  *
  * <p>
  * Finally, to see a working example and instructions on how to use a keytab, take
  * a look at the <a href="http://spnego.sourceforge.net/server_keytab.html"
  * target="_blank">creating a server keytab</a> example.
- * </p>
  *
  * @author Darwin V. Felix
  *
@@ -140,9 +138,9 @@ public final class SpnegoAuthenticator {
 	 * Create an authenticator for SPNEGO and/or BASIC authentication.
 	 *
 	 * @param config servlet filter initialization parameters
-	 * @throws LoginException
-	 * @throws GSSException
-	 * @throws PrivilegedActionException
+	 * @throws LoginException LoginException
+	 * @throws GSSException GSSException
+	 * @throws PrivilegedActionException PrivilegedActionException
 	 */
 	public SpnegoAuthenticator(final SpnegoFilterConfig config)
 			throws LoginException, GSSException, PrivilegedActionException {
@@ -182,11 +180,10 @@ public final class SpnegoAuthenticator {
      * <p>
      * The ExampleSpnegoAuthenticatorValve.java demonstrates a working example of
      * how to use this constructor.
-     * </p>
 	 *
      * <p>
-     * Example of some Map keys and values: <br />
-	 * <code>
+     * Example of some Map keys and values: <br>
+	 * {@code
 	 *
 	 * Map map = new HashMap();
 	 * map.put("spnego.krb5.conf", "krb5.conf");
@@ -197,15 +194,14 @@ public final class SpnegoAuthenticator {
 	 *
 	 * SpnegoAuthenticator authenticator = new SpnegoAuthenticator(map);
 	 * ...
-     * </code>
-     * </p>
+     * }
 	 *
-	 * @param config
-	 * @throws LoginException
-	 * @throws GSSException
-	 * @throws PrivilegedActionException
-	 * @throws FileNotFoundException
-	 * @throws URISyntaxException
+	 * @param config config
+	 * @throws LoginException LoginException
+	 * @throws GSSException GSSException
+	 * @throws PrivilegedActionException PrivilegedActionException
+	 * @throws FileNotFoundException FileNotFoundException
+	 * @throws URISyntaxException URISyntaxException
 	 */
 	public SpnegoAuthenticator(final Map<String, String> config)
         throws LoginException, GSSException, PrivilegedActionException
@@ -246,18 +242,16 @@ public final class SpnegoAuthenticator {
 	 *
      * <p>
      * Null may be returned if client did not provide auth info.
-     * </p>
 	 *
      * <p>
      * Method will throw UnsupportedOperationException if client authz
      * request is NOT "Negotiate" or "Basic".
-     * </p>
 	 * @param req servlet request
 	 * @param resp servlet response
 	 *
 	 * @return null if auth not complete else SpnegoPrincipal of client
-	 * @throws GSSException
-	 * @throws IOException
+	 * @throws GSSException GSSException
+	 * @throws IOException IOException
 	 */
     public SpnegoPrincipal authenticate(final HttpServletRequest req
         , final SpnegoHttpServletResponse resp) throws GSSException
@@ -318,7 +312,6 @@ public final class SpnegoAuthenticator {
      * <p>
      * Generally, instantiators of this class should be the only to call
      * dispose() as it indicates that this class will no longer be used.
-     * </p>
 	 */
 	public void dispose() {
 		if (null != this.serverCredentials) {
@@ -343,7 +336,6 @@ public final class SpnegoAuthenticator {
      * <p>
      * Returns null if authentication failed or if the provided
      * the auth scheme did not contain BASIC Auth data/token.
-     * </p>
 	 *
 	 * @return SpnegoPrincipal for the given auth scheme.
 	 */
@@ -424,7 +416,6 @@ public final class SpnegoAuthenticator {
      * <p>
      * Returns null if authentication failed or if the provided
      * the auth scheme did not contain the SPNEGO/GSS token.
-     * </p>
 	 *
 	 * @return SpnegoPrincipal for the given auth scheme.
 	 */
@@ -461,7 +452,7 @@ public final class SpnegoAuthenticator {
 			}
 
 			resp.setHeader(Constants.AUTHN_HEADER, Constants.NEGOTIATE_HEADER
-					+ ' ' + Base64.encode(token));
+					+ ' ' + Base64.getEncoder().encodeToString(token));
 
 			if (!context.isEstablished()) {
 				LOGGER.fine("context not established");
@@ -500,27 +491,50 @@ public final class SpnegoAuthenticator {
 		byte[] kerberosTokenData = tokenData;
 
 		try {
-			SpnegoToken token = SpnegoToken.parse(tokenData);
-			kerberosTokenData = token.getMechanismToken();
-		} catch (DecodingException dex) {
+			SpnegoInitToken token = new SpnegoInitToken(tokenData);
+			kerberosTokenData = token.getMechToken();
+		} catch (Kerb4JException e) {
 			// Chromium bug: sends a Kerberos response instead of an spnego response with a Kerberos mechanism
 		} catch (Exception ex) {
 			LOGGER.fine(ex.toString());
 		}
 
 		try {
-			Object[] keyObjs = IteratorUtils.toArray(loginContext.getSubject().getPrivateCredentials(KerberosKey.class).iterator());
+			Object[] keyObjs = new ArrayList<>(loginContext.getSubject().getPrivateCredentials(KerberosKey.class)).toArray();
 			KerberosKey[] keys = new KerberosKey[keyObjs.length];
 			System.arraycopy(keyObjs, 0, keys, 0, keyObjs.length);
 
-			KerberosToken token = new KerberosToken(kerberosTokenData, keys);
-			for (KerberosAuthData authData : token.getTicket().getEncData().getUserAuthorizations()) {
-				if (authData instanceof KerberosPacAuthData) {
-					logonInfo = new SpnegoLogonInfo(((KerberosPacAuthData) authData).getPac().getLogonInfo());
-				} else {
-					LOGGER.log(Level.FINE, "AuthData without PAC: " + authData);
+			SpnegoKerberosMechToken token = new SpnegoKerberosMechToken(kerberosTokenData, keys);
+
+			EncryptedData encryptedData = token.getApRequest().getTicket().getEncryptedEncPart();
+
+			byte[] decrypt = EncryptionHandler.getEncHandler(keys[0].getKeyType()).decrypt(
+					encryptedData.getCipher(),
+					keys[0].getEncoded(),
+					KeyUsage.KDC_REP_TICKET.getValue()
+			);
+			EncTicketPart tgsRep = KrbCodec.decode(decrypt, EncTicketPart.class);
+			System.out.println(tgsRep);
+
+			AuthorizationDataEntry authorizationDataEntry = tgsRep.getAuthorizationData().getElements().get(0);
+
+			Pac pac = null;
+			while (null != authorizationDataEntry && null == pac) {
+				switch (authorizationDataEntry.getAuthzType()) {
+					case AD_IF_RELEVANT:
+						authorizationDataEntry = authorizationDataEntry.getAuthzDataAs(AuthorizationData.class).getElements().get(0);
+						continue;
+					case AD_WIN2K_PAC:
+						pac = new Pac(authorizationDataEntry.getAuthzData(), keys[0]);
 				}
 			}
+
+			if (null != pac) {
+				logonInfo = new SpnegoLogonInfo(pac.getLogonInfo());
+			} else {
+				LOGGER.log(Level.FINE, "ApReq without PAC: " + tgsRep);
+			}
+
 		} catch (Exception ex) {
 			LOGGER.fine(ex.toString());
 		}

@@ -45,15 +45,13 @@ import org.ietf.jgss.GSSException;
  *      SOAPConnectionFactory.newInstance();
  *  conn = soapConnectionFactory.createConnection();
  * </pre>
- * </p>
- * 
+ *
  * <p>
  * with code that looks like this...
  * <pre>
  *  conn = new SpnegoSOAPConnection("spnego-client", "dfelix", "myp@s5");
  * </pre>
- * </p>
- * 
+ *
  * <p><b>Example:</b></p>
  * <pre>
  * SOAPMessage response = null;
@@ -112,8 +110,8 @@ public class SpnegoSOAPConnection extends SOAPConnection {
      * file being specified by "java.security.auth.login.config" or 
      * where LoginContext relies on tgtsessionkey.
      * 
-     * @param loginModuleName 
-     * @throws LoginException 
+     * @param loginModuleName  loginModuleName
+     * @throws LoginException LoginException
      */
     public SpnegoSOAPConnection(final String loginModuleName) throws LoginException {
 
@@ -148,10 +146,10 @@ public class SpnegoSOAPConnection extends SOAPConnection {
      * file. However, the "java.security.auth.login.config" property must still
      * be set prior to instantiating this object.
      * 
-     * @param loginModuleName 
-     * @param username 
-     * @param password 
-     * @throws LoginException 
+     * @param loginModuleName loginModuleName
+     * @param username username
+     * @param password password
+     * @throws LoginException LoginException
      */
     public SpnegoSOAPConnection(final String loginModuleName,
         final String username, final String password) throws LoginException {

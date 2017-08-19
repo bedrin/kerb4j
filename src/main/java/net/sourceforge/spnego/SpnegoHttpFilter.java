@@ -47,116 +47,108 @@ import org.ietf.jgss.GSSException;
  * Integrated Windows Authentication. In general, there are at least two 
  * authentication mechanisms that allow an HTTP server and an HTTP client 
  * to achieve single sign-on: <b>NTLM</b> and <b>Kerberos/SPNEGO</b>.
- * </p>
- * 
+ *
  * <p>
- * <b>NTLM</b><br />
+ * <b>NTLM</b><br>
  * MSIE has the ability to negotiate NTLM password hashes over an HTTP session 
  * using Base 64 encoded NTLMSSP messages. This is a staple feature of Microsoft's 
  * Internet Information Server (IIS). Open source libraries exists (ie. jCIFS) that 
  * provide NTLM-based authentication capabilities to Servlet Containers. jCIFS uses 
  * NTLM and Microsoft's Active Directory (AD) to authenticate MSIE clients.
- * </p>
- * 
+ *
  * <p>
  * <b>{@code SpnegoHttpFilter} does NOT support NTLM (tokens).</b>
- * </p>
- * 
+ *
  * <p>
- * <b>Kerberos/SPNEGO</b><br />
+ * <b>Kerberos/SPNEGO</b><br>
  * Kerberos is an authentication protocol that is implemented in AD. The protocol 
  * does not negotiate passwords between a client and a server but rather uses tokens 
  * to securely prove/authenticate to one another over an un-secure network.
- * </p>
- * 
+ *
  * <p>
- * <b><code>SpnegoHttpFilter</code> does support Kerberos but through the 
- * pseudo-mechanism <code>SPNEGO</code></b>.
+ * <b>{@code SpnegoHttpFilter} does support Kerberos but through the
+ * pseudo-mechanism {@code SPNEGO}</b>.
  * <ul>
  * <li><a href="http://en.wikipedia.org/wiki/SPNEGO" target="_blank">Wikipedia: SPNEGO</a></li>
  * <li><a href="http://www.ietf.org/rfc/rfc4178.txt" target="_blank">IETF RFC: 4178</a></li>
  * </ul>
- * </p>
- * 
+ *
  * <p>
- * <b>Localhost Support</b><br />
+ * <b>Localhost Support</b><br>
  * The Kerberos protocol requires that a service must have a Principal Name (SPN) 
  * specified. However, there are some use-cases where it may not be practical to 
  * specify an SPN (ie. Tomcat running on a developer's machine). The DNS 
  * http://localhost is supported but must be configured in the servlet filter's 
  * init params in the web.xml file. 
- * </p>
+ *
+ * <p><b>Modifying the web.xml file</b>
  * 
- * <p><b>Modifying the web.xml file</b></p>
+ * <p>Here's an example configuration:
  * 
- * <p>Here's an example configuration:</p>
+ * <pre>{@code  <filter>
+ *      <filter-name>SpnegoHttpFilter</filter-name>
+ *      <filter-class>net.sourceforge.spnego.SpnegoHttpFilter</filter-class>
+ *
+ *      <init-param>
+ *          <param-name>spnego.allow.basic</param-name>
+ *          <param-value>true</param-value>
+ *      </init-param>
+ *
+ *      <init-param>
+ *          <param-name>spnego.allow.localhost</param-name>
+ *          <param-value>true</param-value>
+ *      </init-param>
+ *
+ *      <init-param>
+ *          <param-name>spnego.allow.unsecure.basic</param-name>
+ *          <param-value>true</param-value>
+ *      </init-param>
+ *
+ *      <init-param>
+ *          <param-name>spnego.login.client.module</param-name>
+ *          <param-value>spnego-client</param-value>
+ *      </init-param>
+ *
+ *      <init-param>
+ *          <param-name>spnego.krb5.conf</param-name>
+ *          <param-value>krb5.conf</param-value>
+ *      </init-param>
+ *
+ *      <init-param>
+ *          <param-name>spnego.login.conf</param-name>
+ *          <param-value>login.conf</param-value>
+ *      </init-param>
+ *
+ *      <init-param>
+ *          <param-name>spnego.preauth.username</param-name>
+ *          <param-value>Zeus</param-value>
+ *      </init-param>
+ *
+ *      <init-param>
+ *          <param-name>spnego.preauth.password</param-name>
+ *          <param-value>Zeus_Password</param-value>
+ *      </init-param>
+ *
+ *      <init-param>
+ *          <param-name>spnego.login.server.module</param-name>
+ *          <param-value>spnego-server</param-value>
+ *      </init-param>
+ *
+ *      <init-param>
+ *          <param-name>spnego.prompt.ntlm</param-name>
+ *          <param-value>true</param-value>
+ *      </init-param>
+ *
+ *      <init-param>
+ *          <param-name>spnego.logger.level</param-name>
+ *          <param-value>1</param-value>
+ *      </init-param>
+ *  </filter>
+ *}</pre>
+ *
+ * <p><b>Example usage on web page</b>
  * 
- * <p>
- * <pre><code>  &lt;filter&gt;
- *      &lt;filter-name&gt;SpnegoHttpFilter&lt;/filter-name&gt;
- *      &lt;filter-class&gt;net.sourceforge.spnego.SpnegoHttpFilter&lt;/filter-class&gt;
- *      
- *      &lt;init-param&gt;
- *          &lt;param-name&gt;spnego.allow.basic&lt;/param-name&gt;
- *          &lt;param-value&gt;true&lt;/param-value&gt;
- *      &lt;/init-param&gt;
- *          
- *      &lt;init-param&gt;
- *          &lt;param-name&gt;spnego.allow.localhost&lt;/param-name&gt;
- *          &lt;param-value&gt;true&lt;/param-value&gt;
- *      &lt;/init-param&gt;
- *          
- *      &lt;init-param&gt;
- *          &lt;param-name&gt;spnego.allow.unsecure.basic&lt;/param-name&gt;
- *          &lt;param-value&gt;true&lt;/param-value&gt;
- *      &lt;/init-param&gt;
- *          
- *      &lt;init-param&gt;
- *          &lt;param-name&gt;spnego.login.client.module&lt;/param-name&gt;
- *          &lt;param-value&gt;spnego-client&lt;/param-value&gt;
- *      &lt;/init-param&gt;
- *      
- *      &lt;init-param&gt;
- *          &lt;param-name&gt;spnego.krb5.conf&lt;/param-name&gt;
- *          &lt;param-value&gt;krb5.conf&lt;/param-value&gt;
- *      &lt;/init-param&gt;
- *          
- *      &lt;init-param&gt;
- *          &lt;param-name&gt;spnego.login.conf&lt;/param-name&gt;
- *          &lt;param-value&gt;login.conf&lt;/param-value&gt;
- *      &lt;/init-param&gt;
- *          
- *      &lt;init-param&gt;
- *          &lt;param-name&gt;spnego.preauth.username&lt;/param-name&gt;
- *          &lt;param-value&gt;Zeus&lt;/param-value&gt;
- *      &lt;/init-param&gt;
- *          
- *      &lt;init-param&gt;
- *          &lt;param-name&gt;spnego.preauth.password&lt;/param-name&gt;
- *          &lt;param-value&gt;Zeus_Password&lt;/param-value&gt;
- *      &lt;/init-param&gt;
- *          
- *      &lt;init-param&gt;
- *          &lt;param-name&gt;spnego.login.server.module&lt;/param-name&gt;
- *          &lt;param-value&gt;spnego-server&lt;/param-value&gt;
- *      &lt;/init-param&gt;
- *          
- *      &lt;init-param&gt;
- *          &lt;param-name&gt;spnego.prompt.ntlm&lt;/param-name&gt;
- *          &lt;param-value&gt;true&lt;/param-value&gt;
- *      &lt;/init-param&gt;
- *          
- *      &lt;init-param&gt;
- *          &lt;param-name&gt;spnego.logger.level&lt;/param-name&gt;
- *          &lt;param-value&gt;1&lt;/param-value&gt;
- *      &lt;/init-param&gt;
- *  &lt;/filter&gt;
- *</code></pre>
- * </p>
- * 
- * <p><b>Example usage on web page</b></p>
- * 
- * <p><pre>  &lt;html&gt;
+ * <pre>  &lt;html&gt;
  *  &lt;head&gt;
  *      &lt;title&gt;Hello SPNEGO Example&lt;/title&gt;
  *  &lt;/head&gt;
@@ -165,17 +157,14 @@ import org.ietf.jgss.GSSException;
  *  &lt;/body&gt;
  *  &lt;/html&gt;
  *  </pre>
- * </p>
  *
  * <p>
  * Take a look at the <a href="http://spnego.sourceforge.net/reference_docs.html" 
  * target="_blank">reference docs</a> for other configuration parameters.
- * </p>
- * 
+ *
  * <p>See more usage examples at 
  * <a href="http://spnego.sourceforge.net" target="_blank">http://spnego.sourceforge.net</a>
- * </p>
- * 
+ *
  * @author Darwin V. Felix
  * 
  */
@@ -257,8 +246,7 @@ public final class SpnegoHttpFilter implements Filter {
      * <p>
      * This class is primarily used internally or by implementers of 
      * custom http clients and by {@link SpnegoFilterConfig}.
-     * </p>
-     * 
+     *
      */
     public static final class Constants {
 
@@ -269,24 +257,24 @@ public final class SpnegoHttpFilter implements Filter {
         /** 
          * Servlet init param name in web.xml <b>spnego.allow.basic</b>.
          * 
-         * <p>Set this value to <code>true</code> in web.xml if the filter 
-         * should allow Basic Authentication.</p>
+         * <p>Set this value to {@code true} in web.xml if the filter
+         * should allow Basic Authentication.
          * 
          * <p>It is recommended that you only allow Basic Authentication 
          * if you have clients that cannot perform Kerberos authentication. 
          * Also, you should consider requiring SSL/TLS by setting 
-         * <code>spnego.allow.unsecure.basic</code> to <code>false</code>.</p>
+         * {@code spnego.allow.unsecure.basic} to {@code false}.
          */
         public static final String ALLOW_BASIC = "spnego.allow.basic";
 
         /**
          * Servlet init param name in web.xml <b>spnego.allow.delegation</b>.
          * 
-         * <p>Set this value to <code>true</code> if server should support 
-         * credential delegation requests.</p>
+         * <p>Set this value to {@code true} if server should support
+         * credential delegation requests.
          * 
          * <p>Take a look at the {@link DelegateServletRequest} for more 
-         * information about other pre-requisites.</p>
+         * information about other pre-requisites.
          */
         public static final String ALLOW_DELEGATION = "spnego.allow.delegation";
         
@@ -295,10 +283,10 @@ public final class SpnegoHttpFilter implements Filter {
          * 
          * <p>Flag to indicate if requests coming from http://localhost 
          * or http://127.0.0.1 should not be authenticated using 
-         * Kerberos.</p>
+         * Kerberos.
          * 
          * <p>This feature helps to obviate the requirement of 
-         * creating an SPN for developer machines.</p>
+         * creating an SPN for developer machines.
          * 
          */
         public static final String ALLOW_LOCALHOST = "spnego.allow.localhost";
@@ -306,8 +294,8 @@ public final class SpnegoHttpFilter implements Filter {
         /** 
          * Servlet init param name in web.xml <b>spnego.allow.unsecure.basic</b>.
          * 
-         * <p>Set this value to <code>false</code> in web.xml if the filter 
-         * should reject connections that do not use SSL/TLS.</p>
+         * <p>Set this value to {@code false} in web.xml if the filter
+         * should reject connections that do not use SSL/TLS.
          */
         public static final String ALLOW_UNSEC_BASIC = "spnego.allow.unsecure.basic";
         
@@ -315,7 +303,7 @@ public final class SpnegoHttpFilter implements Filter {
          * HTTP Response Header <b>WWW-Authenticate</b>. 
          * 
          * <p>The filter will respond with this header with a value of "Basic" 
-         * and/or "Negotiate" (based on web.xml file).</p>
+         * and/or "Negotiate" (based on web.xml file).
          */
         public static final String AUTHN_HEADER = "WWW-Authenticate";
         
@@ -323,7 +311,7 @@ public final class SpnegoHttpFilter implements Filter {
          * HTTP Request Header <b>Authorization</b>. 
          * 
          * <p>Clients should send this header where the value is the 
-         * authentication token(s).</p>
+         * authentication token(s).
          */
         public static final String AUTHZ_HEADER = "Authorization";
         
@@ -331,14 +319,14 @@ public final class SpnegoHttpFilter implements Filter {
          * HTTP Response Header <b>Basic</b>. 
          * 
          * <p>The filter will set this as the value for the "WWW-Authenticate" 
-         * header if "Basic" auth is allowed (based on web.xml file).</p>
+         * header if "Basic" auth is allowed (based on web.xml file).
          */
         public static final String BASIC_HEADER = "Basic";
         
         /** 
          * Servlet init param name in web.xml <b>spnego.login.client.module</b>. 
          * 
-         * <p>The LoginModule name that exists in the login.conf file.</p>
+         * <p>The LoginModule name that exists in the login.conf file.
          */
         public static final String CLIENT_MODULE = "spnego.login.client.module";
 
@@ -346,14 +334,16 @@ public final class SpnegoHttpFilter implements Filter {
          * Servlet init param name in web.xml <b>spnego.krb5.conf</b>. 
          * 
          * <p>The location of the krb5.conf file. On Windows, this file will 
-         * sometimes be named krb5.ini and reside <code>%WINDOWS_ROOT%/krb5.ini</code> 
-         * here.</p>
+         * sometimes be named krb5.ini and reside {@code %WINDOWS_ROOT%/krb5.ini}
+         * here.
          * 
          * <p>By default, Java looks for the file in these locations and order:
+         * <ol>
          * <li>System Property (java.security.krb5.conf)</li>
          * <li>%JAVA_HOME%/lib/security/krb5.conf</li>
          * <li>%WINDOWS_ROOT%/krb5.ini</li>
-         * </p>
+         * </ol>
+         *
          */
         public static final String KRB5_CONF = "spnego.krb5.conf";
         
@@ -376,14 +366,14 @@ public final class SpnegoHttpFilter implements Filter {
         /**
          * Name of Spnego Logger.
          * 
-         * <p>Example: <code>Logger.getLogger(Constants.LOGGER_NAME)</code></p>
+         * <p>Example: {@code Logger.getLogger(Constants.LOGGER_NAME)}
          */
         static final String LOGGER_NAME = "SpnegoHttpFilter"; 
         
         /** 
          * Servlet init param name in web.xml <b>spnego.login.conf</b>. 
          * 
-         * <p>The location of the login.conf file.</p>
+         * <p>The location of the login.conf file.
          */
         public static final String LOGIN_CONF = "spnego.login.conf";
         
@@ -392,7 +382,7 @@ public final class SpnegoHttpFilter implements Filter {
          * 
          * <p>The filter will set this as the value for the "WWW-Authenticate" 
          * header. Note that the filter may also add another header with 
-         * a value of "Basic" (if allowed by the web.xml file).</p>
+         * a value of "Basic" (if allowed by the web.xml file).
          */
         public static final String NEGOTIATE_HEADER = "Negotiate";
         
@@ -405,7 +395,7 @@ public final class SpnegoHttpFilter implements Filter {
          * Servlet init param name in web.xml <b>spnego.preauth.password</b>. 
          * 
          * <p>Network Domain password. For Windows, this is sometimes known 
-         * as the Windows NT password.</p>
+         * as the Windows NT password.
          */
         public static final String PREAUTH_PASSWORD = "spnego.preauth.password";
         
@@ -413,7 +403,7 @@ public final class SpnegoHttpFilter implements Filter {
          * Servlet init param name in web.xml <b>spnego.preauth.username</b>. 
          * 
          * <p>Network Domain username. For Windows, this is sometimes known 
-         * as the Windows NT username.</p>
+         * as the Windows NT username.
          */
         public static final String PREAUTH_USERNAME = "spnego.preauth.username";
         
@@ -426,7 +416,7 @@ public final class SpnegoHttpFilter implements Filter {
         /** 
          * Servlet init param name in web.xml <b>spnego.login.server.module</b>. 
          * 
-         * <p>The LoginModule name that exists in the login.conf file.</p>
+         * <p>The LoginModule name that exists in the login.conf file.
          */
         public static final String SERVER_MODULE = "spnego.login.server.module";
     }

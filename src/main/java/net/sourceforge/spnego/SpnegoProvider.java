@@ -110,7 +110,6 @@ public final class SpnegoProvider {
      * @param promptIfNtlm pass true ntlm request should be downgraded
      * @param realm should be the realm the server used to pre-authenticate
      * @return null if negotiation needs to continue or failed
-     * @throws IOException 
      */
     static SpnegoAuthScheme negotiate(
         final HttpServletRequest req, final SpnegoHttpServletResponse resp
@@ -169,7 +168,7 @@ public final class SpnegoProvider {
      * 
      * @param subject the person to be authenticated
      * @return GSSCredential to be used for creating a security context.
-     * @throws PrivilegedActionException
+     * @throws PrivilegedActionException PrivilegedActionException
      */
     public static GSSCredential getClientCredential(final Subject subject)
         throws PrivilegedActionException {
@@ -195,9 +194,8 @@ public final class SpnegoProvider {
      * 
      * @param creds credentials of the person to be authenticated
      * @param url HTTP address of server (used for constructing a {@link GSSName}).
-     * @return GSSContext 
-     * @throws GSSException
-     * @throws PrivilegedActionException
+     * @return GSSContext
+     * @throws GSSException GSSException
      */
     public static GSSContext getGSSContext(final GSSCredential creds, final URL url) 
         throws GSSException {
@@ -275,7 +273,6 @@ public final class SpnegoProvider {
      * 
      * @param subject account server uses for pre-authentication
      * @return credential that allows server to authenticate clients
-     * @throws PrivilegedActionException
      */
     static GSSCredential getServerCredential(final Subject subject)
         throws PrivilegedActionException {
@@ -299,7 +296,6 @@ public final class SpnegoProvider {
      * 
      * @param url HTTP address of server
      * @return GSSName of URL.
-     * @throws GSSException 
      */
     static GSSName getServerName(final URL url) throws GSSException {
         return MANAGER.createName("HTTP@" + url.getHost(),

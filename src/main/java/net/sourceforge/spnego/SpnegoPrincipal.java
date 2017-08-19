@@ -72,6 +72,7 @@ public final class SpnegoPrincipal implements Principal {
 	 * @param name the principal name
 	 * @param nameType the name type of the principal
 	 * @param delegCred this principal's delegated credential (if any)
+	 * @param logonInfo logonInfo
 	 */
 	public SpnegoPrincipal(final String name, final int nameType
 			, final GSSCredential delegCred

@@ -4,11 +4,11 @@
  */
 package net.sourceforge.spnego;
 
+import com.kerb4j.pac.PacLogonInfo;
+import com.kerb4j.pac.PacSid;
+
 import java.math.BigInteger;
-import java.util.Arrays;
 import java.util.Date;
-import org.jaaslounge.decoding.pac.PacLogonInfo;
-import org.jaaslounge.decoding.pac.PacSid;
 
 /**
  *
