@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.Subject;
-import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.NameCallback;
 import javax.security.auth.callback.PasswordCallback;
@@ -89,16 +88,12 @@ public final class SpnegoProvider {
     public static GSSCredential getClientCredential(final Subject subject)
         throws PrivilegedActionException {
 
-        final PrivilegedExceptionAction<GSSCredential> action = 
-            new PrivilegedExceptionAction<GSSCredential>() {
-                public GSSCredential run() throws GSSException {
-                    return MANAGER.createCredential(
-                        null
-                        , GSSCredential.DEFAULT_LIFETIME
-                        , SpnegoProvider.SUPPORTED_OIDS
-                        , GSSCredential.INITIATE_ONLY);
-                } 
-            };
+        final PrivilegedExceptionAction<GSSCredential> action =
+                () -> MANAGER.createCredential(
+                    null
+                    , GSSCredential.DEFAULT_LIFETIME
+                    , SpnegoProvider.SUPPORTED_OIDS
+                    , GSSCredential.INITIATE_ONLY);
         
         return Subject.doAs(subject, action);
     }
@@ -185,28 +180,6 @@ public final class SpnegoProvider {
     }
 
     /**
-     * Returns the {@link GSSCredential} the server uses for pre-authentication.
-     * 
-     * @param subject account server uses for pre-authentication
-     * @return credential that allows server to authenticate clients
-     */
-    static GSSCredential getServerCredential(final Subject subject)
-        throws PrivilegedActionException {
-        
-        final PrivilegedExceptionAction<GSSCredential> action = 
-            new PrivilegedExceptionAction<GSSCredential>() {
-                public GSSCredential run() throws GSSException {
-                    return MANAGER.createCredential(
-                        null
-                        , GSSCredential.INDEFINITE_LIFETIME
-                        , SpnegoProvider.SUPPORTED_OIDS
-                        , GSSCredential.ACCEPT_ONLY);
-                } 
-            };
-        return Subject.doAs(subject, action);
-    }
-
-    /**
      * Returns the {@link GSSName} constructed out of the passed-in 
      * URL object.
      * 
@@ -231,19 +204,17 @@ public final class SpnegoProvider {
 
         LOGGER.trace("username=" + username + "; password=" + password.hashCode());
 
-        final CallbackHandler handler = new CallbackHandler() {
-            public void handle(final Callback[] callback) {
-                for (int i=0; i<callback.length; i++) {
-                    if (callback[i] instanceof NameCallback) {
-                        final NameCallback nameCallback = (NameCallback) callback[i];
-                        nameCallback.setName(username);
-                    } else if (callback[i] instanceof PasswordCallback) {
-                        final PasswordCallback passCallback = (PasswordCallback) callback[i];
-                        passCallback.setPassword(password.toCharArray());
-                    } else {
-                        LOGGER.warn("Unsupported Callback i=" + i + "; class="
-                                + callback[i].getClass().getName());
-                    }
+        final CallbackHandler handler = callback -> {
+            for (int i=0; i<callback.length; i++) {
+                if (callback[i] instanceof NameCallback) {
+                    final NameCallback nameCallback = (NameCallback) callback[i];
+                    nameCallback.setName(username);
+                } else if (callback[i] instanceof PasswordCallback) {
+                    final PasswordCallback passCallback = (PasswordCallback) callback[i];
+                    passCallback.setPassword(password.toCharArray());
+                } else {
+                    LOGGER.warn("Unsupported Callback i=" + i + "; class="
+                            + callback[i].getClass().getName());
                 }
             }
         };

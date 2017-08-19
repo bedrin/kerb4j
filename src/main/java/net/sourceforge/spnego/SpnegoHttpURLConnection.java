@@ -135,8 +135,8 @@ public final class SpnegoHttpURLConnection {
     /**
      * @see java.net.URLConnection#getRequestProperties()
      */
-    private final transient Map<String, List<String>> requestProperties = 
-        new LinkedHashMap<String, List<String>>();
+    private final transient Map<String, List<String>> requestProperties =
+            new LinkedHashMap<>();
 
     /** 
      * Login Context for authenticating client. If username/password 
@@ -303,7 +303,7 @@ public final class SpnegoHttpURLConnection {
         GSSContext context = null;
         
         try {
-            byte[] data = null;
+            byte[] data;
             
             SpnegoHttpURLConnection.LOCK.lock();
             try {
