@@ -1,4 +1,4 @@
-package com.kerb4j;
+package com.kerb4j.marshall;
 
 import java.text.MessageFormat;
 import java.util.ResourceBundle;

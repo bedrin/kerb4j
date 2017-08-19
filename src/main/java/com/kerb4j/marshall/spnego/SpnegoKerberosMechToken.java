@@ -1,6 +1,6 @@
-package com.kerb4j.spnego;
+package com.kerb4j.marshall.spnego;
 
-import com.kerb4j.Kerb4JException;
+import com.kerb4j.marshall.Kerb4JException;
 import org.apache.kerby.asn1.parse.Asn1Container;
 import org.apache.kerby.asn1.parse.Asn1ParseResult;
 import org.apache.kerby.asn1.parse.Asn1Parser;

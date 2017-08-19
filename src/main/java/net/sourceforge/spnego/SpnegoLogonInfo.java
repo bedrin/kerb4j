@@ -4,8 +4,8 @@
  */
 package net.sourceforge.spnego;
 
-import com.kerb4j.pac.PacLogonInfo;
-import com.kerb4j.pac.PacSid;
+import com.kerb4j.marshall.pac.PacLogonInfo;
+import com.kerb4j.marshall.pac.PacSid;
 
 import java.math.BigInteger;
 import java.util.Date;

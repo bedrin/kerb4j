@@ -1,4 +1,4 @@
-package com.kerb4j.pac;
+package com.kerb4j.marshall.pac;
 
 public class PacGroup {
 

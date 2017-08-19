@@ -15,13 +15,14 @@
  */
 package com.kerb4j.jaas.sun;
 
+import com.sun.security.auth.module.Krb5LoginModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.Configuration;
 import java.util.HashMap;
-import java.util.Objects;
+import java.util.Map;
 
 /**
  * Implementation of {@link Configuration} which uses Sun's JAAS
@@ -35,68 +36,59 @@ public class SunJaasKrb5LoginConfig extends Configuration {
 
 	private static final Logger LOG = LoggerFactory.getLogger(SunJaasKrb5LoginConfig.class);
 
-	private String servicePrincipal;
-	private String keyTabLocation;
-	private Boolean useTicketCache = false;
-	private Boolean isInitiator = false;
-	private Boolean debug = false;
-	private String keyTabLocationAsString;
+	private static final String SUN_KRB5_LOGIN_MODULE_CLASS_NAME = Krb5LoginModule.class.getCanonicalName();
+	private static final boolean SUN_KRB5_DEBUG = Boolean.getBoolean("sun.security.krb5.debug");
 
-	public void setServicePrincipal(String servicePrincipal) {
-		this.servicePrincipal = servicePrincipal;
+	private final AppConfigurationEntry[] appConfigurationEntries;
+
+	public static SunJaasKrb5LoginConfig createTicketCacheClientConfig(String principal, String keyTabLocationAsString) {
+		Map<String, String> options = new HashMap<>();
+
+		options.put("principal", principal);
+
+		options.put("useKeyTab", "true");
+		options.put("keyTab", keyTabLocationAsString);
+		options.put("storeKey", "true");
+
+		options.put("doNotPrompt", "true");
+
+		return new SunJaasKrb5LoginConfig(options);
 	}
 
-	public void setKeyTabLocation(String keyTabLocation) {
-		this.keyTabLocation = keyTabLocation;
+	public static SunJaasKrb5LoginConfig createTicketCacheClientConfig(String principal) {
+		Map<String, String> options = new HashMap<>();
+
+		options.put("principal", principal);
+
+		options.put("useTicketCache", "true");
+		options.put("renewTGT", "true");
+
+		options.put("doNotPrompt", "true");
+
+		return new SunJaasKrb5LoginConfig(options);
 	}
 
-	public void setUseTicketCache(Boolean useTicketCache) {
-		this.useTicketCache = useTicketCache;
-	}
+	protected SunJaasKrb5LoginConfig(Map<String,String> additionalOptions) {
+		Map<String, String> options = new HashMap<>();
 
-	public void setIsInitiator(Boolean isInitiator) {
-		this.isInitiator = isInitiator;
-	}
-
-	public void setDebug(Boolean debug) {
-		this.debug = debug;
-	}
-
-	public void afterPropertiesSet() throws Exception {
-		assert Objects.nonNull(servicePrincipal) : "servicePrincipal must be specified";
-
-		if (!useTicketCache) {
-			assert Objects.nonNull(keyTabLocation) : "keyTabLocation must be specified when useTicketCache is false";
-			if (keyTabLocationAsString.startsWith("file:")) {
-				keyTabLocationAsString = keyTabLocationAsString.substring(5);
-			}
+		if (SUN_KRB5_DEBUG) {
+			options.put("debug", "true");
 		}
+
+		options.putAll(additionalOptions);
+
+		this.appConfigurationEntries = new AppConfigurationEntry[] {
+				new AppConfigurationEntry(
+						SUN_KRB5_LOGIN_MODULE_CLASS_NAME,
+						AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
+						options
+				)
+		};
 	}
 
 	@Override
 	public AppConfigurationEntry[] getAppConfigurationEntry(String name) {
-		HashMap<String, String> options = new HashMap<String, String>();
-
-		options.put("principal", this.servicePrincipal);
-
-		if (this.keyTabLocation != null) {
-			options.put("useKeyTab", "true");
-			options.put("keyTab", keyTabLocationAsString);
-			options.put("storeKey", "true");
-		}
-
-		options.put("doNotPrompt", "true");
-
-		if (useTicketCache) {
-			options.put("useTicketCache", "true");
-			options.put("renewTGT", "true");
-		}
-
-		options.put("isInitiator", this.isInitiator.toString());
-		options.put("debug", this.debug.toString());
-
-		return new AppConfigurationEntry[] { new AppConfigurationEntry("com.sun.security.auth.module.Krb5LoginModule",
-				AppConfigurationEntry.LoginModuleControlFlag.REQUIRED, options), };
+		return appConfigurationEntries;
 	}
 
 }

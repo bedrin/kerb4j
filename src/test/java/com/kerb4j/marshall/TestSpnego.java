@@ -1,11 +1,12 @@
-package com.kerb4j;
+package com.kerb4j.marshall;
 
-import com.kerb4j.pac.Pac;
-import com.kerb4j.pac.PacLogonInfo;
-import com.kerb4j.pac.PacSid;
-import com.kerb4j.spnego.SpnegoConstants;
-import com.kerb4j.spnego.SpnegoInitToken;
-import com.kerb4j.spnego.SpnegoKerberosMechToken;
+import com.kerb4j.marshall.Kerb4JException;
+import com.kerb4j.marshall.pac.Pac;
+import com.kerb4j.marshall.pac.PacLogonInfo;
+import com.kerb4j.marshall.pac.PacSid;
+import com.kerb4j.marshall.spnego.SpnegoConstants;
+import com.kerb4j.marshall.spnego.SpnegoInitToken;
+import com.kerb4j.marshall.spnego.SpnegoKerberosMechToken;
 import org.apache.kerby.kerberos.kerb.KrbCodec;
 import org.apache.kerby.kerberos.kerb.crypto.EncryptionHandler;
 import org.apache.kerby.kerberos.kerb.type.ad.AuthorizationData;

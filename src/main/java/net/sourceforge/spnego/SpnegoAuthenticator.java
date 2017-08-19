@@ -18,10 +18,10 @@
 
 package net.sourceforge.spnego;
 
-import com.kerb4j.Kerb4JException;
-import com.kerb4j.pac.Pac;
-import com.kerb4j.spnego.SpnegoInitToken;
-import com.kerb4j.spnego.SpnegoKerberosMechToken;
+import com.kerb4j.marshall.Kerb4JException;
+import com.kerb4j.marshall.pac.Pac;
+import com.kerb4j.marshall.spnego.SpnegoInitToken;
+import com.kerb4j.marshall.spnego.SpnegoKerberosMechToken;
 import net.sourceforge.spnego.SpnegoHttpFilter.Constants;
 import org.apache.kerby.kerberos.kerb.KrbCodec;
 import org.apache.kerby.kerberos.kerb.crypto.EncryptionHandler;

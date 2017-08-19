@@ -1,11 +1,12 @@
-package com.kerb4j;
+package com.kerb4j.marshall;
 
 import java.io.IOException;
 import java.io.InputStream;
 
 import javax.crypto.spec.SecretKeySpec;
 
-import com.kerb4j.pac.Pac;
+import com.kerb4j.marshall.Kerb4JException;
+import com.kerb4j.marshall.pac.Pac;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
