@@ -33,29 +33,21 @@ import java.util.Set;
 import java.util.Base64;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 
-import net.sourceforge.spnego.SpnegoHttpFilter.Constants;
-
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This Class may be used by custom clients as a convenience when connecting 
  * to a protected HTTP server.
- * 
- * <p>
- * This mechanism is an alternative to HTTP Basic Authentication where the 
- * HTTP server does not support Basic Auth but instead has SPNEGO support 
- * (take a look at {@link SpnegoHttpFilter}).
- * </p>
- * 
+ *
  * <p>
  * A krb5.conf and a login.conf is required when using this class. Take a 
  * look at the <a href="http://spnego.sourceforge.net" target="_blank">spnego.sourceforge.net</a> 
@@ -114,18 +106,13 @@ import org.ietf.jgss.GSSException;
  * a look at the <a href="http://spnego.sourceforge.net/client_keytab.html"
  * target="_blank">creating a client keytab</a> example.
  * </p>
- * 
- * <p>
- * Finally, the {@link SpnegoSOAPConnection} class is another example of a class 
- * that uses this class.
- * <p>
- * 
+ *
  * @author Darwin V. Felix
  * 
  */
 public final class SpnegoHttpURLConnection {
 
-    private static final Logger LOGGER = Logger.getLogger(Constants.LOGGER_NAME);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoHttpURLConnection.class);
     
     /** GSSContext is not thread-safe. */
     private static final Lock LOCK = new ReentrantLock();
@@ -365,7 +352,7 @@ public final class SpnegoHttpURLConnection {
             
             // app servers will not return a WWW-Authenticate on 302, (and 30x...?)
             if (null == scheme) {
-                LOGGER.fine("SpnegoProvider.getAuthScheme(...) returned null.");
+                LOGGER.trace("SpnegoProvider.getAuthScheme(...) returned null.");
                 
             } else {
                 data = scheme.getToken();
@@ -380,7 +367,7 @@ public final class SpnegoHttpURLConnection {
 
                     // TODO : support context loops where i>1
                     if (null != data) {
-                        LOGGER.warning("Server requested context loop: " + data.length);
+                        LOGGER.warn("Server requested context loop: " + data.length);
                     }
                     
                 } else {
@@ -412,7 +399,7 @@ public final class SpnegoHttpURLConnection {
                     SpnegoHttpURLConnection.LOCK.unlock();
                 }
             } catch (GSSException gsse) {
-                LOGGER.log(Level.WARNING, "call to dispose context failed.", gsse);
+                LOGGER.error("call to dispose context failed.", gsse);
             }
         }
         
@@ -420,7 +407,7 @@ public final class SpnegoHttpURLConnection {
             try {
                 this.credential.dispose();
             } catch (final GSSException gsse) {
-                LOGGER.log(Level.WARNING, "call to dispose credential failed.", gsse);
+                LOGGER.error("call to dispose credential failed.", gsse);
             }
         }
         
@@ -428,7 +415,7 @@ public final class SpnegoHttpURLConnection {
             try {
                 this.loginContext.logout();
             } catch (final LoginException le) {
-                LOGGER.log(Level.WARNING, "call to logout context failed.", le);
+                LOGGER.error("call to logout context failed.", le);
             }
         }
     }

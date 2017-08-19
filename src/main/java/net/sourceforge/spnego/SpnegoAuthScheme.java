@@ -19,7 +19,6 @@
 package net.sourceforge.spnego;
 
 import java.util.Base64;
-import net.sourceforge.spnego.SpnegoHttpFilter.Constants;
 
 /**
  * Example schemes are "Negotiate" and "Basic". 
@@ -57,7 +56,7 @@ final class SpnegoAuthScheme {
         if (null == authToken || authToken.isEmpty()) {
             this.ntlm = false;
         } else {
-            this.ntlm = authToken.startsWith(SpnegoHttpFilter.Constants.NTLM_PROLOG);
+            this.ntlm = authToken.startsWith(Constants.NTLM_PROLOG);
         }
         
         this.negotiateScheme = Constants.NEGOTIATE_HEADER.equalsIgnoreCase(authScheme);
