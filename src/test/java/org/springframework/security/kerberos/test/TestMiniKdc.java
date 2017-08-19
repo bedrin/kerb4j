@@ -55,12 +55,13 @@ public class TestMiniKdc extends KerberosSecurityTestcase {
 		for (KeytabEntry entry : kt.getEntries()) {
 			principals.add(entry.getPrincipalName());
 		}
-		// here principals use \ instead of /
+		// here principals used to use \ instead of /
 		// because
 		// org.apache.directory.server.kerberos.shared.keytab.KeytabDecoder
 		// .getPrincipalName(IoBuffer buffer) use \\ when generates principal
+		// with updadte of apache ds it is / again
 		Assert.assertEquals(
-				new HashSet<String>(Arrays.asList("foo\\bar@" + kdc.getRealm(), "bar\\foo@" + kdc.getRealm())),
+				new HashSet<>(Arrays.asList("foo/bar@" + kdc.getRealm(), "bar/foo@" + kdc.getRealm())),
 				principals);
 	}
 

@@ -15,25 +15,29 @@
  */
 package org.springframework.security.kerberos.test;
 
+import net.sf.ehcache.Cache;
+import net.sf.ehcache.CacheManager;
 import org.apache.commons.io.Charsets;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.directory.api.ldap.model.schema.SchemaManager;
-import org.apache.directory.api.ldap.schemaextractor.SchemaLdifExtractor;
-import org.apache.directory.api.ldap.schemaextractor.impl.DefaultSchemaLdifExtractor;
-import org.apache.directory.api.ldap.schemaloader.LdifSchemaLoader;
-import org.apache.directory.api.ldap.schemamanager.impl.DefaultSchemaManager;
+import org.apache.directory.api.ldap.schema.extractor.SchemaLdifExtractor;
+import org.apache.directory.api.ldap.schema.extractor.impl.DefaultSchemaLdifExtractor;
+import org.apache.directory.api.ldap.schema.loader.LdifSchemaLoader;
+import org.apache.directory.api.ldap.schema.manager.impl.DefaultSchemaManager;
 import org.apache.directory.server.constants.ServerDNConstants;
 import org.apache.directory.server.core.DefaultDirectoryService;
 import org.apache.directory.server.core.api.CacheService;
 import org.apache.directory.server.core.api.DirectoryService;
+import org.apache.directory.server.core.api.DnFactory;
 import org.apache.directory.server.core.api.InstanceLayout;
 import org.apache.directory.server.core.api.schema.SchemaPartition;
 import org.apache.directory.server.core.kerberos.KeyDerivationInterceptor;
 import org.apache.directory.server.core.partition.impl.btree.jdbm.JdbmIndex;
 import org.apache.directory.server.core.partition.impl.btree.jdbm.JdbmPartition;
 import org.apache.directory.server.core.partition.ldif.LdifPartition;
+import org.apache.directory.server.core.shared.DefaultDnFactory;
 import org.apache.directory.server.kerberos.kdc.KdcServer;
 import org.apache.directory.server.kerberos.shared.crypto.encryption.KerberosKeyFactory;
 import org.apache.directory.server.kerberos.shared.keytab.Keytab;
@@ -323,8 +327,14 @@ public class MiniKdc {
 		SchemaManager schemaManager = new DefaultSchemaManager(loader);
 		schemaManager.loadAllEnabled();
 		ds.setSchemaManager(schemaManager);
+
+		CacheManager cacheManager = CacheManager.create();
+		cacheManager.addCacheIfAbsent("apache-ds");
+		Cache cache = cacheManager.getCache("apache-ds");
+		DnFactory dnFactory = new DefaultDnFactory(schemaManager, cache);
+
 		// Init the LdifPartition with schema
-		LdifPartition schemaLdifPartition = new LdifPartition(schemaManager);
+		LdifPartition schemaLdifPartition = new LdifPartition(schemaManager, dnFactory);
 		schemaLdifPartition.setPartitionPath(schemaPartitionDirectory.toURI());
 
 		// The schema partition
@@ -332,7 +342,7 @@ public class MiniKdc {
 		schemaPartition.setWrappedPartition(schemaLdifPartition);
 		ds.setSchemaPartition(schemaPartition);
 
-		JdbmPartition systemPartition = new JdbmPartition(ds.getSchemaManager());
+		JdbmPartition systemPartition = new JdbmPartition(ds.getSchemaManager(), dnFactory);
 		systemPartition.setId("system");
 		systemPartition.setPartitionPath(new File(ds.getInstanceLayout().getPartitionsDirectory(), systemPartition
 				.getId()).toURI());
@@ -348,16 +358,16 @@ public class MiniKdc {
 		String orgName = conf.getProperty(ORG_NAME).toLowerCase();
 		String orgDomain = conf.getProperty(ORG_DOMAIN).toLowerCase();
 
-		JdbmPartition partition = new JdbmPartition(ds.getSchemaManager());
+		JdbmPartition partition = new JdbmPartition(ds.getSchemaManager(), dnFactory);
 		partition.setId(orgName);
 		partition.setPartitionPath(new File(ds.getInstanceLayout().getPartitionsDirectory(), orgName).toURI());
 		partition.setSuffixDn(new Dn("dc=" + orgName + ",dc=" + orgDomain));
 		ds.addPartition(partition);
 		// indexes
-		Set<Index<?, ?, String>> indexedAttributes = new HashSet<Index<?, ?, String>>();
-		indexedAttributes.add(new JdbmIndex<String, Entry>("objectClass", false));
-		indexedAttributes.add(new JdbmIndex<String, Entry>("dc", false));
-		indexedAttributes.add(new JdbmIndex<String, Entry>("ou", false));
+		Set<Index<?, String>> indexedAttributes = new HashSet<>();
+		indexedAttributes.add(new JdbmIndex<Entry>("objectClass", false));
+		indexedAttributes.add(new JdbmIndex<Entry>("dc", false));
+		indexedAttributes.add(new JdbmIndex<Entry>("ou", false));
 		partition.setIndexedAttributes(indexedAttributes);
 
 		// And start the ds
@@ -533,7 +543,7 @@ public class MiniKdc {
 					generatedPassword).entrySet()) {
 				EncryptionKey ekey = entry.getValue();
 				byte keyVersion = (byte) ekey.getKeyVersion();
-				entries.add(new KeytabEntry(principal, 1L, timestamp, keyVersion, ekey));
+				entries.add(new KeytabEntry(principal, 1, timestamp, keyVersion, ekey));
 			}
 		}
 		keytab.setEntries(entries);
