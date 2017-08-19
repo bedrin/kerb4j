@@ -13,19 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.client.config;
+package com.kerb4j.jaas;
 
-import java.util.HashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.Configuration;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
-import org.springframework.util.Assert;
+import java.util.HashMap;
+import java.util.Objects;
 
 /**
  * Implementation of {@link Configuration} which uses Sun's JAAS
@@ -35,12 +31,12 @@ import org.springframework.util.Assert;
  * @author Janne Valkealahti
  *
  */
-public class SunJaasKrb5LoginConfig extends Configuration implements InitializingBean {
+public class SunJaasKrb5LoginConfig extends Configuration {
 
-	private static final Log LOG = LogFactory.getLog(SunJaasKrb5LoginConfig.class);
+	private static final Logger LOG = LoggerFactory.getLogger(SunJaasKrb5LoginConfig.class);
 
 	private String servicePrincipal;
-	private Resource keyTabLocation;
+	private String keyTabLocation;
 	private Boolean useTicketCache = false;
 	private Boolean isInitiator = false;
 	private Boolean debug = false;
@@ -50,7 +46,7 @@ public class SunJaasKrb5LoginConfig extends Configuration implements Initializin
 		this.servicePrincipal = servicePrincipal;
 	}
 
-	public void setKeyTabLocation(Resource keyTabLocation) {
+	public void setKeyTabLocation(String keyTabLocation) {
 		this.keyTabLocation = keyTabLocation;
 	}
 
@@ -66,17 +62,11 @@ public class SunJaasKrb5LoginConfig extends Configuration implements Initializin
 		this.debug = debug;
 	}
 
-	@Override
 	public void afterPropertiesSet() throws Exception {
-		Assert.hasText(servicePrincipal, "servicePrincipal must be specified");
-
-		if (keyTabLocation != null && keyTabLocation instanceof ClassPathResource) {
-			LOG.warn("Your keytab is in the classpath. This file needs special protection and shouldn't be in the classpath. JAAS may also not be able to load this file from classpath.");
-		}
+		assert Objects.nonNull(servicePrincipal) : "servicePrincipal must be specified";
 
 		if (!useTicketCache) {
-			Assert.notNull(keyTabLocation, "keyTabLocation must be specified when useTicketCache is false");
-			keyTabLocationAsString = keyTabLocation.getURL().toExternalForm();
+			assert Objects.nonNull(keyTabLocation) : "keyTabLocation must be specified when useTicketCache is false";
 			if (keyTabLocationAsString.startsWith("file:")) {
 				keyTabLocationAsString = keyTabLocationAsString.substring(5);
 			}

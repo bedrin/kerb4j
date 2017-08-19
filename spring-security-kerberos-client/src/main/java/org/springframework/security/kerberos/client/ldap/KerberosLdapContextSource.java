@@ -30,7 +30,7 @@ import javax.security.auth.login.LoginException;
 
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.ldap.core.support.LdapContextSource;
-import org.springframework.security.kerberos.client.config.SunJaasKrb5LoginConfig;
+import com.kerb4j.jaas.SunJaasKrb5LoginConfig;
 import org.springframework.security.ldap.DefaultSpringSecurityContextSource;
 import org.springframework.util.Assert;
 
@@ -46,7 +46,7 @@ import org.springframework.util.Assert;
  *      &lt;property name=&quot;referral&quot; value=&quot;ignore&quot; /&gt;
  *
  *       &lt;property name=&quot;loginConfig&quot;&gt;
- *           &lt;bean class=&quot;org.springframework.security.kerberos.client.config.SunJaasKrb5LoginConfig&quot;&gt;
+ *           &lt;bean class=&quot;com.kerb4j.jaas.SunJaasKrb5LoginConfig&quot;&gt;
  *               &lt;property name=&quot;servicePrincipal&quot; value=&quot;${authentication.ldap.servicePrincipal}&quot; /&gt;
  *               &lt;property name=&quot;useTicketCache&quot; value=&quot;true&quot; /&gt;
  *               &lt;property name=&quot;isInitiator&quot; value=&quot;true&quot; /&gt;
