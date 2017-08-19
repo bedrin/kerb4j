@@ -12,12 +12,31 @@
     <url>http://kerb4j.com/</url>
     <description>Helper classes for working with Kerberos and SPNEGO in Java</description>
 
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
     <licenses>
         <license>
             <name>GNU LIBRARY GENERAL PUBLIC LICENSE Version 2, June 1991</name>
             <url>https://www.gnu.org/licenses/old-licenses/lgpl-2.0.txt</url>
         </license>
     </licenses>
+
+    <developers>
+        <developer>
+            <id>bedrin</id>
+            <name>Dmitry Bedrin</name>
+            <email>Dmitry.Bedrin@gmail.com</email>
+        </developer>
+        <developer>
+            <name>Darwin V. Felix</name>
+        </developer>
+        <developer>
+            <name>Marcel Toele</name>
+        </developer>
+    </developers>
 
     <scm>
         <connection>scm:git:https://github.com/bedrin/kerb4j.git</connection>
@@ -134,13 +153,5 @@
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
-
-    <developers>
-        <developer>
-            <id>bedrin</id>
-            <name>Dmitry Bedrin</name>
-            <email>Dmitry.Bedrin@gmail.com</email>
-        </developer>
-    </developers>
 
 </project>
