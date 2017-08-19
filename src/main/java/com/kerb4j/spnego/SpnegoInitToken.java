@@ -7,7 +7,7 @@ import org.apache.kerby.asn1.ExplicitField;
 import org.apache.kerby.asn1.parse.Asn1Container;
 import org.apache.kerby.asn1.parse.Asn1ParseResult;
 import org.apache.kerby.asn1.parse.Asn1Parser;
-import org.apache.kerby.asn1.type.Asn1Flags;
+import org.apache.kerby.asn1.type.Asn1BitString;
 import org.apache.kerby.asn1.type.Asn1ObjectIdentifier;
 import org.apache.kerby.asn1.type.Asn1OctetString;
 import org.apache.kerby.kerberos.kerb.type.KrbSequenceType;
@@ -26,7 +26,7 @@ public class SpnegoInitToken extends KrbSequenceType {
      */
     private static Asn1FieldInfo[] fieldInfos = new Asn1FieldInfo[]{
             new ExplicitField(MECH_TYPES, KrbObjectIds.class),
-            new ExplicitField(REQ_FLAGS, Asn1Flags.class),
+            new ExplicitField(REQ_FLAGS, Asn1BitString.class),
             new ExplicitField(MECH_TOKEN, Asn1OctetString.class),
             new ExplicitField(MECH_LIST_MIC, Asn1OctetString.class),
     };
@@ -76,8 +76,8 @@ public class SpnegoInitToken extends KrbSequenceType {
     }
 
     public int getReqFlags() {
-        Asn1Flags reqFlags = getFieldAs(REQ_FLAGS, Asn1Flags.class);
-        return null == reqFlags ? 0 : reqFlags.getFlags();
+        Asn1BitString reqFlags = getFieldAs(REQ_FLAGS, Asn1BitString.class);
+        return null == reqFlags ? 0 : reqFlags.tagFlags();
     }
 
     public byte[] getMechToken() {
