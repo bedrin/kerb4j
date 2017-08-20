@@ -18,27 +18,6 @@
 
 package com.kerb4j.client;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Base64;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-
-import javax.security.auth.Subject;
-import javax.security.auth.login.LoginContext;
-import javax.security.auth.login.LoginException;
-
 import com.kerb4j.common.jaas.sun.Krb5LoginContext;
 import com.kerb4j.common.util.Constants;
 import com.kerb4j.common.util.SpnegoAuthScheme;
@@ -49,62 +28,31 @@ import org.ietf.jgss.GSSException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.security.auth.Subject;
+import javax.security.auth.login.LoginContext;
+import javax.security.auth.login.LoginException;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
+import java.util.Base64;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 /**
  * This Class may be used by custom clients as a convenience when connecting 
  * to a protected HTTP server.
  *
  * <p>
- * A krb5.conf and a login.conf is required when using this class. Take a 
+ * A krb5.conf is required when using this class. Take a
  * look at the <a href="http://spnego.sourceforge.net" target="_blank">spnego.sourceforge.net</a> 
- * documentation for an example krb5.conf and login.conf file. 
+ * documentation for an example krb5.conf file.
  * Also, you must provide a keytab file, or a username and password, or allowtgtsessionkey.
  * </p>
  * 
- * <p>
- * Example usage (username/password):
- * <pre>
- *     public static void main(final String[] args) throws Exception {
- *         System.setProperty("java.security.krb5.conf", "krb5.conf");
- *         System.setProperty("sun.security.krb5.debug", "true");
- *         System.setProperty("java.security.auth.login.config", "login.conf");
- *         
- *         SpnegoClient spnego = null;
- *         
- *         try {
- *             spnego = new SpnegoClient("spnego-client", "dfelix", "myp@s5");
- *             spnego.connect(new URL("http://medusa:8080/index.jsp"));
- *             
- *             System.out.println(spnego.getResponseCode());
- *         
- *         } finally {
- *             if (null != spnego) {
- *                 spnego.disconnect();
- *             }
- *         }
- *     }
- * </pre>
- *
- * <p>
- * Alternatively, if the server supports HTTP Basic Authentication, this Class 
- * is NOT needed and instead you can do something like the following:
- * <pre>
- *     public static void main(final String[] args) throws Exception {
- *         final String creds = "dfelix:myp@s5";
- *         
- *         final String token = Base64.encode(creds.getBytes());
- *         
- *         URL url = new URL("http://medusa:8080/index.jsp");
- *         
- *         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
- *         
- *         conn.setRequestProperty(Constants.AUTHZ_HEADER
- *                 , Constants.BASIC_HEADER + " " + token);
- *                 
- *         conn.connect();
- *         
- *         System.out.println("Response Code:" + conn.getResponseCode());
- *     }
- * </pre>
  *
  * <p>
  * To see a working example and instructions on how to use a keytab, take 
@@ -124,37 +72,26 @@ public final class SpnegoClient {
     
     private static final byte[] EMPTY_BYTE = new byte[0];
 
-    /**
-     * If false, this connection object has not created a communications link to 
-     * the specified URL. If true, the communications link has been established.
-     */
-    private transient boolean connected = false;
-
-    /**
-     * Default is GET.
-     * 
-     * @see java.net.HttpURLConnection#getRequestMethod()
-     */
-    private transient String requestMethod = "GET";
-    
-    /**
-     * @see java.net.URLConnection#getRequestProperties()
-     */
-    private final transient Map<String, List<String>> requestProperties =
-            new LinkedHashMap<>();
-
     /** 
-     * Login Context for authenticating client. If username/password 
-     * or GSSCredential is provided (in constructor) then this 
-     * field will always be null.
+     * Login Context for authenticating client.
      */
-    private final transient LoginContext loginContext;
+    private final LoginContext loginContext;
+
+    private final AtomicReference<Subject> subject; // TODO: handle expiration
+
+
 
     /**
-     * Client's credentials. If username/password or LoginContext is provided 
+     * Client's credentials. If username/password or LoginContext is provided
      * (in constructor) then this field will always be null.
      */
     private transient GSSCredential credential;
+
+    /**
+     * If false, this connection object has not created a communications link to
+     * the specified URL. If true, the communications link has been established.
+     */
+    private transient boolean connected = false;
 
     /** 
      * Flag to determine if GSSContext has been established. Users of this 
@@ -188,7 +125,7 @@ public final class SpnegoClient {
      * 
      * @param loginContext loginContext
      */
-    public SpnegoClient(LoginContext loginContext) {
+    public SpnegoClient(LoginContext loginContext) throws LoginException {
         this(loginContext, null, false);
     }
     
@@ -198,7 +135,7 @@ public final class SpnegoClient {
      *  
      * @param creds credentials to use
      */
-    public SpnegoClient(GSSCredential creds) {
+    public SpnegoClient(GSSCredential creds) throws LoginException {
         this(null, creds, true);
     }
     
@@ -210,8 +147,15 @@ public final class SpnegoClient {
      * @param creds credentials to use
      * @param dispose true if GSSCredential should be disposed after use
      */
-    private SpnegoClient(LoginContext loginContext, GSSCredential creds, boolean dispose) {
+    private SpnegoClient(LoginContext loginContext, GSSCredential creds, boolean dispose) throws LoginException {
         this.loginContext = loginContext;
+
+        Subject subject = loginContext.getSubject();
+        if (null == subject) {
+            loginContext.login();
+        }
+        this.subject = new AtomicReference<>(subject);
+
         this.credential = creds;
         this.autoDisposeCreds = dispose;
     }
@@ -341,16 +285,8 @@ public final class SpnegoClient {
             this.conn = (HttpURLConnection) url.openConnection();
             this.connected = true;
 
-            final Set<String> keys = this.requestProperties.keySet();
-            for (final String key : keys) {
-                for (String value : this.requestProperties.get(key)) {
-                    this.conn.addRequestProperty(key, value);
-                }
-            }
-
             // TODO : re-factor to support (302) redirects
             this.conn.setInstanceFollowRedirects(false);
-            this.conn.setRequestMethod(this.requestMethod);
 
             this.conn.setRequestProperty(Constants.AUTHZ_HEADER
                 , Constants.NEGOTIATE_HEADER + ' ' + Base64.getEncoder().encodeToString(data));
@@ -442,7 +378,6 @@ public final class SpnegoClient {
      */
     public void disconnect() {
         this.dispose(null);
-        this.requestProperties.clear();
         this.connected = false;
         if (null != this.conn) {
             this.conn.disconnect();
@@ -458,51 +393,7 @@ public final class SpnegoClient {
         return this.cntxtEstablished;
     }
 
-    /**
-     * Internal sanity check to validate not null key/value pairs.
-     */
-    private void assertKeyValue(final String key, final String value) {
-        if (null == key || key.isEmpty()) {
-            throw new IllegalArgumentException("key parameter is null or empty");
-        }
-        if (null == value) {
-            throw new IllegalArgumentException("value parameter is null");
-        }
-    }
 
-    /**
-     * Adds an HTTP Request property.
-     * 
-     * @param key request property name
-     * @param value request propery value
-     * @see java.net.URLConnection#addRequestProperty(String, String)
-     */
-    public void addRequestProperty(final String key, final String value) {
-        assertNotConnected();
-        assertKeyValue(key, value);
-
-        if (this.requestProperties.containsKey(key)) {
-            final List<String> val = this.requestProperties.get(key);
-            val.add(value);
-            this.requestProperties.put(key, val);            
-        } else {
-            setRequestProperty(key, value);
-        }
-    }
-
-    /**
-     * Sets an HTTP Request property.
-     * 
-     * @param key request property name
-     * @param value request property value
-     * @see java.net.URLConnection#setRequestProperty(String, String)
-     */
-    public void setRequestProperty(final String key, final String value) {
-        assertNotConnected();
-        assertKeyValue(key, value);
-
-        this.requestProperties.put(key, Arrays.asList(value));
-    }
     
     /**
      * Returns a GSSContext for the given url with a default lifetime.
@@ -526,114 +417,7 @@ public final class SpnegoClient {
         
         return SpnegoProvider.getGSSContext(this.credential, url);
     }
-    
-    /**
-     * Returns an error stream that reads from this open connection.
-     * 
-     * @return error stream that reads from this open connection
-     *
-     * @see java.net.HttpURLConnection#getErrorStream()
-     * @throws IOException IOException
-     */
-    public InputStream getErrorStream() throws IOException {
-        assertConnected();
 
-        return this.conn.getInputStream();
-    }
-
-    /**
-     * Get header value at specified index.
-     *
-     * @param index index
-     * @return header value at specified index
-     */
-    public String getHeaderField(final int index) {
-        assertConnected();
-        
-        return this.conn.getHeaderField(index);
-    }
-    
-    /**
-     * Get header value by header name.
-     * 
-     * @param name name header
-     * @return header value
-     * @see java.net.HttpURLConnection#getHeaderField(String)
-     */
-    public String getHeaderField(final String name) {
-        assertConnected();
-
-        return this.conn.getHeaderField(name);
-    }
-    
-    /**
-     * Get header field key at specified index.
-     *
-     * @param index index
-     * @return header field key at specified index
-     */
-    public String getHeaderFieldKey(final int index) {
-        assertConnected();
-        
-        return this.conn.getHeaderFieldKey(index);
-    }
-
-    /**
-     * Returns an input stream that reads from this open connection.
-     * 
-     * @return input stream that reads from this open connection
-     *
-     * @see java.net.HttpURLConnection#getInputStream()
-     * @throws IOException IOException
-     */
-    public InputStream getInputStream() throws IOException {
-        assertConnected();
-
-        return this.conn.getInputStream();
-    }
-    
-    /**
-     * Returns an output stream that writes to this open connection.
-     * 
-     * @return output stream that writes to this connections
-     *
-     * @see java.net.HttpURLConnection#getOutputStream()
-     * @throws IOException IOException
-     */
-    public OutputStream getOutputStream() throws IOException {
-        assertConnected();
-        
-        return this.conn.getOutputStream();
-    }
-
-    /**
-     * Returns HTTP Status code.
-     * 
-     * @return HTTP Status Code
-     *
-     * @see java.net.HttpURLConnection#getResponseCode()
-     * @throws IOException IOException
-     */
-    public int getResponseCode() throws IOException {
-        assertConnected();
-
-        return this.conn.getResponseCode();
-    }
-
-    /**
-     * Returns HTTP Status message.
-     * 
-     * @return HTTP Status Message
-     *
-     * @see java.net.HttpURLConnection#getResponseMessage()
-     * @throws IOException IOException
-     */
-    public String getResponseMessage() throws IOException {
-        assertConnected();
-
-        return this.conn.getResponseMessage();
-    }
-    
     /**
      * Request that this GSSCredential be allowed for delegation.
      * 
@@ -643,18 +427,5 @@ public final class SpnegoClient {
         this.assertNotConnected();
         
         this.reqCredDeleg = requestDelegation;
-    }
-
-    /**
-     * May override the default GET method.
-     * 
-     * @param method method
-     * 
-     * @see java.net.HttpURLConnection#setRequestMethod(String)
-     */
-    public void setRequestMethod(final String method) {
-        assertNotConnected();
-
-        this.requestMethod = method;
     }
 }
