@@ -33,22 +33,19 @@ import java.util.Set;
 import java.util.Base64;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 
-import net.sourceforge.spnego.SpnegoAuthScheme;
-import net.sourceforge.spnego.SpnegoHttpFilter;
-import net.sourceforge.spnego.SpnegoHttpFilter.Constants;
-
-import net.sourceforge.spnego.SpnegoProvider;
-import net.sourceforge.spnego.SpnegoSOAPConnection;
+import com.kerb4j.common.util.Constants;
+import com.kerb4j.common.util.SpnegoAuthScheme;
+import com.kerb4j.common.util.SpnegoProvider;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This Class may be used by custom clients as a convenience when connecting 
@@ -57,16 +54,13 @@ import org.ietf.jgss.GSSException;
  * <p>
  * This mechanism is an alternative to HTTP Basic Authentication where the 
  * HTTP server does not support Basic Auth but instead has SPNEGO support 
- * (take a look at {@link SpnegoHttpFilter}).
- * </p>
- * 
+ *
  * <p>
  * A krb5.conf and a login.conf is required when using this class. Take a 
  * look at the <a href="http://spnego.sourceforge.net" target="_blank">spnego.sourceforge.net</a> 
- * documentation for an example krb5.conf and login.conf file. 
+ * documentation for an example krb5.conf file.
  * Also, you must provide a keytab file, or a username and password, or allowtgtsessionkey.
- * </p>
- * 
+ *
  * <p>
  * Example usage (username/password):
  * <pre>
@@ -119,17 +113,12 @@ import org.ietf.jgss.GSSException;
  * target="_blank">creating a client keytab</a> example.
  * </p>
  * 
- * <p>
- * Finally, the {@link SpnegoSOAPConnection} class is another example of a class
- * that uses this class.
- * <p>
- * 
  * @author Darwin V. Felix
  * 
  */
 public final class SpnegoHttpURLConnection {
 
-    private static final Logger LOGGER = Logger.getLogger(Constants.LOGGER_NAME);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoHttpURLConnection.class);
     
     /** GSSContext is not thread-safe. */
     private static final Lock LOCK = new ReentrantLock();
@@ -160,7 +149,7 @@ public final class SpnegoHttpURLConnection {
      * or GSSCredential is provided (in constructor) then this 
      * field will always be null.
      */
-    private final transient LoginContext loginContext;
+    private final transient SpnegoClient spnegoClient;
 
     /**
      * Client's credentials. If username/password or LoginContext is provided 
@@ -203,35 +192,9 @@ public final class SpnegoHttpURLConnection {
      * @param loginModuleName loginModuleName
      * @throws LoginException LoginException
      */
-    public SpnegoHttpURLConnection(final String loginModuleName)
-        throws LoginException {
-
-        this.loginContext = new LoginContext(loginModuleName);
-        this.loginContext.login();
-        this.credential = null;
-    }
-    
-    /**
-     * Create an instance where the GSSCredential is specified by the parameter 
-     * and where the GSSCredential is automatically disposed after use.
-     *  
-     * @param creds credentials to use
-     */
-    public SpnegoHttpURLConnection(final GSSCredential creds) {
-        this(creds, true);
-    }
-    
-    /**
-     * Create an instance where the GSSCredential is specified by the parameter 
-     * and whether the GSSCredential should be disposed after use.
-     * 
-     * @param creds credentials to use
-     * @param dispose true if GSSCredential should be diposed after use
-     */
-    public SpnegoHttpURLConnection(final GSSCredential creds, final boolean dispose) {
-        this.loginContext = null;
-        this.credential = creds;
-        this.autoDisposeCreds = dispose;
+    @Deprecated
+    public SpnegoHttpURLConnection(final String loginModuleName) throws LoginException {
+        this.spnegoClient = new SpnegoClient(new LoginContext(loginModuleName));
     }
 
     /**
@@ -244,15 +207,18 @@ public final class SpnegoHttpURLConnection {
      * @param password password
      * @throws LoginException LoginException
      */
-    public SpnegoHttpURLConnection(final String loginModuleName,
-        final String username, final String password) throws LoginException {
+    @Deprecated
+    public SpnegoHttpURLConnection(String loginModuleName, String username, String password)
+            throws LoginException {
+        this.spnegoClient = new SpnegoClient(new LoginContext(
+                loginModuleName,
+                SpnegoProvider.getUsernameAndPasswordHandler(username, password)
+            )
+        );
+    }
 
-        final CallbackHandler handler = SpnegoProvider.getUsernamePasswordHandler(
-                username, password);
-
-        this.loginContext = new LoginContext(loginModuleName, handler);
-        this.loginContext.login();
-        this.credential = null;
+    public SpnegoHttpURLConnection(SpnegoClient spnegoClient) {
+        this.spnegoClient = spnegoClient;
     }
 
     /**
@@ -317,28 +283,10 @@ public final class SpnegoHttpURLConnection {
 
         assertNotConnected();
 
-        GSSContext context = null;
+        SpnegoContext context = spnegoClient.createContext(url);
         
         try {
-            byte[] data = null;
-            
-            SpnegoHttpURLConnection.LOCK.lock();
-            try {
-                // work-around to GSSContext/AD timestamp vs sequence field replay bug
-                try { Thread.sleep(31); } catch (InterruptedException e) { assert true; }
-                
-                context = this.getGSSContext(url);
-                context.requestMutualAuth(true);
-                context.requestConf(true);
-                context.requestInteg(true);
-                context.requestReplayDet(true);
-                context.requestSequenceDet(true);
-                context.requestCredDeleg(this.reqCredDeleg);
-                
-                data = context.initSecContext(EMPTY_BYTE, 0, 0);
-            } finally {
-                SpnegoHttpURLConnection.LOCK.unlock();
-            }
+            byte[] data = context.createToken();
             
             this.conn = (HttpURLConnection) url.openConnection();
             this.connected = true;
@@ -369,7 +317,7 @@ public final class SpnegoHttpURLConnection {
             
             // app servers will not return a WWW-Authenticate on 302, (and 30x...?)
             if (null == scheme) {
-                LOGGER.fine("SpnegoProvider.getAuthScheme(...) returned null.");
+                LOGGER.trace("SpnegoProvider.getAuthScheme(...) returned null.");
                 
             } else {
                 data = scheme.getToken();
@@ -377,14 +325,9 @@ public final class SpnegoHttpURLConnection {
                 if (Constants.NEGOTIATE_HEADER.equalsIgnoreCase(scheme.getScheme())) {
                     SpnegoHttpURLConnection.LOCK.lock();
                     try {
-                        data = context.initSecContext(data, 0, data.length);
+                        context.processMutualAuthorization(data, 0, data.length);
                     } finally {
                         SpnegoHttpURLConnection.LOCK.unlock();
-                    }
-
-                    // TODO : support context loops where i>1
-                    if (null != data) {
-                        LOGGER.warning("Server requested context loop: " + data.length);
                     }
                     
                 } else {
@@ -406,17 +349,17 @@ public final class SpnegoHttpURLConnection {
      * if autoDisposeCreds is set to true, and call dispose on the passed-in 
      * GSSContext instance.
      */
-    private void dispose(final GSSContext context) {
+    private void dispose(final SpnegoContext context) {
         if (null != context) {
             try {
                 SpnegoHttpURLConnection.LOCK.lock();
                 try {
-                    context.dispose();
+                    context.close();
                 } finally {
                     SpnegoHttpURLConnection.LOCK.unlock();
                 }
             } catch (GSSException gsse) {
-                LOGGER.log(Level.WARNING, "call to dispose context failed.", gsse);
+                LOGGER.error("call to dispose context failed.", gsse);
             }
         }
         
@@ -424,17 +367,10 @@ public final class SpnegoHttpURLConnection {
             try {
                 this.credential.dispose();
             } catch (final GSSException gsse) {
-                LOGGER.log(Level.WARNING, "call to dispose credential failed.", gsse);
+                LOGGER.error("call to dispose credential failed.", gsse);
             }
         }
-        
-        if (null != this.loginContext) {
-            try {
-                this.loginContext.logout();
-            } catch (final LoginException le) {
-                LOGGER.log(Level.WARNING, "call to logout context failed.", le);
-            }
-        }
+
     }
 
     /**
@@ -504,29 +440,6 @@ public final class SpnegoHttpURLConnection {
         assertKeyValue(key, value);
 
         this.requestProperties.put(key, Arrays.asList(value));
-    }
-    
-    /**
-     * Returns a GSSContextt for the given url with a default lifetime.
-     *  
-     * @param url http address
-     * @return GSSContext for the given url
-     */
-    private GSSContext getGSSContext(final URL url) throws GSSException
-        , PrivilegedActionException {
-
-        if (null == this.credential) {
-            if (null == this.loginContext) {
-                throw new IllegalStateException(
-                        "GSSCredential AND LoginContext NOT initialized");
-                
-            } else {
-                this.credential = SpnegoProvider.getClientCredential(
-                        this.loginContext.getSubject());
-            }
-        }
-        
-        return SpnegoProvider.getGSSContext(this.credential, url);
     }
     
     /**

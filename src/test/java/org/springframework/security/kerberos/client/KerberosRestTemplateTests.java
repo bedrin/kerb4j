@@ -35,6 +35,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import com.kerb4j.client.SpnegoClient;
+import com.kerb4j.client.SpnegoHttpURLConnection;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.boot.SpringApplication;
@@ -171,7 +172,7 @@ public class KerberosRestTemplateTests extends KerberosSecurityTestcase {
 		SpnegoClient spnegoClient = SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath());
 
 		{
-			HttpURLConnection huc = spnegoClient.connect(new URL("http://" + host + ":" + port + "/hello"));
+			HttpURLConnection huc = new SpnegoHttpURLConnection(spnegoClient).connect(new URL("http://" + host + ":" + port + "/hello"));
 			BufferedReader br = new BufferedReader(new InputStreamReader(huc.getInputStream()));
 
 			assertEquals(200, huc.getResponseCode());
@@ -184,7 +185,7 @@ public class KerberosRestTemplateTests extends KerberosSecurityTestcase {
 			// TODO: assert no network communication with KDC here
 			// TODO: add test for Replay protection
 
-			HttpURLConnection huc = spnegoClient.connect(new URL("http://" + host + ":" + port + "/hello"));
+			HttpURLConnection huc = new SpnegoHttpURLConnection(spnegoClient).connect(new URL("http://" + host + ":" + port + "/hello"));
 			BufferedReader br = new BufferedReader(new InputStreamReader(huc.getInputStream()));
 
 			assertEquals(200, huc.getResponseCode());

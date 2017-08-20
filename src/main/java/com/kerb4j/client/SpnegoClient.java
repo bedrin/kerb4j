@@ -19,8 +19,6 @@
 package com.kerb4j.client;
 
 import com.kerb4j.common.jaas.sun.Krb5LoginContext;
-import com.kerb4j.common.util.Constants;
-import com.kerb4j.common.util.SpnegoAuthScheme;
 import com.kerb4j.common.util.SpnegoProvider;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
@@ -31,13 +29,9 @@ import org.slf4j.LoggerFactory;
 import javax.security.auth.Subject;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
-import java.util.Base64;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -84,28 +78,6 @@ public final class SpnegoClient {
      * @param loginContext loginContext
      */
     public SpnegoClient(LoginContext loginContext) throws LoginException {
-        this(loginContext, null, false);
-    }
-    
-    /**
-     * Create an instance where the GSSCredential is specified by the parameter 
-     * and where the GSSCredential is automatically disposed after use.
-     *  
-     * @param creds credentials to use
-     */
-    public SpnegoClient(GSSCredential creds) throws LoginException {
-        this(null, creds, true);
-    }
-    
-    /**
-     * Create an instance where the GSSCredential is specified by the parameter 
-     * and whether the GSSCredential should be disposed after use.
-     * 
-     * @param loginContext loginContext to use
-     * @param creds credentials to use
-     * @param dispose true if GSSCredential should be disposed after use
-     */
-    private SpnegoClient(LoginContext loginContext, GSSCredential creds, boolean dispose) throws LoginException {
         this.loginContext = loginContext;
 
         Subject subject = loginContext.getSubject();
@@ -123,7 +95,7 @@ public final class SpnegoClient {
      * @throws LoginException LoginException
      */
     public static SpnegoClient loginWithUsernamePassword(String username, String password) throws LoginException {
-        return new SpnegoClient(Krb5LoginContext.loginWithUsernameAndPassword(username, password), null, false);
+        return new SpnegoClient(Krb5LoginContext.loginWithUsernameAndPassword(username, password));
     }
 
     /**
@@ -134,7 +106,7 @@ public final class SpnegoClient {
      * @throws LoginException LoginException
      */
     public static SpnegoClient loginWithKeyTab(String principal, String keyTabLocation) throws LoginException {
-        return new SpnegoClient(Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation), null, false);
+        return new SpnegoClient(Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation));
     }
 
     /**
@@ -144,7 +116,7 @@ public final class SpnegoClient {
      * @throws LoginException LoginException
      */
     public static SpnegoClient loginWithTicketCache(String principal) throws LoginException {
-        return new SpnegoClient(Krb5LoginContext.loginWithTicketCache(principal), null, false);
+        return new SpnegoClient(Krb5LoginContext.loginWithTicketCache(principal));
     }
 
     public Subject getSubject() {
@@ -153,84 +125,6 @@ public final class SpnegoClient {
 
     public SpnegoContext createContext(URL url) throws PrivilegedActionException, GSSException {
         return new SpnegoContext(this, getGSSContext(url));
-    }
-
-    /**
-     * Opens a communications link to the resource referenced by 
-     * this URL, if such a connection has not already been established.
-     * 
-     * <p>
-     * This implementation simply calls this objects 
-     * connect(URL, ByteArrayOutputStream) method but passing in a null 
-     * for the second argument.
-     * </p>
-     * 
-     * @param url url
-     * @return an HttpURLConnection object
-     * @throws GSSException  GSSException
-     * @throws PrivilegedActionException PrivilegedActionException
-     * @throws IOException IOException
-     *
-     * @see java.net.URLConnection#connect()
-     */
-    public HttpURLConnection connect(final URL url)
-        throws GSSException, PrivilegedActionException, IOException {
-        
-        return this.connect(url, null);
-    }
-
-    /**
-     * Opens a communications link to the resource referenced by 
-     * this URL, if such a connection has not already been established.
-     * 
-     * @param url target URL
-     * @param dooutput optional message/payload to send to server
-     * @return an HttpURLConnection object
-     * @throws GSSException GSSException
-     * @throws PrivilegedActionException PrivilegedActionException
-     * @throws IOException IOException
-     *
-     * @see java.net.URLConnection#connect()
-     */
-    public HttpURLConnection connect(final URL url, final ByteArrayOutputStream dooutput)
-        throws GSSException, PrivilegedActionException, IOException {
-
-        //assertNotConnected();
-
-        SpnegoContext spnegoContext = createContext(url);
-        
-
-            byte[] data = spnegoContext.createToken();
-
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-
-            // TODO : re-factor to support (302) redirects
-            conn.setInstanceFollowRedirects(false);
-
-            conn.setRequestProperty(Constants.AUTHZ_HEADER, Constants.NEGOTIATE_HEADER + ' ' + Base64.getEncoder().encodeToString(data));
-
-            conn.connect();
-
-            final SpnegoAuthScheme scheme = SpnegoProvider.getAuthScheme(conn.getHeaderField(Constants.AUTHN_HEADER));
-            
-            // app servers will not return a WWW-Authenticate on 302, (and 30x...?)
-            if (null == scheme) {
-                LOGGER.trace("SpnegoProvider.getAuthScheme(...) returned null.");
-                
-            } else {
-                data = scheme.getToken();
-    
-                if (Constants.NEGOTIATE_HEADER.equalsIgnoreCase(scheme.getScheme())) {
-                    spnegoContext.processMutualAuthorization(data, 0, data.length);
-                    
-                } else {
-                    throw new UnsupportedOperationException("Scheme NOT Supported: " 
-                            + scheme.getScheme());
-                }
-
-            }
-
-        return conn;
     }
     
     /**
