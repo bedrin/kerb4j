@@ -1,6 +1,7 @@
 package com.kerb4j.common.marshall.spnego;
 
 import com.kerb4j.common.marshall.Kerb4JException;
+import com.kerb4j.common.util.SpnegoProvider;
 import org.apache.kerby.asn1.parse.Asn1Container;
 import org.apache.kerby.asn1.parse.Asn1ParseResult;
 import org.apache.kerby.asn1.parse.Asn1Parser;
@@ -49,7 +50,7 @@ public class SpnegoKerberosMechToken {
             Asn1ObjectIdentifier asn1ObjectIdentifier = new Asn1ObjectIdentifier();
             asn1ObjectIdentifier.decode(item1);
 
-            if (!asn1ObjectIdentifier.getValue().equals(SpnegoConstants.KERBEROS_MECHANISM))
+            if (!asn1ObjectIdentifier.getValue().equals(SpnegoProvider.KERBEROS_MECHANISM))
                 throw new Kerb4JException("kerberos.token.malformed", null, null);
 
             Asn1ParseResult item2 = ((Asn1Container) asn1ParseResult).getChildren().get(1);

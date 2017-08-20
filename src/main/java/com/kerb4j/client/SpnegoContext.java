@@ -4,11 +4,13 @@ import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 
 import javax.security.auth.Subject;
+import java.io.Closeable;
+import java.io.IOException;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.Base64;
 
-public class SpnegoContext {
+public class SpnegoContext implements Closeable {
 
     private static final byte[] EMPTY_BYTE = new byte[0];
 
@@ -18,6 +20,10 @@ public class SpnegoContext {
     public SpnegoContext(SpnegoClient spnegoClient, GSSContext gssContext) {
         this.spnegoClient = spnegoClient;
         this.gssContext = gssContext;
+    }
+
+    public void requestCredentialsDelegation() throws GSSException {
+        gssContext.requestCredDeleg(true);
     }
 
     public byte[] createToken() throws PrivilegedActionException {
@@ -40,8 +46,12 @@ public class SpnegoContext {
         return gssContext.isEstablished();
     }
 
-    public void close() throws GSSException {
-        gssContext.dispose();
+    public void close() throws IOException {
+        try {
+            gssContext.dispose();
+        } catch (GSSException e) {
+            throw new IOException(e);
+        }
     }
 
 

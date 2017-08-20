@@ -27,12 +27,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.Subject;
+import javax.security.auth.kerberos.KerberosTicket;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 import java.net.URL;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.util.Date;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 /**
  * This Class may be used by custom clients as a convenience when connecting 
@@ -59,32 +64,87 @@ public final class SpnegoClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoClient.class);
 
-    /**
-     * Login Context for authenticating client.
-     */
-    private final LoginContext loginContext;
+    private final AtomicReference<SubjectTgtPair> subjectTgtPairReference = new AtomicReference<>();
 
-    private final AtomicReference<Subject> subject; // TODO: handle expiration
+    private final Supplier<Subject> subjectSupplier;
 
-    /** 
-     * Request credential to be delegated. 
-     * Default is false. 
-     */
-    private transient boolean reqCredDeleg = false;
+    private final Lock authenticateLock = new ReentrantLock();
 
     /**
      * Creates an instance with provided LoginContext
      * 
      * @param loginContext loginContext
      */
-    public SpnegoClient(LoginContext loginContext) throws LoginException {
-        this.loginContext = loginContext;
+    public SpnegoClient(LoginContext loginContext) {
 
-        Subject subject = loginContext.getSubject();
-        if (null == subject) {
-            loginContext.login();
+        subjectSupplier = () -> {
+
+            Subject subject = loginContext.getSubject();
+            if (null == subject) {
+                try {
+                    loginContext.login();
+                    subject = loginContext.getSubject();
+                } catch (LoginException e) {
+                    LOGGER.error(e.getMessage(), e);
+                    throw new RuntimeException(e);
+                }
+            }
+
+            return subject;
+
+        };
+
+    }
+
+    public Subject getSubject() {
+
+        SubjectTgtPair subjectTgtPair = subjectTgtPairReference.get();
+
+        if (null == subjectTgtPair || subjectTgtPair.isExpired()) {
+
+            authenticateLock.lock();
+            try {
+
+                subjectTgtPair = subjectTgtPairReference.get();
+
+                if (null == subjectTgtPair || subjectTgtPair.isExpired()) {
+
+                    Subject subject = subjectSupplier.get();
+
+                    subject.getPrivateCredentials(KerberosTicket.class).stream().
+                            filter(ticket -> ticket.getServer().getName().startsWith("krbtgt")).
+                            findAny().
+                            map(tgt -> new SubjectTgtPair(tgt, subject)).
+                            ifPresent(subjectTgtPairReference::set);
+
+                    subjectTgtPair = subjectTgtPairReference.get();
+
+                }
+
+            } finally {
+                authenticateLock.unlock();
+            }
+
         }
-        this.subject = new AtomicReference<>(subject);
+
+        return subjectTgtPair.subject;
+
+    }
+
+    private static class SubjectTgtPair {
+
+        private final KerberosTicket tgt;
+        private final Subject subject;
+
+        private SubjectTgtPair(KerberosTicket tgt, Subject subject) {
+            this.tgt = tgt;
+            this.subject = subject;
+        }
+
+        private boolean isExpired() {
+            return tgt.getEndTime().before(new Date());
+        }
+
     }
 
     /**
@@ -119,10 +179,6 @@ public final class SpnegoClient {
         return new SpnegoClient(Krb5LoginContext.loginWithTicketCache(principal));
     }
 
-    public Subject getSubject() {
-        return subject.get();
-    }
-
     public SpnegoContext createContext(URL url) throws PrivilegedActionException, GSSException {
         return new SpnegoContext(this, getGSSContext(url));
     }
@@ -139,7 +195,7 @@ public final class SpnegoClient {
         // work-around to GSSContext/AD timestamp vs sequence field replay bug
         try { Thread.sleep(31); } catch (InterruptedException e) { assert true; }
 
-        return Subject.doAs(this.loginContext.getSubject(), (PrivilegedExceptionAction<GSSContext>) () -> {
+        return Subject.doAs(getSubject(), (PrivilegedExceptionAction<GSSContext>) () -> {
             GSSCredential credential = SpnegoProvider.GSS_MANAGER.createCredential(
                     null
                     , GSSCredential.DEFAULT_LIFETIME
@@ -157,22 +213,12 @@ public final class SpnegoClient {
             context.requestInteg(true);
             context.requestReplayDet(true);
             context.requestSequenceDet(true);
-            context.requestCredDeleg(this.reqCredDeleg);
 
             return context;
 
         });
 
 
-    }
-
-    /**
-     * Request that this GSSCredential be allowed for delegation.
-     * 
-     * @param requestDelegation true to allow/request delegation
-     */
-    public void requestCredDeleg(final boolean requestDelegation) {
-        this.reqCredDeleg = requestDelegation;
     }
 
 }

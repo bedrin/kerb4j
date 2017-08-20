@@ -58,6 +58,8 @@ public class Krb5LoginConfig extends Configuration {
 	public static Krb5LoginConfig createTicketCacheClientConfig(String principal) {
 		Map<String, String> options = new HashMap<>();
 
+		options.put("renewTGT", "true");
+
 		options.put("principal", principal);
 
 		options.put("useTicketCache", "true");

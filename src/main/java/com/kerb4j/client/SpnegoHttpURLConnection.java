@@ -18,6 +18,15 @@
 
 package com.kerb4j.client;
 
+import com.kerb4j.common.util.Constants;
+import com.kerb4j.common.util.SpnegoAuthScheme;
+import com.kerb4j.common.util.SpnegoProvider;
+import org.ietf.jgss.GSSException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.security.auth.login.LoginContext;
+import javax.security.auth.login.LoginException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,27 +34,9 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.PrivilegedActionException;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Base64;
+import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-
-import javax.security.auth.callback.CallbackHandler;
-import javax.security.auth.login.LoginContext;
-import javax.security.auth.login.LoginException;
-
-import com.kerb4j.common.util.Constants;
-import com.kerb4j.common.util.SpnegoAuthScheme;
-import com.kerb4j.common.util.SpnegoProvider;
-import org.ietf.jgss.GSSContext;
-import org.ietf.jgss.GSSCredential;
-import org.ietf.jgss.GSSException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This Class may be used by custom clients as a convenience when connecting 
@@ -122,8 +113,6 @@ public final class SpnegoHttpURLConnection {
     
     /** GSSContext is not thread-safe. */
     private static final Lock LOCK = new ReentrantLock();
-    
-    private static final byte[] EMPTY_BYTE = new byte[0];
 
     /**
      * If false, this connection object has not created a communications link to 
@@ -142,7 +131,7 @@ public final class SpnegoHttpURLConnection {
      * @see java.net.URLConnection#getRequestProperties()
      */
     private final transient Map<String, List<String>> requestProperties = 
-        new LinkedHashMap<String, List<String>>();
+        new LinkedHashMap<>();
 
     /** 
      * Login Context for authenticating client. If username/password 
@@ -150,12 +139,6 @@ public final class SpnegoHttpURLConnection {
      * field will always be null.
      */
     private final transient SpnegoClient spnegoClient;
-
-    /**
-     * Client's credentials. If username/password or LoginContext is provided 
-     * (in constructor) then this field will always be null.
-     */
-    private transient GSSCredential credential;
 
     /** 
      * Flag to determine if GSSContext has been established. Users of this 
@@ -170,19 +153,11 @@ public final class SpnegoHttpURLConnection {
      */
     private transient HttpURLConnection conn = null;
 
-    /** 
-     * Request credential to be delegated. 
-     * Default is false. 
+    /**
+     * Request credential to be delegated.
+     * Default is false.
      */
     private transient boolean reqCredDeleg = false;
-    
-    /**
-     * Determines if the GSSCredentials (if any) used during the 
-     * connection request should be automatically disposed by 
-     * this class when finished.
-     * Default is true.
-     */
-    private transient boolean autoDisposeCreds = true;
 
     /**
      * Creates an instance where the LoginContext relies on a keytab 
@@ -284,10 +259,12 @@ public final class SpnegoHttpURLConnection {
         assertNotConnected();
 
         SpnegoContext context = spnegoClient.createContext(url);
+        if (reqCredDeleg) {
+            context.requestCredentialsDelegation();
+        }
         
         try {
-            byte[] data = context.createToken();
-            
+
             this.conn = (HttpURLConnection) url.openConnection();
             this.connected = true;
 
@@ -302,8 +279,7 @@ public final class SpnegoHttpURLConnection {
             this.conn.setInstanceFollowRedirects(false);
             this.conn.setRequestMethod(this.requestMethod);
 
-            this.conn.setRequestProperty(Constants.AUTHZ_HEADER
-                , Constants.NEGOTIATE_HEADER + ' ' + Base64.getEncoder().encodeToString(data));
+            this.conn.setRequestProperty(Constants.AUTHZ_HEADER, context.createTokenAsAuthroizationHeader());
 
             if (null != dooutput && dooutput.size() > 0) {
                 this.conn.setDoOutput(true);
@@ -320,7 +296,7 @@ public final class SpnegoHttpURLConnection {
                 LOGGER.trace("SpnegoProvider.getAuthScheme(...) returned null.");
                 
             } else {
-                data = scheme.getToken();
+                byte[] data = scheme.getToken();
     
                 if (Constants.NEGOTIATE_HEADER.equalsIgnoreCase(scheme.getScheme())) {
                     SpnegoHttpURLConnection.LOCK.lock();
@@ -358,16 +334,8 @@ public final class SpnegoHttpURLConnection {
                 } finally {
                     SpnegoHttpURLConnection.LOCK.unlock();
                 }
-            } catch (GSSException gsse) {
+            } catch (IOException gsse) {
                 LOGGER.error("call to dispose context failed.", gsse);
-            }
-        }
-        
-        if (null != this.credential && this.autoDisposeCreds) {
-            try {
-                this.credential.dispose();
-            } catch (final GSSException gsse) {
-                LOGGER.error("call to dispose credential failed.", gsse);
             }
         }
 

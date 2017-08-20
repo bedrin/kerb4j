@@ -19,7 +19,6 @@
 package com.kerb4j.common.util;
 
 import com.kerb4j.client.SpnegoClient;
-import com.kerb4j.common.marshall.spnego.SpnegoConstants;
 import org.ietf.jgss.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +57,10 @@ public final class SpnegoProvider {
 
     /** Factory for GSS-API mechanism. */
     public static final GSSManager GSS_MANAGER = GSSManager.getInstance();
+
+    public static final String SPNEGO_MECHANISM = "1.3.6.1.5.5.2";
+    public static final String KERBEROS_MECHANISM = "1.2.840.113554.1.2.2";
+    public static final String LEGACY_KERBEROS_MECHANISM = "1.2.840.48018.1.2.2";
 
     /** GSS-API mechanism "1.3.6.1.5.5.2". */
     public static final Oid SPNEGO_OID = SpnegoProvider.getSpnegoOid();
@@ -117,9 +120,9 @@ public final class SpnegoProvider {
     private static Oid getSpnegoOid() {
         Oid oid = null;
         try {
-            oid = new Oid(SpnegoConstants.SPNEGO_OID);
+            oid = new Oid(SpnegoProvider.SPNEGO_MECHANISM);
         } catch (GSSException gsse) {
-            LOGGER.error("Unable to create OID " + SpnegoConstants.SPNEGO_OID + " !", gsse);
+            LOGGER.error("Unable to create OID " + SpnegoProvider.SPNEGO_MECHANISM + " !", gsse);
         }
         return oid;
     }
@@ -133,9 +136,9 @@ public final class SpnegoProvider {
     private static Oid getKerberosV5Oid() {
         Oid oid = null;
         try {
-            oid = new Oid(SpnegoConstants.KERBEROS_MECHANISM);
+            oid = new Oid(SpnegoProvider.KERBEROS_MECHANISM);
         } catch (GSSException gsse) {
-            LOGGER.error("Unable to create OID " + SpnegoConstants.KERBEROS_MECHANISM + " !", gsse);
+            LOGGER.error("Unable to create OID " + SpnegoProvider.KERBEROS_MECHANISM + " !", gsse);
         }
         return oid;
     }
