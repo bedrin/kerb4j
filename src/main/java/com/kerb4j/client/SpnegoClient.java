@@ -73,21 +73,22 @@ public final class SpnegoClient {
     /**
      * Creates an instance with provided LoginContext
      * 
-     * @param loginContext loginContext
+     * @param loginContextSupplier loginContextSupplier
      */
-    public SpnegoClient(LoginContext loginContext) {
+    protected SpnegoClient(Supplier<LoginContext> loginContextSupplier) {
 
         subjectSupplier = () -> {
 
+            LoginContext loginContext = loginContextSupplier.get();
+
             Subject subject = loginContext.getSubject();
-            if (null == subject) {
-                try {
-                    loginContext.login();
-                    subject = loginContext.getSubject();
-                } catch (LoginException e) {
-                    LOGGER.error(e.getMessage(), e);
-                    throw new RuntimeException(e);
-                }
+
+            if (null == subject) try {
+                loginContext.login();
+                subject = loginContext.getSubject();
+            } catch (LoginException e) {
+                LOGGER.error(e.getMessage(), e);
+                throw new RuntimeException(e);
             }
 
             return subject;
@@ -155,7 +156,7 @@ public final class SpnegoClient {
      * @throws LoginException LoginException
      */
     public static SpnegoClient loginWithUsernamePassword(String username, String password) throws LoginException {
-        return new SpnegoClient(Krb5LoginContext.loginWithUsernameAndPassword(username, password));
+        return new SpnegoClient(() -> Krb5LoginContext.loginWithUsernameAndPassword(username, password));
     }
 
     /**
@@ -166,7 +167,7 @@ public final class SpnegoClient {
      * @throws LoginException LoginException
      */
     public static SpnegoClient loginWithKeyTab(String principal, String keyTabLocation) throws LoginException {
-        return new SpnegoClient(Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation));
+        return new SpnegoClient(() -> Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation));
     }
 
     /**
@@ -176,7 +177,7 @@ public final class SpnegoClient {
      * @throws LoginException LoginException
      */
     public static SpnegoClient loginWithTicketCache(String principal) throws LoginException {
-        return new SpnegoClient(Krb5LoginContext.loginWithTicketCache(principal));
+        return new SpnegoClient(() -> Krb5LoginContext.loginWithTicketCache(principal));
     }
 
     public SpnegoContext createContext(URL url) throws PrivilegedActionException, GSSException {

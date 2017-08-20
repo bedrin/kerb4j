@@ -16,29 +16,41 @@ public class Krb5LoginContext extends LoginContext {
         super(name, subject, callbackHandler, config);
     }
 
-    public static Krb5LoginContext loginWithKeyTab(String principal, String keyTabLocation) throws LoginException {
-        Krb5LoginContext krb5LoginContext = new Krb5LoginContext(UNUSED_CONFIGURATION_NAME, null, null,
-                Krb5LoginConfig.createKeyTabClientConfig(principal, keyTabLocation)
-        );
-        krb5LoginContext.login();
-        return krb5LoginContext;
+    public static Krb5LoginContext loginWithKeyTab(String principal, String keyTabLocation) {
+        try {
+            Krb5LoginContext krb5LoginContext = new Krb5LoginContext(UNUSED_CONFIGURATION_NAME, null, null,
+                    Krb5LoginConfig.createKeyTabClientConfig(principal, keyTabLocation)
+            );
+            krb5LoginContext.login();
+            return krb5LoginContext;
+        } catch (LoginException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public static Krb5LoginContext loginWithTicketCache(String principal) throws LoginException {
-        Krb5LoginContext krb5LoginContext = new Krb5LoginContext(UNUSED_CONFIGURATION_NAME, null, null,
-                Krb5LoginConfig.createTicketCacheClientConfig(principal)
-        );
-        krb5LoginContext.login();
-        return krb5LoginContext;
+    public static Krb5LoginContext loginWithTicketCache(String principal) {
+        try {
+            Krb5LoginContext krb5LoginContext = new Krb5LoginContext(UNUSED_CONFIGURATION_NAME, null, null,
+                    Krb5LoginConfig.createTicketCacheClientConfig(principal)
+            );
+            krb5LoginContext.login();
+            return krb5LoginContext;
+        } catch (LoginException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public static Krb5LoginContext loginWithUsernameAndPassword(String username, String password) throws LoginException {
-        Krb5LoginContext krb5LoginContext = new Krb5LoginContext(UNUSED_CONFIGURATION_NAME, null,
-                SpnegoProvider.getUsernameAndPasswordHandler(username, password),
-                Krb5LoginConfig.createUsernameAndPasswordClientConfig()
-        );
-        krb5LoginContext.login();
-        return krb5LoginContext;
+    public static Krb5LoginContext loginWithUsernameAndPassword(String username, String password) {
+        try {
+            Krb5LoginContext krb5LoginContext = new Krb5LoginContext(UNUSED_CONFIGURATION_NAME, null,
+                    SpnegoProvider.getUsernameAndPasswordHandler(username, password),
+                    Krb5LoginConfig.createUsernameAndPasswordClientConfig()
+            );
+            krb5LoginContext.login();
+            return krb5LoginContext;
+        } catch (LoginException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

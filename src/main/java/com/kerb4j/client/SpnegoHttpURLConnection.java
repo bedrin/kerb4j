@@ -169,7 +169,13 @@ public final class SpnegoHttpURLConnection {
      */
     @Deprecated
     public SpnegoHttpURLConnection(final String loginModuleName) throws LoginException {
-        this.spnegoClient = new SpnegoClient(new LoginContext(loginModuleName));
+        this.spnegoClient = new SpnegoClient(() -> {
+            try {
+                return new LoginContext(loginModuleName);
+            } catch (LoginException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     /**
@@ -185,11 +191,16 @@ public final class SpnegoHttpURLConnection {
     @Deprecated
     public SpnegoHttpURLConnection(String loginModuleName, String username, String password)
             throws LoginException {
-        this.spnegoClient = new SpnegoClient(new LoginContext(
-                loginModuleName,
-                SpnegoProvider.getUsernameAndPasswordHandler(username, password)
-            )
-        );
+        this.spnegoClient = new SpnegoClient(() -> {
+            try {
+                return new LoginContext(
+                        loginModuleName,
+                        SpnegoProvider.getUsernameAndPasswordHandler(username, password)
+                );
+            } catch (LoginException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public SpnegoHttpURLConnection(SpnegoClient spnegoClient) {
