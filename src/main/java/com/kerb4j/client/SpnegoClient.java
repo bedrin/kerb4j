@@ -25,6 +25,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,6 +35,7 @@ import java.util.Base64;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import javax.security.auth.Subject;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 
@@ -306,7 +308,7 @@ public final class SpnegoClient {
     public HttpURLConnection connect(final URL url, final ByteArrayOutputStream dooutput)
         throws GSSException, PrivilegedActionException, IOException {
 
-        assertNotConnected();
+        //assertNotConnected();
 
         GSSContext context = null;
         
@@ -325,12 +327,17 @@ public final class SpnegoClient {
                 context.requestReplayDet(true);
                 context.requestSequenceDet(true);
                 context.requestCredDeleg(this.reqCredDeleg);
-                
-                data = context.initSecContext(EMPTY_BYTE, 0, 0);
+
+                final GSSContext gc = context;
+
+                data = Subject.doAs(this.loginContext.getSubject(), (PrivilegedExceptionAction<byte[]>) () ->
+                     gc.initSecContext(EMPTY_BYTE, 0, 0)
+                );
+
             } finally {
                 SpnegoClient.LOCK.unlock();
             }
-            
+
             this.conn = (HttpURLConnection) url.openConnection();
             this.connected = true;
 
@@ -386,7 +393,7 @@ public final class SpnegoClient {
                 this.cntxtEstablished = context.isEstablished();
             }
         } finally {
-            this.dispose(context);
+            //this.dispose(context);
         }
 
         return this.conn;
@@ -498,7 +505,7 @@ public final class SpnegoClient {
     }
     
     /**
-     * Returns a GSSContextt for the given url with a default lifetime.
+     * Returns a GSSContext for the given url with a default lifetime.
      *  
      * @param url http address
      * @return GSSContext for the given url

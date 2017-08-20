@@ -170,11 +170,26 @@ public class KerberosRestTemplateTests extends KerberosSecurityTestcase {
 
 		SpnegoClient spnegoClient = SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath());
 
-		HttpURLConnection huc = spnegoClient.connect(new URL("http://" + host + ":" + port + "/hello"));
-		BufferedReader br = new BufferedReader(new InputStreamReader(huc.getInputStream()));
+		{
+			HttpURLConnection huc = spnegoClient.connect(new URL("http://" + host + ":" + port + "/hello"));
+			BufferedReader br = new BufferedReader(new InputStreamReader(huc.getInputStream()));
 
-		assertEquals(200, huc.getResponseCode());
-		assertEquals("home", br.readLine());
+			assertEquals(200, huc.getResponseCode());
+			assertEquals("home", br.readLine());
+		}
+
+		{
+			//spnegoClient.disconnect();
+
+			// TODO: assert no network communication with KDC here
+			// TODO: add test for Replay protection
+
+			HttpURLConnection huc = spnegoClient.connect(new URL("http://" + host + ":" + port + "/hello"));
+			BufferedReader br = new BufferedReader(new InputStreamReader(huc.getInputStream()));
+
+			assertEquals(200, huc.getResponseCode());
+			assertEquals("home", br.readLine());
+		}
     }
 
 	protected static class PortInitListener implements ApplicationListener<EmbeddedServletContainerInitializedEvent> {
