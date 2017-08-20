@@ -39,8 +39,6 @@ import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.Base64;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This Class may be used by custom clients as a convenience when connecting 
@@ -66,59 +64,19 @@ import java.util.concurrent.locks.ReentrantLock;
 public final class SpnegoClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoClient.class);
-    
-    /** GSSContext is not thread-safe. */
-    private static final Lock LOCK = new ReentrantLock();
-    
-    private static final byte[] EMPTY_BYTE = new byte[0];
 
-    /** 
+    /**
      * Login Context for authenticating client.
      */
     private final LoginContext loginContext;
 
     private final AtomicReference<Subject> subject; // TODO: handle expiration
 
-
-
-    /**
-     * Client's credentials. If username/password or LoginContext is provided
-     * (in constructor) then this field will always be null.
-     */
-    private transient GSSCredential credential;
-
-    /**
-     * If false, this connection object has not created a communications link to
-     * the specified URL. If true, the communications link has been established.
-     */
-    private transient boolean connected = false;
-
-    /** 
-     * Flag to determine if GSSContext has been established. Users of this 
-     * class should always check that this field is true before using/trusting 
-     * the contents of the response.
-     */
-    private transient boolean cntxtEstablished = false;
-
-    /** 
-     * Ref to HTTP URL Connection object after calling connect method. 
-     * Always call spnego.disconnect() when done using this class.
-     */
-    private transient HttpURLConnection conn = null;
-
     /** 
      * Request credential to be delegated. 
      * Default is false. 
      */
     private transient boolean reqCredDeleg = false;
-    
-    /**
-     * Determines if the GSSCredentials (if any) used during the 
-     * connection request should be automatically disposed by 
-     * this class when finished.
-     * Default is true.
-     */
-    private transient boolean autoDisposeCreds = true;
 
     /**
      * Creates an instance with provided LoginContext
@@ -155,9 +113,6 @@ public final class SpnegoClient {
             loginContext.login();
         }
         this.subject = new AtomicReference<>(subject);
-
-        this.credential = creds;
-        this.autoDisposeCreds = dispose;
     }
 
     /**
@@ -192,24 +147,12 @@ public final class SpnegoClient {
         return new SpnegoClient(Krb5LoginContext.loginWithTicketCache(principal), null, false);
     }
 
-    /**
-     * Throws IllegalStateException if this connection object has not yet created 
-     * a communications link to the specified URL.
-     */
-    private void assertConnected() {
-        if (!this.connected) {
-            throw new IllegalStateException("Not connected.");
-        }
+    public Subject getSubject() {
+        return subject.get();
     }
 
-    /**
-     * Throws IllegalStateException if this connection object has already created 
-     * a communications link to the specified URL.
-     */
-    private void assertNotConnected() {
-        if (this.connected) {
-            throw new IllegalStateException("Already connected.");
-        }
+    public SpnegoContext createContext(URL url) throws PrivilegedActionException, GSSException {
+        return new SpnegoContext(this, getGSSContext(url));
     }
 
     /**
@@ -254,52 +197,21 @@ public final class SpnegoClient {
 
         //assertNotConnected();
 
-        GSSContext context = null;
+        SpnegoContext spnegoContext = createContext(url);
         
-        try {
-            byte[] data;
-            
-            SpnegoClient.LOCK.lock();
-            try {
-                // work-around to GSSContext/AD timestamp vs sequence field replay bug
-                try { Thread.sleep(31); } catch (InterruptedException e) { assert true; }
-                
-                context = this.getGSSContext(url);
-                context.requestMutualAuth(true);
-                context.requestConf(true);
-                context.requestInteg(true);
-                context.requestReplayDet(true);
-                context.requestSequenceDet(true);
-                context.requestCredDeleg(this.reqCredDeleg);
 
-                final GSSContext gc = context;
+            byte[] data = spnegoContext.createToken();
 
-                data = Subject.doAs(this.loginContext.getSubject(), (PrivilegedExceptionAction<byte[]>) () ->
-                     gc.initSecContext(EMPTY_BYTE, 0, 0)
-                );
-
-            } finally {
-                SpnegoClient.LOCK.unlock();
-            }
-
-            this.conn = (HttpURLConnection) url.openConnection();
-            this.connected = true;
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
             // TODO : re-factor to support (302) redirects
-            this.conn.setInstanceFollowRedirects(false);
+            conn.setInstanceFollowRedirects(false);
 
-            this.conn.setRequestProperty(Constants.AUTHZ_HEADER
-                , Constants.NEGOTIATE_HEADER + ' ' + Base64.getEncoder().encodeToString(data));
+            conn.setRequestProperty(Constants.AUTHZ_HEADER, Constants.NEGOTIATE_HEADER + ' ' + Base64.getEncoder().encodeToString(data));
 
-            if (null != dooutput && dooutput.size() > 0) {
-                this.conn.setDoOutput(true);
-                dooutput.writeTo(this.conn.getOutputStream());
-            }
+            conn.connect();
 
-            this.conn.connect();
-
-            final SpnegoAuthScheme scheme = SpnegoProvider.getAuthScheme(
-                    this.conn.getHeaderField(Constants.AUTHN_HEADER));
+            final SpnegoAuthScheme scheme = SpnegoProvider.getAuthScheme(conn.getHeaderField(Constants.AUTHN_HEADER));
             
             // app servers will not return a WWW-Authenticate on 302, (and 30x...?)
             if (null == scheme) {
@@ -309,91 +221,17 @@ public final class SpnegoClient {
                 data = scheme.getToken();
     
                 if (Constants.NEGOTIATE_HEADER.equalsIgnoreCase(scheme.getScheme())) {
-                    SpnegoClient.LOCK.lock();
-                    try {
-                        data = context.initSecContext(data, 0, data.length);
-                    } finally {
-                        SpnegoClient.LOCK.unlock();
-                    }
-
-                    // TODO : support context loops where i>1
-                    if (null != data) {
-                        LOGGER.warn("Server requested context loop: " + data.length);
-                    }
+                    spnegoContext.processMutualAuthorization(data, 0, data.length);
                     
                 } else {
                     throw new UnsupportedOperationException("Scheme NOT Supported: " 
                             + scheme.getScheme());
                 }
 
-                this.cntxtEstablished = context.isEstablished();
             }
-        } finally {
-            //this.dispose(context);
-        }
 
-        return this.conn;
+        return conn;
     }
-
-    /**
-     * Logout the LoginContext instance, and call dispose() on GSSCredential 
-     * if autoDisposeCreds is set to true, and call dispose on the passed-in 
-     * GSSContext instance.
-     */
-    private void dispose(final GSSContext context) {
-        if (null != context) {
-            try {
-                SpnegoClient.LOCK.lock();
-                try {
-                    context.dispose();
-                } finally {
-                    SpnegoClient.LOCK.unlock();
-                }
-            } catch (GSSException gsse) {
-                LOGGER.error("call to dispose context failed.", gsse);
-            }
-        }
-        
-        if (null != this.credential && this.autoDisposeCreds) {
-            try {
-                this.credential.dispose();
-            } catch (final GSSException gsse) {
-                LOGGER.error("call to dispose credential failed.", gsse);
-            }
-        }
-        
-        if (null != this.loginContext) {
-            try {
-                this.loginContext.logout();
-            } catch (final LoginException le) {
-                LOGGER.error("call to logout context failed.", le);
-            }
-        }
-    }
-
-    /**
-     * Logout and clear request properties.
-     * 
-     * @see java.net.HttpURLConnection#disconnect()
-     */
-    public void disconnect() {
-        this.dispose(null);
-        this.connected = false;
-        if (null != this.conn) {
-            this.conn.disconnect();
-        }
-    }
-
-    /**
-     * Returns true if GSSContext has been established.
-     * 
-     * @return true if GSSContext has been established, false otherwise.
-     */
-    public boolean isContextEstablished() {
-        return this.cntxtEstablished;
-    }
-
-
     
     /**
      * Returns a GSSContext for the given url with a default lifetime.
@@ -401,21 +239,37 @@ public final class SpnegoClient {
      * @param url http address
      * @return GSSContext for the given url
      */
-    private GSSContext getGSSContext(final URL url) throws GSSException
-        , PrivilegedActionException {
+    private GSSContext getGSSContext(final URL url) throws GSSException, PrivilegedActionException {
 
-        if (null == this.credential) {
-            if (null == this.loginContext) {
-                throw new IllegalStateException(
-                        "GSSCredential AND LoginContext NOT initialized");
-                
-            } else {
-                this.credential = SpnegoProvider.getClientCredential(
-                        this.loginContext.getSubject());
-            }
-        }
-        
-        return SpnegoProvider.getGSSContext(this.credential, url);
+        // TODO: is it still a thing?
+        // work-around to GSSContext/AD timestamp vs sequence field replay bug
+        try { Thread.sleep(31); } catch (InterruptedException e) { assert true; }
+
+        return Subject.doAs(this.loginContext.getSubject(), (PrivilegedExceptionAction<GSSContext>) () -> {
+            GSSCredential credential = SpnegoProvider.GSS_MANAGER.createCredential(
+                    null
+                    , GSSCredential.DEFAULT_LIFETIME
+                    , SpnegoProvider.SUPPORTED_OIDS
+                    , GSSCredential.INITIATE_ONLY);
+
+            GSSContext context = SpnegoProvider.GSS_MANAGER.createContext(SpnegoProvider.getServerName(url)
+                    , SpnegoProvider.SPNEGO_OID
+                    , credential
+                    , GSSContext.DEFAULT_LIFETIME);
+
+
+            context.requestMutualAuth(true);
+            context.requestConf(true);
+            context.requestInteg(true);
+            context.requestReplayDet(true);
+            context.requestSequenceDet(true);
+            context.requestCredDeleg(this.reqCredDeleg);
+
+            return context;
+
+        });
+
+
     }
 
     /**
@@ -424,8 +278,7 @@ public final class SpnegoClient {
      * @param requestDelegation true to allow/request delegation
      */
     public void requestCredDeleg(final boolean requestDelegation) {
-        this.assertNotConnected();
-        
         this.reqCredDeleg = requestDelegation;
     }
+
 }

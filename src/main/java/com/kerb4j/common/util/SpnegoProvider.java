@@ -19,17 +19,15 @@
 package com.kerb4j.common.util;
 
 import com.kerb4j.client.SpnegoClient;
+import com.kerb4j.common.marshall.spnego.SpnegoConstants;
 import org.ietf.jgss.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.security.auth.Subject;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.NameCallback;
 import javax.security.auth.callback.PasswordCallback;
 import java.net.URL;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
 import java.util.Arrays;
 
 /**
@@ -56,22 +54,22 @@ import java.util.Arrays;
 public final class SpnegoProvider {
 
     /** Default LOGGER. */
-    static final Logger LOGGER = LoggerFactory.getLogger(SpnegoProvider.class); //NOPMD
+    private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoProvider.class);
 
     /** Factory for GSS-API mechanism. */
-    static final GSSManager MANAGER = GSSManager.getInstance(); // NOPMD
+    public static final GSSManager GSS_MANAGER = GSSManager.getInstance();
 
     /** GSS-API mechanism "1.3.6.1.5.5.2". */
-    static final Oid SPNEGO_OID = SpnegoProvider.getSpnegoOid(); // NOPMD
+    public static final Oid SPNEGO_OID = SpnegoProvider.getSpnegoOid();
 	/** GSS-API mechanism "1.2.840.113554.1.2.2". */
-    static final Oid KERBEROS_V5_OID = SpnegoProvider.getKerberosV5Oid(); // NOPMD
+    public static final Oid KERBEROS_V5_OID = SpnegoProvider.getKerberosV5Oid();
 	/**
 	 * Note: The MIT Kerberos V5 mechanism OID is added for compatibility with
 	 *		 Chromium-based browsers on POSIX OSes. On these OSes, Chromium erroneously
 	 *		 responds to an SPNEGO request with a GSS-API MIT Kerberos V5 mechanism
 	 *		 answer (instead of a MIT Kerberos V5 token inside an SPNEGO mechanism answer).
 	 */
-    static final Oid[] SUPPORTED_OIDS = new Oid[]{SPNEGO_OID, KERBEROS_V5_OID}; // NOPMD
+    public static final Oid[] SUPPORTED_OIDS = new Oid[]{SPNEGO_OID, KERBEROS_V5_OID};
 
     /*
      * This is a utility class (not a Singleton).
@@ -79,46 +77,7 @@ public final class SpnegoProvider {
     private SpnegoProvider() {
         // default private
     }
-    
-    /**
-     * Returns the GSS-API interface for creating a security context.
-     * 
-     * @param subject the person to be authenticated
-     * @return GSSCredential to be used for creating a security context.
-     * @throws PrivilegedActionException PrivilegedActionException
-     */
-    public static GSSCredential getClientCredential(final Subject subject)
-        throws PrivilegedActionException {
 
-        final PrivilegedExceptionAction<GSSCredential> action =
-                () -> MANAGER.createCredential(
-                    null
-                    , GSSCredential.DEFAULT_LIFETIME
-                    , SpnegoProvider.SUPPORTED_OIDS
-                    , GSSCredential.INITIATE_ONLY);
-        
-        return Subject.doAs(subject, action);
-    }
-    
-    /**
-     * Returns a GSSContext to be used by custom clients to set 
-     * data integrity requirements, confidentiality and if mutual 
-     * authentication is required.
-     * 
-     * @param creds credentials of the person to be authenticated
-     * @param url HTTP address of server (used for constructing a {@link GSSName}).
-     * @return GSSContext
-     * @throws GSSException GSSException
-     */
-    public static GSSContext getGSSContext(final GSSCredential creds, final URL url) 
-        throws GSSException {
-        
-        return MANAGER.createContext(SpnegoProvider.getServerName(url)
-                , SpnegoProvider.SPNEGO_OID
-                , creds
-                , GSSContext.DEFAULT_LIFETIME);
-    }
-    
     /**
      * Returns the {@link SpnegoAuthScheme} or null if header is missing.
      * 
@@ -158,9 +117,9 @@ public final class SpnegoProvider {
     private static Oid getSpnegoOid() {
         Oid oid = null;
         try {
-            oid = new Oid("1.3.6.1.5.5.2");
+            oid = new Oid(SpnegoConstants.SPNEGO_OID);
         } catch (GSSException gsse) {
-            LOGGER.error("Unable to create OID 1.3.6.1.5.5.2 !", gsse);
+            LOGGER.error("Unable to create OID " + SpnegoConstants.SPNEGO_OID + " !", gsse);
         }
         return oid;
     }
@@ -174,9 +133,9 @@ public final class SpnegoProvider {
     private static Oid getKerberosV5Oid() {
         Oid oid = null;
         try {
-            oid = new Oid("1.2.840.113554.1.2.2");
+            oid = new Oid(SpnegoConstants.KERBEROS_MECHANISM);
         } catch (GSSException gsse) {
-            LOGGER.error("Unable to create OID 1.2.840.113554.1.2.2 !", gsse);
+            LOGGER.error("Unable to create OID " + SpnegoConstants.KERBEROS_MECHANISM + " !", gsse);
         }
         return oid;
     }
@@ -188,8 +147,8 @@ public final class SpnegoProvider {
      * @param url HTTP address of server
      * @return GSSName of URL.
      */
-    static GSSName getServerName(final URL url) throws GSSException {
-        return MANAGER.createName("HTTP@" + url.getHost(),
+    public static GSSName getServerName(final URL url) throws GSSException {
+        return GSS_MANAGER.createName("HTTP@" + url.getHost(),
             GSSName.NT_HOSTBASED_SERVICE, SpnegoProvider.SPNEGO_OID);
     }
 
