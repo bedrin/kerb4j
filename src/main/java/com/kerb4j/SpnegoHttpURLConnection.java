@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-package net.sourceforge.spnego;
+package com.kerb4j;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -40,8 +40,12 @@ import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 
+import net.sourceforge.spnego.SpnegoAuthScheme;
+import net.sourceforge.spnego.SpnegoHttpFilter;
 import net.sourceforge.spnego.SpnegoHttpFilter.Constants;
 
+import net.sourceforge.spnego.SpnegoProvider;
+import net.sourceforge.spnego.SpnegoSOAPConnection;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
@@ -116,7 +120,7 @@ import org.ietf.jgss.GSSException;
  * </p>
  * 
  * <p>
- * Finally, the {@link SpnegoSOAPConnection} class is another example of a class 
+ * Finally, the {@link SpnegoSOAPConnection} class is another example of a class
  * that uses this class.
  * <p>
  * 

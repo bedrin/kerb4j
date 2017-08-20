@@ -33,6 +33,7 @@ import javax.security.auth.callback.PasswordCallback;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.kerb4j.SpnegoHttpURLConnection;
 import net.sourceforge.spnego.SpnegoHttpFilter.Constants;
 
 import org.ietf.jgss.GSSContext;
@@ -52,7 +53,7 @@ import org.ietf.jgss.Oid;
  * </p>
  * 
  * <p>
- * Take a look at the {@link SpnegoHttpURLConnection} class and the 
+ * Take a look at the {@link SpnegoHttpURLConnection} class and the
  * {@link SpnegoHttpFilter} class before attempting to implement your 
  * own HTTP client.
  * </p>

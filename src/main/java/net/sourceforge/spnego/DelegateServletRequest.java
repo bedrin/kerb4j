@@ -20,6 +20,7 @@ package net.sourceforge.spnego;
 
 import javax.servlet.ServletRequest;
 
+import com.kerb4j.SpnegoHttpURLConnection;
 import org.ietf.jgss.GSSCredential;
 
 /**
@@ -27,7 +28,7 @@ import org.ietf.jgss.GSSCredential;
  * allow the user's/requester's credential to be delegated.
  *
  * <p>
- * By default, {@link SpnegoHttpURLConnection} has delegation set 
+ * By default, {@link SpnegoHttpURLConnection} has delegation set
  * to false. To allow delegation, call the {@code requestCredDeleg}
  * method on the {@code SpnegoHttpURLConnection} instance.
  *

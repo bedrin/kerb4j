@@ -32,6 +32,7 @@ import javax.xml.soap.SOAPConstants;
 import javax.xml.soap.SOAPException;
 import javax.xml.soap.SOAPMessage;
 
+import com.kerb4j.SpnegoHttpURLConnection;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
 
