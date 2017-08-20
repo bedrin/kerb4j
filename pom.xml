@@ -38,6 +38,19 @@
         <developer>
             <name>Marcel Toele</name>
         </developer>
+        <developer>
+            <id>mwiesner</id>
+            <name>Mike Wiesner</name>
+            <email>mwiesner@vmware.com</email>
+        </developer>
+        <developer>
+            <id>jvalkeal</id>
+            <name>Janne Valkealahti</name>
+            <email>jvalkealahti@pivotal.io</email>
+            <properties>
+                <twitter>tunebluez</twitter>
+            </properties>
+        </developer>
     </developers>
 
     <scm>
@@ -137,27 +150,6 @@
             <version>1.0.0</version>
             <scope>test</scope>
         </dependency>
-
-        <!--<dependency>
-            <groupId>org.apache.directory.api</groupId>
-            <artifactId>api-all</artifactId>
-            <version>${apacheDirApiVersion}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>xml-apis</groupId>
-                    <artifactId>xml-apis</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>xpp3</groupId>
-                    <artifactId>xpp3_min</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>dom4j</groupId>
-                    <artifactId>dom4j</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>-->
 
         <!-- Spring test dependencies -->
 

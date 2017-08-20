@@ -13,14 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.test;
+package com.kerb4j;
 
 import org.apache.directory.server.kerberos.shared.keytab.Keytab;
 import org.apache.directory.server.kerberos.shared.keytab.KeytabEntry;
 import org.junit.Assert;
 import org.junit.Test;
-import org.springframework.security.kerberos.test.KerberosSecurityTestcase;
-import org.springframework.security.kerberos.test.MiniKdc;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosPrincipal;

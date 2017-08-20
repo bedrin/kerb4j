@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.client;
+package com.kerb4j.client;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -37,7 +37,7 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 
 @Configuration
 @EnableWebMvcSecurity
-public class WebSecurityConfigSpnegoForward extends WebSecurityConfigurerAdapter {
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
 	@Value("${serverPrincipal}")
 	private String serverPrincipal;
@@ -50,7 +50,7 @@ public class WebSecurityConfigSpnegoForward extends WebSecurityConfigurerAdapter
         http
         	.exceptionHandling().authenticationEntryPoint(spnegoEntryPoint()).and()
             .authorizeRequests()
-                .antMatchers("/", "/home", "/login").permitAll()
+                .antMatchers("/", "/home").permitAll()
                 .antMatchers("/hello").access("hasRole('ROLE_USER')")
                 .anyRequest().authenticated()
                 .and()
@@ -65,7 +65,7 @@ public class WebSecurityConfigSpnegoForward extends WebSecurityConfigurerAdapter
 
 	@Bean
 	public SpnegoEntryPoint spnegoEntryPoint() {
-		return new SpnegoEntryPoint("/login");
+		return new SpnegoEntryPoint();
 	}
 
 	@Bean

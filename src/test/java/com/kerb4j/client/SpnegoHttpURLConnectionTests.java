@@ -13,10 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.client;
+package com.kerb4j.client;
 
-import com.kerb4j.client.SpnegoClient;
-import com.kerb4j.client.SpnegoHttpURLConnection;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.boot.SpringApplication;
@@ -30,8 +28,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.kerberos.test.KerberosSecurityTestcase;
-import org.springframework.security.kerberos.test.MiniKdc;
+import com.kerb4j.KerberosSecurityTestcase;
+import com.kerb4j.MiniKdc;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -51,7 +49,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-public class KerberosRestTemplateTests extends KerberosSecurityTestcase {
+public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
 
 	private ConfigurableApplicationContext context;
 

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.test;
+package com.kerb4j;
 
 import org.junit.After;
 import org.junit.Before;
