@@ -1,6 +1,6 @@
-package com.kerb4j.pac;
+package com.kerb4j.common.marshall.pac;
 
-import com.kerb4j.Kerb4JException;
+import com.kerb4j.common.marshall.Kerb4JException;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;

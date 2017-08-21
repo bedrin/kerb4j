@@ -1,6 +1,7 @@
-package com.kerb4j.spnego;
+package com.kerb4j.common.marshall.spnego;
 
-import com.kerb4j.Kerb4JException;
+import com.kerb4j.common.marshall.Kerb4JException;
+import com.kerb4j.common.util.SpnegoProvider;
 import org.apache.kerby.asn1.Asn1FieldInfo;
 import org.apache.kerby.asn1.EnumType;
 import org.apache.kerby.asn1.ExplicitField;
@@ -17,7 +18,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.kerb4j.spnego.SpnegoInitToken.AuthorizationDataEntryField.*;
+import static com.kerb4j.common.marshall.spnego.SpnegoInitToken.AuthorizationDataEntryField.*;
 
 public class SpnegoInitToken extends KrbSequenceType {
 
@@ -50,7 +51,7 @@ public class SpnegoInitToken extends KrbSequenceType {
             Asn1ObjectIdentifier asn1ObjectIdentifier = new Asn1ObjectIdentifier();
             asn1ObjectIdentifier.decode(item1);
 
-            if (!asn1ObjectIdentifier.getValue().equals(SpnegoConstants.SPNEGO_OID))
+            if (!asn1ObjectIdentifier.getValue().equals(SpnegoProvider.SPNEGO_MECHANISM))
                 throw new Kerb4JException("spnego.token.invalid", null, null);
 
             Asn1ParseResult item2 = ((Asn1Container) asn1ParseResult).getChildren().get(1);
