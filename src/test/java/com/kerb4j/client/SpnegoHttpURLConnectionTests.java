@@ -143,7 +143,8 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
 			assertEquals("home", br.readLine());
 		}
 
-		{
+		// TODO: uncomment
+		/*{
 			// now let's test ticket renewal
 
 			Thread.sleep(400_000); // Make it a separate test probably with "slow" classifier somehow
@@ -153,7 +154,7 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
 
 			assertEquals(200, huc.getResponseCode());
 			assertEquals("home", br.readLine());
-		}
+		}*/
     }
 
 	protected static class PortInitListener implements ApplicationListener<EmbeddedServletContainerInitializedEvent> {
