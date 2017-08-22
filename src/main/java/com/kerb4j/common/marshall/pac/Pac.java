@@ -12,9 +12,11 @@ import java.io.IOException;
 import java.security.Key;
 import java.util.Arrays;
 
+// https://msdn.microsoft.com/en-us/library/cc237917.aspx
 public class Pac {
 
     private PacLogonInfo logonInfo;
+    private PacCredentialType credentialType;
     private PacSignature serverSignature;
     private PacSignature kdcSignature;
 
@@ -48,6 +50,10 @@ public class Pac {
                     case PacConstants.LOGON_INFO:
                         // PAC Credential Information
                         logonInfo = new PacLogonInfo(bufferData);
+                        break;
+                    case PacConstants.CREDENTIAL_TYPE:
+                        // PAC Credential Type
+                        credentialType = new PacCredentialType(bufferData);
                         break;
                     case PacConstants.SERVER_CHECKSUM:
                         // PAC Server Signature
@@ -85,6 +91,10 @@ public class Pac {
 
     public PacLogonInfo getLogonInfo() {
         return logonInfo;
+    }
+
+    public PacCredentialType getCredentialType() {
+        return credentialType;
     }
 
     public PacSignature getServerSignature() {
