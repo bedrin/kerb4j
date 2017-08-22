@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.jaaslounge.sso</groupId>
+        <artifactId>jaaslounge-sso</artifactId>
+        <version>2.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jaaslounge-sso-weblogic</artifactId>
+    <name>JaasLounge SSO Modules for WebLogic</name>
+
+    <build>
+        <plugins>
+            <!-- Packaging and cleaning tasks -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>packaging</id>
+                        <phase>package</phase>
+                        <configuration>
+                            <tasks>
+                                <mkdir dir="${project.build.directory}/mbeans/" />
+                                <java classname="weblogic.management.commo.WebLogicMBeanMaker" fork="true" failonerror="true">
+                                    <jvmarg
+                                        line="-Dfiles=${project.build.sourceDirectory} -DMJF=${project.build.directory}/mbeans/${artifactId}-${project.version}.jar" />
+                                    <classpath>
+                                        <path refid="maven.compile.classpath" />
+                                    </classpath>
+                                </java>
+                            </tasks>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>cleaning</id>
+                        <phase>pre-clean</phase>
+                        <configuration>
+                            <tasks>
+                                <delete includeemptydirs="true" quiet="true">
+                                    <fileset dir="${project.build.directory}/mbeans/" />
+                                    <fileset dir="${project.build.sourceDirectory}" includes="**/*.class" />
+                                    <fileset dir="${project.build.sourceDirectory}/weblogic" />
+                                    <fileset dir="${project.build.sourceDirectory}ClassesDir" />
+                                    <fileset dir="${project.build.sourceDirectory}/META-INF" />
+                                    <fileset dir="${project.build.sourceDirectory}/schemacom_bea_xml" />
+                                    <fileset file="${project.build.sourceDirectory}/org/jaaslounge/sso/weblogic/spnego/JaasLoungeIdentityAsserterMBeanBinder.java" />
+                                    <fileset file="${project.build.sourceDirectory}/org/jaaslounge/sso/weblogic/spnego/JaasLoungeIdentityAsserterMBeanImpl.java" />
+                                    <fileset file="${project.build.sourceDirectory}/org/jaaslounge/sso/weblogic/spnego/JaasLoungeIdentityAsserterMBeanImplBeanInfo.java" />
+                                </delete>
+                            </tasks>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.jaaslounge</groupId>
+            <artifactId>jaaslounge-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jaaslounge</groupId>
+            <artifactId>jaaslounge-decoding</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15</artifactId>
+            <version>1.45</version>
+        </dependency>
+        <dependency>
+            <groupId>weblogic</groupId>
+            <artifactId>weblogic</artifactId>
+            <version>10.3.0</version>
+        </dependency>
+        <dependency>
+            <groupId>weblogic</groupId>
+            <artifactId>wlManagementMBean</artifactId>
+            <version>10.3.0</version>
+        </dependency>
+        <dependency>
+            <groupId>sun.jdk</groupId>
+            <artifactId>tools</artifactId>
+            <version>1.6.0</version>
+            <scope>system</scope>
+            <systemPath>${java.home}/../lib/tools.jar</systemPath>
+        </dependency>
+    </dependencies>
+</project>

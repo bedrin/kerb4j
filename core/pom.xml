@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.jaaslounge</groupId>
+        <artifactId>jaaslounge-project</artifactId>
+        <version>2.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jaaslounge-core</artifactId>
+
+    <name>JaasLounge Core</name>
+    <description>JaasLounge common classes</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.jaaslounge</groupId>
+            <artifactId>jaaslounge-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.samba.jcifs</groupId>
+            <artifactId>jcifs</artifactId>
+            <version>1.2.19</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jaaslounge.patched</groupId>
+            <artifactId>jcifs-ext</artifactId>
+            <version>0.9.4-patched</version>
+        </dependency>
+    </dependencies>
+</project>

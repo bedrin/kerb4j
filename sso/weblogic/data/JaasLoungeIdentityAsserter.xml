@@ -1,0 +1,56 @@
+<MBeanType
+ Name          = "JaasLoungeIdentityAsserter"
+ DisplayName   = "JaasLoungeIdentityAsserter"
+ Package       = "org.jaaslounge.sso.weblogic.spnego"
+ Extends       = "weblogic.management.security.authentication.IdentityAsserter"
+ Implements    = "weblogic.management.security.authentication.ServletAuthenticationFilter"
+ PersistPolicy = "OnUpdate"
+ Description = "See JaasLoungeIdentityAsserter-doc.xml."
+>
+
+<MBeanAttribute
+ Name        = "ProviderClassName"
+ Type        = "java.lang.String"
+ Writeable   = "false"
+ Default     = "&quot;org.jaaslounge.sso.weblogic.spnego.IdentityAsserterProviderImpl&quot;"
+ Description = "See JaasLoungeIdentityAsserter-doc.xml."
+/>
+
+<MBeanAttribute
+ Name        = "Description"
+ Type        = "java.lang.String"
+ Writeable   = "false"
+ Default     = "&quot;JaasLoungeIdentityAsserter&quot;"
+ Description = "See JaasLoungeIdentityAsserter-doc.xml."
+/>
+
+<MBeanAttribute
+ Name        = "Version"
+ Type        = "java.lang.String"
+ Writeable   = "false"
+ Default     = "&quot;1.0&quot;"
+ Description = "See JaasLoungeIdentityAsserter-doc.xml."
+/>
+
+ <MBeanAttribute
+  Name        = "SupportedTypes"
+  Type        = "java.lang.String[]"
+  Writeable   = "false"
+  Default     = "new String[] {
+                   weblogic.security.spi.IdentityAsserter.WWW_AUTHENTICATE_NEGOTIATE,
+                   weblogic.security.spi.IdentityAsserter.AUTHORIZATION_NEGOTIATE
+                }"
+  Description   = "See JaasLoungeIdentityAsserter-doc.xml."
+/>
+
+ <MBeanAttribute
+  Name        = "ActiveTypes"
+  Type        = "java.lang.String[]"
+  Default     = "new String[] {
+                   weblogic.security.spi.IdentityAsserter.WWW_AUTHENTICATE_NEGOTIATE,
+                   weblogic.security.spi.IdentityAsserter.AUTHORIZATION_NEGOTIATE
+                }"
+  Description   = "See JaasLoungeIdentityAsserter-doc.xml."
+/>
+
+</MBeanType>
