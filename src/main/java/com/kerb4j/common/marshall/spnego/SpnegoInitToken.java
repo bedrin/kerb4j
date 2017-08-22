@@ -13,6 +13,7 @@ import org.apache.kerby.asn1.type.Asn1ObjectIdentifier;
 import org.apache.kerby.asn1.type.Asn1OctetString;
 import org.apache.kerby.kerberos.kerb.type.KrbSequenceType;
 
+import javax.security.auth.kerberos.KerberosKey;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -32,6 +33,7 @@ public class SpnegoInitToken extends KrbSequenceType {
             new ExplicitField(MECH_LIST_MIC, Asn1OctetString.class),
     };
 
+    // TODO: add KerberosKey[] parameter here
     public SpnegoInitToken(byte[] token) throws Kerb4JException {
 
         super(fieldInfos);
@@ -61,6 +63,10 @@ public class SpnegoInitToken extends KrbSequenceType {
         } catch (IOException e) {
             throw new Kerb4JException("spnego.token.malformed", null, e);
         }
+    }
+
+    public SpnegoKerberosMechToken getSpnegoKerberosMechToken() throws Kerb4JException {
+        return new SpnegoKerberosMechToken(getMechToken());
     }
 
     public List<String> getMechTypes() {
