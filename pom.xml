@@ -11,6 +11,7 @@
     <modules>
         <module>kerb4j-common</module>
         <module>kerb4j-client</module>
+        <module>kerb4j-server</module>
     </modules>
 
     <name>Kerb4J</name>

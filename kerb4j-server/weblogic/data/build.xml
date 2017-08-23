@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="project">
+	<description>
+		Ce script ant permet de générer un Security Provider Weblogic.
+		Pour fonctionner, l'environnement doit être préparé en lançant
+		$> C:\bea\wlserver_10.3\server\bin\setWLSEnv.cmd
+		$> ant generate-MBean
+		$> ant package-MBean
+	</description>
+	
+	<target name="generate-MBean">
+		<java classname="weblogic.management.commo.WebLogicMBeanMaker">
+			<arg line="-MDF JaasLoungeIdentityAsserter.xml" />
+			<arg line="-createStubs" />
+			<arg line="-files generated" />
+		</java>
+	</target>
+	
+	<target name="package-MBean">
+		<property environment="env"/>
+		<java classname="weblogic.management.commo.WebLogicMBeanMaker">
+			<arg line="-MJF jaaslounge-sso-weblogic.jar" />
+			<arg line="-files generated" />
+			<arg line="-classpath ${env.CLASSPATH}${path.separator}..\dist\jaaslounge-decoding.jar${path.separator}..\dist\jaaslounge-core.jar${path.separator}..\dist\bcprov-jdk15-140.jar" />
+		</java>
+	</target>
+
+</project>
