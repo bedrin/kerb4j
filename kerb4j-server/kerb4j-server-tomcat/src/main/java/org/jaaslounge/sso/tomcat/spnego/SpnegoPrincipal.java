@@ -17,7 +17,7 @@ public class SpnegoPrincipal {
 	
 	/**
 	 * Construit une identite
-	 * @param principal
+	 * @param principal principal
 	 */
 	public SpnegoPrincipal(Principal principal) {
 		this.principal = principal;
@@ -25,7 +25,7 @@ public class SpnegoPrincipal {
 	
 	/**
 	 * Obtient la reference vers le principal
-	 * @return
+	 * @return Principal
 	 */
 	public Principal getPrincipal() {
 		return principal;

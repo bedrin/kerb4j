@@ -5,6 +5,7 @@ package org.jaaslounge.ldap;
 import java.util.Collection;
 import java.util.List;
 import javax.security.auth.login.FailedLoginException;
+
 import org.jaaslounge.AbstractLoginModule;
 
 public class LDAPLoginModule extends AbstractLoginModule

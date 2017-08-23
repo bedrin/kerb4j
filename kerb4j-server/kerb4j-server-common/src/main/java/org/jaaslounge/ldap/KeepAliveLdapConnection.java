@@ -34,7 +34,7 @@ public class KeepAliveLdapConnection {
         environnement.put(Context.SECURITY_AUTHENTICATION, "GSSAPI");
         environnement.put("javax.security.auth.useSubjectCredsOnly", "false");
         try {
-            LoginContext lc = new LoginContext(System.getProperty("jaaslounge.sso.jaas.config"));
+            LoginContext lc = new LoginContext(System.getProperty("org.jaaslounge.sso.jaas.config"));
             lc.login();
             subject = lc.getSubject();
         } catch(LoginException e) {

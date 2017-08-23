@@ -18,8 +18,10 @@
 
 package com.kerb4j.common.util;
 
-import com.kerb4j.client.SpnegoClient;
-import org.ietf.jgss.*;
+import org.ietf.jgss.GSSException;
+import org.ietf.jgss.GSSManager;
+import org.ietf.jgss.GSSName;
+import org.ietf.jgss.Oid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,12 +39,7 @@ import java.util.Arrays;
  * This Class is exposed for developers who want to implement a custom 
  * HTTP client.
  * </p>
- * 
- * <p>
- * Take a look at the {@link SpnegoClient} class before
- * attempting to implement your own HTTP client.
- * </p>
- * 
+ *
  * <p>For more example usage, see the documentation at 
  * <a href="http://spnego.sourceforge.net" target="_blank">http://spnego.sourceforge.net</a>
  * </p>

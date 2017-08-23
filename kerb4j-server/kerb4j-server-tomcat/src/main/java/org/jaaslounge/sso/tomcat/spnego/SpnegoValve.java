@@ -17,7 +17,7 @@ import org.jaaslounge.sso.tomcat.Configurator;
  * Valve permettant de gerer l'authentification d'un utilisateur par SPNEGO
  * dans tomcat. La recuperation des roles ne se fait pas y ce niveau.
  * Le code d'authentification est basw sur le code du filtre de servlet
- * AuthenticationFilter de la bibliotheque jcifs-ext.<br />
+ * AuthenticationFilter de la bibliotheque jcifs-ext.<br>
  * La configuration de la valve utilise les parametres :<ul>
  * <li>domainController : indique l'adresse (IP ou DNS) du controlleur de domaine</li>
  * <li>domainName : indique le nom de domaine</li>

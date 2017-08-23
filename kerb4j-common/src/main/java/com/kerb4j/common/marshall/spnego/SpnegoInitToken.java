@@ -13,7 +13,6 @@ import org.apache.kerby.asn1.type.Asn1ObjectIdentifier;
 import org.apache.kerby.asn1.type.Asn1OctetString;
 import org.apache.kerby.kerberos.kerb.type.KrbSequenceType;
 
-import javax.security.auth.kerberos.KerberosKey;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;

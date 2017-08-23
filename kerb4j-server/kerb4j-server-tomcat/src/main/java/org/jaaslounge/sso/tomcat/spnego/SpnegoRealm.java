@@ -79,7 +79,7 @@ public class SpnegoRealm extends RealmBase {
 	}
 	
 	public String getInfo() {
-		return "org.jaaslounge.sso.tomcat.spnego.SpnegoRealm/1.0";
+		return "org.org.jaaslounge.sso.tomcat.spnego.SpnegoRealm/1.0";
 	}
 	
 	protected String getName() {

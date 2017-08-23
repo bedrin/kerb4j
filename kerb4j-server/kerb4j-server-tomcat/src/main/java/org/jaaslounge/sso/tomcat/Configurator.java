@@ -157,7 +157,7 @@ public class Configurator {
 	
 	/**
 	 * Permet d'affecter la valeur indiquant si on utilise des noms de groupe courts ou non
-	 * @param stripGroupNames
+	 * @param stripGroupNames stripGroupNames
 	 */
 	public synchronized void setStripGroupNames(boolean stripGroupNames) {
 		this.stripGroupNames = stripGroupNames;

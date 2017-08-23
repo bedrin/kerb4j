@@ -5,7 +5,7 @@ import java.util.List;
 
 public class AuthenticatedUser {
 
-    public static final String SESSION_ATTRIBUTE_NAME = "org.jaaslounge.sso.user";
+    public static final String SESSION_ATTRIBUTE_NAME = "org.org.jaaslounge.sso.user";
 
     private String name;
     private String domain;

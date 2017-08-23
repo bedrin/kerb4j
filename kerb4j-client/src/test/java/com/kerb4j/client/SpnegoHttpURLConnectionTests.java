@@ -70,7 +70,7 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
 
 
 		String serverPrincipal = "HTTP/" + host;
-		File serverKeytab = new File(workDir, "server.keytab");
+		File serverKeytab = new File(workDir, "src/test/resources/server.keytab");
 		kdc.createPrincipal(serverKeytab, serverPrincipal);
 
 		context = SpringApplication.run(new Object[] { WebSecurityConfigSpnegoForward.class, VanillaWebConfiguration.class,
@@ -103,7 +103,7 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
 		String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase(); // doesn't work without toLowerCse
 
 		String serverPrincipal = "HTTP/" + host;
-		File serverKeytab = new File(workDir, "server.keytab");
+		File serverKeytab = new File(workDir, "src/test/resources/server.keytab");
 		kdc.createPrincipal(serverKeytab, serverPrincipal);
 
 		String clientPrincipal = "client/" + host;

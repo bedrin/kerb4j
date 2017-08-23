@@ -13,6 +13,7 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>kerb4j-server-common</module>
         <module>kerb4j-server-tomcat</module>
     </modules>
 
