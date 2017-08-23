@@ -9,30 +9,19 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-import jcifs.UniAddress;
-import jcifs.http.Negotiate;
-import jcifs.smb.NtStatus;
-import jcifs.smb.NtlmPasswordAuthentication;
-import jcifs.smb.SmbAuthException;
-import jcifs.smb.SmbSession;
-import jcifs.util.Base64;
-
-import org.apache.catalina.HttpRequest;
-import org.apache.catalina.HttpResponse;
 import org.apache.catalina.authenticator.AuthenticatorBase;
-import org.apache.catalina.deploy.LoginConfig;
+import org.apache.catalina.connector.Request;
 import org.jaaslounge.sso.tomcat.Configurator;
 
 /**
- * Valve permettant de gérer l'authentification d'un utilisateur par SPNEGO
- * dans tomcat. La récupération des rôles ne se fait pas à ce niveau.
- * Le code d'authentification est basé sur le code du filtre de servlet
- * AuthenticationFilter de la bibliothèque jcifs-ext.<br />
- * La configuration de la valve utilise les paramètres :<ul>
+ * Valve permettant de gerer l'authentification d'un utilisateur par SPNEGO
+ * dans tomcat. La recuperation des roles ne se fait pas y ce niveau.
+ * Le code d'authentification est basw sur le code du filtre de servlet
+ * AuthenticationFilter de la bibliotheque jcifs-ext.<br />
+ * La configuration de la valve utilise les parametres :<ul>
  * <li>domainController : indique l'adresse (IP ou DNS) du controlleur de domaine</li>
  * <li>domainName : indique le nom de domaine</li>
  * </ul>
- * @see jcifs.http.AuthenticationFilter pour le filtre de servlet
  * @author damien
  */
 public class SpnegoValve extends AuthenticatorBase {
@@ -40,14 +29,14 @@ public class SpnegoValve extends AuthenticatorBase {
     private static final String HTTP_NTLM = "NTLM";
     private static final String HTTP_BASIC = "Basic";
 
-    // ------ propriétés - permet de configurer la valve depuis la configuration de tomcat
+    // ------ proprietes - permet de configurer la valve depuis la configuration de tomcat
     private String domainController = null;
     private String domainName = null;
     
     private static Logger log = Logger.getLogger(SpnegoValve.class.getName());
     
     /**
-     * Obtient l'adresse du controlleur de domaine configuré
+     * Obtient l'adresse du controlleur de domaine configure
      * @return adresse du controlleur de domaine
      */
     public String getDomainController() {
@@ -58,7 +47,7 @@ public class SpnegoValve extends AuthenticatorBase {
     }
     
     /**
-     * Obtient le nom du domaine configuré
+     * Obtient le nom du domaine configurï¿½
      * @return nom du domaine
      */
     public String getDomainName() {
@@ -67,7 +56,12 @@ public class SpnegoValve extends AuthenticatorBase {
     	}
     	return domainName;
     }
-    
+
+    @Override
+    protected String getAuthMethod() {
+        return "NEGOTIATE";
+    }
+
     /**
      * Configure l'adresse du controlleur de domaine
      * @param domainController adresse du controlleur de domaine
@@ -91,10 +85,10 @@ public class SpnegoValve extends AuthenticatorBase {
     }       
 	
     /**
-     * Action réalisée en cas d'echec de l'authentification
+     * Action realisee en cas d'echec de l'authentification
      * @param clearSession indique s'il faut vider la session ou non
      * @param req requete
-     * @param resp réponse
+     * @param resp reponse
      * @throws ServletException
      * @throws IOException
      */
@@ -110,12 +104,12 @@ public class SpnegoValve extends AuthenticatorBase {
         resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         resp.flushBuffer();
     }
-    
+
     /**
-     * Réalise l'authentification de l'utilisateur
-     * @see jcifs.http.AuthenticationFilter#doFilter(javax.servlet.ServletRequest, javax.servlet.ServletResponse, javax.servlet.FilterChain)
+     * Realise l'authentification de l'utilisateur
      */
-	public boolean authenticate(HttpRequest request, HttpResponse response, LoginConfig config) throws IOException {
+    @Override
+    public boolean authenticate(Request request, HttpServletResponse response) throws IOException {
 		HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse resp = (HttpServletResponse) response;
         Principal principal = null;
@@ -126,7 +120,9 @@ public class SpnegoValve extends AuthenticatorBase {
             authType = msg.regionMatches(true, 0, "Negotiate ", 0, 10) ?
                     HTTP_NEGOTIATE : msg.regionMatches(true, 0, "NTLM ", 0, 5) ?
                             HTTP_NTLM : HTTP_BASIC;
-            try {
+            // TODO: replace with proper authentication
+
+            /*try {
                 if (HTTP_NEGOTIATE.equals(authType) ||
                         HTTP_NTLM.equals(authType)) {
                     principal = Negotiate.authenticate(req, resp);
@@ -136,7 +132,7 @@ public class SpnegoValve extends AuthenticatorBase {
 
                     register(request, response, principal, authType, principal.getName(), "");
                     
-                    log.fine("Authentifié en tant que " + principal.getName());
+                    log.fine("Authentifiï¿½ en tant que " + principal.getName());
                     return true;
                 }
                 UniAddress dc = UniAddress.getByName(getDomainController(), true);
@@ -160,7 +156,7 @@ public class SpnegoValve extends AuthenticatorBase {
             	} catch (ServletException e) { }
                 return false;
             } catch (ServletException e) {
-			}
+			}*/
             HttpSession ssn = req.getSession();
             ssn.setAttribute("jcifs.http.principal", principal);
         } else {

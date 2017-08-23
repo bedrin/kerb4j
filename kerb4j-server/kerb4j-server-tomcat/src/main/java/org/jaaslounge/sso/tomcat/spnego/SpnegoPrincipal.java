@@ -5,18 +5,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Représente une identité Active Directory associée à un ensemble de rôles.
- * Les rôles sont récupérés à la volée lors du premier appel à hasRole.
+ * Represente une identite Active Directory associte y un ensemble de roles.
+ * Les roles sont recuperes y la volve lors du premier appel y hasRole.
  * @author damien
  */
 public class SpnegoPrincipal {
-	/** référence vers le principal */
+	/** reference vers le principal */
 	private Principal principal;
 	/** liste des roles obtenus */
 	private List roles;
 	
 	/**
-	 * Construit une identité
+	 * Construit une identite
 	 * @param principal
 	 */
 	public SpnegoPrincipal(Principal principal) {
@@ -24,7 +24,7 @@ public class SpnegoPrincipal {
 	}
 	
 	/**
-	 * Obtient la référence vers le principal
+	 * Obtient la reference vers le principal
 	 * @return
 	 */
 	public Principal getPrincipal() {
@@ -32,7 +32,7 @@ public class SpnegoPrincipal {
 	}
 	
 	/**
-	 * Permet de s'assurer que la liste des rôles Active Directory est bien chargée
+	 * Permet de s'assurer que la liste des rï¿½les Active Directory est bien chargï¿½e
 	 */
 	private void ensureRolesLoaded() {
 		if (roles == null) {
@@ -42,8 +42,8 @@ public class SpnegoPrincipal {
 	}
 	
 	/**
-	 * Permet de savoir si le role indiqué est contenu dans la liste des rôles récupérés.
-	 * @param role role recherché
+	 * Permet de savoir si le role indique est contenu dans la liste des roles recuperes.
+	 * @param role role recherche
 	 * @return vrai si l'utilisateur appartient au role, faux sinon
 	 */
 	public boolean hasRole(String role) {

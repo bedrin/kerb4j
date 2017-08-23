@@ -28,8 +28,8 @@ import org.jaaslounge.sso.tomcat.Configurator;
 
 /**
  * Permet d'interroger un registre Active Directory pour lire les informations de groupe.
- * On utilise une seule instance de cette classe pour toute l'application (on considère que
- * l'on n'accède pas simultanément à plusieurs registres Active Directory).
+ * On utilise une seule instance de cette classe pour toute l'application (on considure que
+ * l'on n'accede pas simultanement y plusieurs registres Active Directory).
  * @author damien
  */
 public class ActiveDirectoryReader implements PrivilegedAction {
@@ -44,7 +44,7 @@ public class ActiveDirectoryReader implements PrivilegedAction {
 	private String searchedName;
 	
 	/**
-	 * Crée et configure l'instance si elle n'est pas déjà créée, retourne cette instance.
+	 * Crï¿½e et configure l'instance si elle n'est pas deja creje, retourne cette instance.
 	 * @return instance du lecteur Active Directory
 	 */
 	public static synchronized ActiveDirectoryReader getReader() {
@@ -72,9 +72,9 @@ public class ActiveDirectoryReader implements PrivilegedAction {
 	}
 	
 	/**
-	 * Obtient la liste des rôles pour l'utilisateur indiqué
-	 * @param sname nom d'utilisateur recherché
-	 * @return liste des groupes associés
+	 * Obtient la liste des roles pour l'utilisateur indique
+	 * @param sname nom d'utilisateur recherche
+	 * @return liste des groupes associas
 	 */
 	public synchronized List getRolesForName(String sname) {
 		LoginContext context = null;
@@ -172,7 +172,7 @@ public class ActiveDirectoryReader implements PrivilegedAction {
 	}
 	
 	/**
-	 * Effectue la récupération des infos à proprement parler
+	 * Effectue la recuperation des infos y proprement parler
 	 */
 	public Object run() {
 		performLookup();

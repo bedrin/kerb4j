@@ -1,23 +1,23 @@
 package org.jaaslounge.sso.tomcat;
 
 /**
- * Permet de conserver la configuration pour le SSO de manière centralisée
+ * Permet de conserver la configuration pour le SSO de maniere centralisee
  * @author damien
  */
 public class Configurator {
-	/** Référence à l'instance du configurateur */
+	/** Reference y l'instance du configurateur */
 	private static Configurator config = null;
 	/** SPN correspondant au service pour kerberos */
 	private String servicePrincipalName;
-	/** mot de passe pour le SPN précédent */
+	/** mot de passe pour le SPN precedent */
 	private String servicePassword;
 	/** adresse du controlleur de domaine */
 	private String domainController;
 	/** nom de domaine */
 	private String domainName;
-	/** nom de la classe permettant de créer le contexte de recherche initial */
+	/** nom de la classe permettant de creer le contexte de recherche initial */
 	private String contextFactory;
-	/** identifiant du loginModule à utiliser */
+	/** identifiant du loginModule y utiliser */
 	private String loginContext;
 	/** contexte de recherche pour active directory (DC=MYDOMAIN,DC=COM) */
 	private String ldapSearchContext;
@@ -25,7 +25,7 @@ public class Configurator {
 	private boolean stripGroupNames;
 	
 	/**
-	 * Permet d'obtenir le configurateur conservé en mémoire
+	 * Permet d'obtenir le configurateur conserve en memoire
 	 * @return instance courante du configurateur
 	 */
 	public static synchronized Configurator getConfigurator() {
@@ -37,7 +37,7 @@ public class Configurator {
 
 	/**
 	 * Permet de connaitre la valeur pour le contexte de recherche initial
-	 * @return classe pour la création du contexte de recherche initial
+	 * @return classe pour la creation du contexte de recherche initial
 	 */
 	public String getContextFactory() {
 		return contextFactory;
@@ -68,8 +68,8 @@ public class Configurator {
 	}
 
 	/**
-	 * Permet de connaitre la valeur pour le login module à utiliser
-	 * @return nom du login module à utiliser
+	 * Permet de connaitre la valeur pour le login module y utiliser
+	 * @return nom du login module y utiliser
 	 */
 	public String getLoginContext() {
 		return loginContext;
@@ -77,22 +77,22 @@ public class Configurator {
 
 	/**
 	 * Permet de connaitre la valeur pour le mot de passe
-	 * @return mot de passe pour se connecter à kerberos
+	 * @return mot de passe pour se connecter a kerberos
 	 */
 	public String getServicePassword() {
 		return servicePassword;
 	}
 
 	/**
-	 * Permet de connaître la valeur pour le SPN
-	 * @return SPN pour se connecter à kerberos
+	 * Permet de connaï¿½tre la valeur pour le SPN
+	 * @return SPN pour se connecter a kerberos
 	 */
 	public String getServicePrincipalName() {
 		return servicePrincipalName;
 	}
 	
 	/**
-	 * Permet de connaître la valeur sur la récupération des noms de groupe
+	 * Permet de connactre la valeur sur la raecuperation des noms de groupe
 	 * @return vrai si on utilise des noms de groupe courts
 	 */
 	public boolean isStripGroupNames() {
@@ -100,8 +100,8 @@ public class Configurator {
 	}
 
 	/**
-	 * Permet d'affecter la valeur pour la classe de création du contexte de recherche initial
-	 * @param contextFactory valeur à affecter
+	 * Permet d'affecter la valeur pour la classe de creation du contexte de recherche initial
+	 * @param contextFactory valeur y affecter
 	 */
 	public synchronized void setContextFactory(String contextFactory) {
 		this.contextFactory = contextFactory;
@@ -109,7 +109,7 @@ public class Configurator {
 
 	/**
 	 * Permet d'affecter la valeur pour l'adresse du controleur de domaine
-	 * @param domainController valeur à affecter
+	 * @param domainController valeur y affecter
 	 */
 	public synchronized void setDomainController(String domainController) {
 		this.domainController = domainController;
@@ -117,15 +117,15 @@ public class Configurator {
 
 	/**
 	 * Permet d'affecter la valeur pour le nom de domaine
-	 * @param domainName valeur à affecter
+	 * @param domainName valeur y affecter
 	 */
 	public synchronized void setDomainName(String domainName) {
 		this.domainName = domainName;
 	}
 
 	/**
-	 * Permet d'affecter la valeur pour le critère de recherche dans active directory
-	 * @param ldapSearchContext valeur à affecter
+	 * Permet d'affecter la valeur pour le critire de recherche dans active directory
+	 * @param ldapSearchContext valeur y affecter
 	 */
 	public synchronized void setLdapSearchContext(String ldapSearchContext) {
 		this.ldapSearchContext = ldapSearchContext;
@@ -133,7 +133,7 @@ public class Configurator {
 
 	/**
 	 * Permet d'affecter la valeur pour le nom du login module
-	 * @param loginContext valeur à affecter
+	 * @param loginContext valeur y affecter
 	 */
 	public synchronized void setLoginContext(String loginContext) {
 		this.loginContext = loginContext;
@@ -141,7 +141,7 @@ public class Configurator {
 
 	/**
 	 * Permet d'affecter la valeur pour le mot de passe de connection vers kerberos
-	 * @param servicePassword valeur à affecter
+	 * @param servicePassword valeur y affecter
 	 */
 	public synchronized void setServicePassword(String servicePassword) {
 		this.servicePassword = servicePassword;
@@ -149,7 +149,7 @@ public class Configurator {
 
 	/**
 	 * Permet d'affecter la valeur pour le SPN pour la connection vers kerberos
-	 * @param servicePrincipalName valeur à affecter
+	 * @param servicePrincipalName valeur y affecter
 	 */
 	public synchronized void setServicePrincipalName(String servicePrincipalName) {
 		this.servicePrincipalName = servicePrincipalName;

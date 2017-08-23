@@ -13,10 +13,13 @@
 
     <dependencies>
 
+        <!-- https://mvnrepository.com/artifact/org.apache.tomcat/tomcat-catalina -->
         <dependency>
-            <groupId>tomcat</groupId>
-            <artifactId>catalina</artifactId>
-            <version>5.0.28</version>
+            <groupId>org.apache.tomcat</groupId>
+            <artifactId>tomcat-catalina</artifactId>
+            <version>8.0.46</version>
+            <scope>provided</scope>
         </dependency>
+
     </dependencies>
 </project>

@@ -13,12 +13,7 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>kerb4j-server-oas</module>
         <module>kerb4j-server-tomcat</module>
-        <module>kerb4j-server-websphere</module>
-        <!-- Requires an existing WebLogic installation, and setting of 'weblogic.home' property -->
-        <!--<module>weblogic</module>-->
-
     </modules>
 
     <dependencies>
@@ -29,8 +24,8 @@
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
-            <version>2.5</version>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>3.1.0</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
