@@ -5,7 +5,7 @@
 
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j</artifactId>
-    <version>0.0.3</version>
+    <version>0.0.4-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Kerb4J</name>
