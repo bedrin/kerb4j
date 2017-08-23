@@ -8,9 +8,17 @@
         <version>0.0.4-SNAPSHOT</version>
     </parent>
 
-    <artifactId>kerb4j-common</artifactId>
+    <artifactId>kerb4j-client</artifactId>
 
-    <name>kerb4j-common</name>
-    <description>kerb4j-common</description>
-    
+    <name>kerb4j-client</name>
+    <description>kerb4j-client</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.kerb4j</groupId>
+            <artifactId>kerb4j-common</artifactId>
+            <version>0.0.4-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+
 </project>

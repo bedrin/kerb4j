@@ -24,7 +24,7 @@ import javax.security.auth.spi.LoginModule;
  * @author Laurent RUAUD
  * @author Kevin WHITE
  * @author Thomas VILLEGER
- * @author Jérôme PETIT
+ * @author Jerome PETIT
  */
 public abstract class AbstractLoginModule implements LoginModule, Authenticator {
 
@@ -221,7 +221,7 @@ public abstract class AbstractLoginModule implements LoginModule, Authenticator 
                     principals.removeAll(s.getPrincipals());
                     // TODO : voir pb ajout de collection de role au
                     // lieu de fusion
-                    // corriger eventuellement à l'aide de equals
+                    // corriger eventuellement ï¿½ l'aide de equals
                     s.getPrincipals().addAll(principals);
                     publicCredentials.removeAll(s.getPublicCredentials());
                     s.getPublicCredentials().addAll(publicCredentials);
