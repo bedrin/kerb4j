@@ -1,16 +1,27 @@
 package com.kerb4j.common.marshall.spnego;
 
 import com.kerb4j.common.marshall.Kerb4JException;
+import com.kerb4j.common.marshall.pac.Pac;
 import com.kerb4j.common.util.SpnegoProvider;
 import org.apache.kerby.asn1.parse.Asn1Container;
 import org.apache.kerby.asn1.parse.Asn1ParseResult;
 import org.apache.kerby.asn1.parse.Asn1Parser;
 import org.apache.kerby.asn1.type.Asn1ObjectIdentifier;
+import org.apache.kerby.kerberos.kerb.KrbCodec;
+import org.apache.kerby.kerberos.kerb.KrbException;
+import org.apache.kerby.kerberos.kerb.crypto.EncryptionHandler;
+import org.apache.kerby.kerberos.kerb.type.ad.AuthorizationData;
+import org.apache.kerby.kerberos.kerb.type.ad.AuthorizationDataEntry;
 import org.apache.kerby.kerberos.kerb.type.ap.ApReq;
+import org.apache.kerby.kerberos.kerb.type.base.EncryptedData;
+import org.apache.kerby.kerberos.kerb.type.base.EncryptionType;
+import org.apache.kerby.kerberos.kerb.type.base.KeyUsage;
+import org.apache.kerby.kerberos.kerb.type.ticket.EncTicketPart;
 
 import javax.security.auth.kerberos.KerberosKey;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 /**
  * https://tools.ietf.org/html/rfc1964
@@ -34,10 +45,6 @@ public class SpnegoKerberosMechToken {
     private ApReq apRequest;
 
     public SpnegoKerberosMechToken(byte[] token) throws Kerb4JException {
-        this(token, null);
-    }
-
-    public SpnegoKerberosMechToken(byte[] token, KerberosKey[] keys) throws Kerb4JException {
 
         if (token.length <= 0)
             throw new Kerb4JException("kerberos.token.empty", null, null);
@@ -76,6 +83,62 @@ public class SpnegoKerberosMechToken {
 
     public ApReq getApRequest() {
         return apRequest;
+    }
+
+    public KerberosKey getKerberosKey(EncryptionType eType, KerberosKey[] kerberosKeys) throws KrbException {
+
+        for (KerberosKey kerberosKey : kerberosKeys) {
+            if (kerberosKey.getKeyType() == eType.getValue()) {
+                return kerberosKey;
+            }
+        }
+
+        return null;
+
+    }
+
+    public EncTicketPart getEncryptedTicketPart(byte[] cipher, KerberosKey kerberosKey) throws KrbException {
+
+        byte[] decrypt = EncryptionHandler.getEncHandler(kerberosKey.getKeyType()).decrypt(
+                cipher,
+                kerberosKey.getEncoded(),
+                KeyUsage.KDC_REP_TICKET.getValue()
+        );
+
+        return KrbCodec.decode(decrypt, EncTicketPart.class);
+
+    }
+
+    public Pac getPac(KerberosKey[] kerberosKeys) throws KrbException, Kerb4JException {
+
+        EncryptedData encryptedData = getApRequest().getTicket().getEncryptedEncPart();
+        KerberosKey kerberosKey = getKerberosKey(encryptedData.getEType(), kerberosKeys);
+        EncTicketPart tgsRep = getEncryptedTicketPart(encryptedData.getCipher(), kerberosKey);
+
+        List<AuthorizationDataEntry> authorizationDataEntries = tgsRep.getAuthorizationData().getElements();
+
+        return extractPac(authorizationDataEntries, kerberosKey);
+
+    }
+
+    private Pac extractPac(List<AuthorizationDataEntry> authorizationDataEntries, KerberosKey kerberosKey) throws Kerb4JException {
+
+        for (AuthorizationDataEntry authorizationDataEntry : authorizationDataEntries) {
+            switch (authorizationDataEntry.getAuthzType()) {
+                case AD_IF_RELEVANT:
+                    Pac pac = extractPac(authorizationDataEntry.getAuthzDataAs(AuthorizationData.class).getElements(), kerberosKey);
+                    if (null != pac) {
+                        return pac;
+                    } else {
+                        continue;
+                    }
+                case AD_WIN2K_PAC:
+                    return new Pac(authorizationDataEntry.getAuthzData(), kerberosKey);
+            }
+        }
+
+        return null;
+
     }
 
 }

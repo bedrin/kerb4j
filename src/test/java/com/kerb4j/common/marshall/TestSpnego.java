@@ -6,13 +6,6 @@ import com.kerb4j.common.marshall.pac.PacSid;
 import com.kerb4j.common.marshall.spnego.SpnegoInitToken;
 import com.kerb4j.common.marshall.spnego.SpnegoKerberosMechToken;
 import com.kerb4j.common.util.SpnegoProvider;
-import org.apache.kerby.kerberos.kerb.KrbCodec;
-import org.apache.kerby.kerberos.kerb.crypto.EncryptionHandler;
-import org.apache.kerby.kerberos.kerb.type.ad.AuthorizationData;
-import org.apache.kerby.kerberos.kerb.type.ad.AuthorizationDataEntry;
-import org.apache.kerby.kerberos.kerb.type.base.EncryptedData;
-import org.apache.kerby.kerberos.kerb.type.base.KeyUsage;
-import org.apache.kerby.kerberos.kerb.type.ticket.EncTicketPart;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,9 +14,7 @@ import javax.security.auth.kerberos.KerberosKey;
 import java.io.IOException;
 import java.io.InputStream;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class TestSpnego {
 
@@ -133,34 +124,11 @@ public class TestSpnego {
         Assert.assertNotNull(spnegoToken.getMechanism());
         Assert.assertEquals(SpnegoProvider.LEGACY_KERBEROS_MECHANISM, spnegoToken.getMechanism());
 
-        byte[] kerberosTokenData = spnegoToken.getMechToken();
-
-        SpnegoKerberosMechToken token = new SpnegoKerberosMechToken(kerberosTokenData, aes256Keys);
+        SpnegoKerberosMechToken token = spnegoToken.getSpnegoKerberosMechToken();
 
         try {
 
-            EncryptedData encryptedData = token.getApRequest().getTicket().getEncryptedEncPart();
-
-            byte[] decrypt = EncryptionHandler.getEncHandler(aes256Keys[0].getKeyType()).decrypt(
-                    encryptedData.getCipher(),
-                    aes256Keys[0].getEncoded(),
-                    KeyUsage.KDC_REP_TICKET.getValue()
-            );
-            EncTicketPart tgsRep = KrbCodec.decode(decrypt, EncTicketPart.class);
-            System.out.println(tgsRep);
-
-            AuthorizationDataEntry authorizationDataEntry = tgsRep.getAuthorizationData().getElements().get(0);
-
-            Pac pac = null;
-            while (null == pac) {
-                switch (authorizationDataEntry.getAuthzType()) {
-                    case AD_IF_RELEVANT:
-                        authorizationDataEntry = authorizationDataEntry.getAuthzDataAs(AuthorizationData.class).getElements().get(0);
-                        continue;
-                    case AD_WIN2K_PAC:
-                        pac = new Pac(authorizationDataEntry.getAuthzData(), aes256Keys[0]);
-                }
-            }
+            Pac pac = token.getPac(aes256Keys);
 
             PacLogonInfo logonInfo = pac.getLogonInfo();
             assertNotNull(logonInfo);
