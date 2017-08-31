@@ -19,6 +19,13 @@
             <artifactId>kerb4j-common</artifactId>
             <version>0.0.4-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>com.kerb4j</groupId>
+            <artifactId>kerb4j-common</artifactId>
+            <version>0.0.4-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>

@@ -29,6 +29,8 @@ import java.net.InetAddress;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import com.kerb4j.KerberosSecurityTestcase;
+import com.kerb4j.MiniKdc;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.boot.SpringApplication;
@@ -49,9 +51,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
-import org.springframework.security.kerberos.client.KerberosRestTemplate;
-import org.springframework.security.kerberos.test.KerberosSecurityTestcase;
-import org.springframework.security.kerberos.test.MiniKdc;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
