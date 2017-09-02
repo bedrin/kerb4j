@@ -39,7 +39,7 @@
     class="org.springframework.security.kerberos.docs.DummyUserDetailsService" />
 
   <bean id="spnegoEntryPoint"
-    class="org.springframework.security.kerberos.web.authentication.SpnegoEntryPoint" >
+    class="com.kerb4j.server.spring.SpnegoEntryPoint" >
     <constructor-arg value="/login" />
   </bean>
 

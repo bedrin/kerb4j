@@ -31,9 +31,9 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.kerberos.authentication.KerberosServiceAuthenticationProvider;
 import org.springframework.security.kerberos.authentication.sun.SunJaasKerberosTicketValidator;
-import org.springframework.security.kerberos.web.authentication.ResponseHeaderSettingKerberosAuthenticationSuccessHandler;
-import org.springframework.security.kerberos.web.authentication.SpnegoAuthenticationProcessingFilter;
-import org.springframework.security.kerberos.web.authentication.SpnegoEntryPoint;
+import com.kerb4j.server.spring.SpnegoMutualAuthenticationHandler;
+import com.kerb4j.server.spring.SpnegoAuthenticationProcessingFilter;
+import com.kerb4j.server.spring.SpnegoEntryPoint;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
 @Configuration
@@ -74,7 +74,7 @@ public class WebSecurityConfigSuccessHandler extends WebSecurityConfigurerAdapte
 			AuthenticationManager authenticationManager) {
 		SpnegoAuthenticationProcessingFilter filter = new SpnegoAuthenticationProcessingFilter();
 
-		ResponseHeaderSettingKerberosAuthenticationSuccessHandler successHandler = new ResponseHeaderSettingKerberosAuthenticationSuccessHandler();
+		SpnegoMutualAuthenticationHandler successHandler = new SpnegoMutualAuthenticationHandler();
 		filter.setSuccessHandler(successHandler);
 
 		filter.setAuthenticationManager(authenticationManager);

@@ -16,7 +16,7 @@
 package org.springframework.security.kerberos.web;
 
 import org.junit.Test;
-import org.springframework.security.kerberos.web.authentication.SpnegoEntryPoint;
+import com.kerb4j.server.spring.SpnegoEntryPoint;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.http.HttpServletRequest;

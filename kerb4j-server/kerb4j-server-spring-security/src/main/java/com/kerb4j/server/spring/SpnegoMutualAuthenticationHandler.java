@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.web.authentication;
+package com.kerb4j.server.spring;
 
 import java.io.IOException;
 
@@ -31,7 +31,7 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
  *
  * @author Jeremy Stone
  */
-public class ResponseHeaderSettingKerberosAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
+public class SpnegoMutualAuthenticationHandler implements AuthenticationSuccessHandler {
 
     private static final String NEGOTIATE_PREFIX = "Negotiate ";
 

@@ -34,12 +34,12 @@
   </bean>
 
   <bean id="spnegoEntryPoint"
-    class="org.springframework.security.kerberos.web.authentication.SpnegoEntryPoint" >
+    class="com.kerb4j.server.spring.SpnegoEntryPoint" >
     <constructor-arg value="/login" />
   </bean>
 
   <bean id="spnegoAuthenticationProcessingFilter"
-    class="org.springframework.security.kerberos.web.authentication.SpnegoAuthenticationProcessingFilter">
+    class="com.kerb4j.server.spring.SpnegoAuthenticationProcessingFilter">
     <property name="authenticationManager" ref="authenticationManager" />
   </bean>
 
