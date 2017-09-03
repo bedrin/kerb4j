@@ -16,9 +16,12 @@
 package com.kerb4j.server.spring;
 
 import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.kerberos.authentication.KerberosServiceAuthenticationProvider;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 
 /**
@@ -39,7 +42,20 @@ public class SpnegoRequestToken extends AbstractAuthenticationToken {
 
 	private static final long serialVersionUID = 395488921064775014L;
 
-	private final byte[] token;
+	private final byte[] spnegoInitToken;
+
+    /**
+     * Creates an authenticated token, normally used as an output of an
+     * authentication provider.
+     *
+     * @param authorities the authorities which are granted to the user
+     * @param spnegoInitToken the SPNEGO Init token
+     * @see UserDetails
+     */
+    public SpnegoRequestToken(Collection<? extends GrantedAuthority> authorities, byte[] spnegoInitToken) {
+        super(authorities);
+        this.spnegoInitToken = spnegoInitToken;
+    }
 
 	/**
 	 * Creates an unauthenticated instance which should then be authenticated by
@@ -49,8 +65,7 @@ public class SpnegoRequestToken extends AbstractAuthenticationToken {
 	 * @see KerberosServiceAuthenticationProvider
 	 */
 	public SpnegoRequestToken(byte[] token) {
-		super(Collections.emptySet());
-		this.token = token;
+		this(Collections.emptySet(), token);
 	}
 
 	/**
@@ -60,7 +75,7 @@ public class SpnegoRequestToken extends AbstractAuthenticationToken {
 	public int hashCode() {
 		final int prime = 31;
 		int result = super.hashCode();
-		result = prime * result + Arrays.hashCode(token);
+		result = prime * result + Arrays.hashCode(spnegoInitToken);
 		return result;
 	}
 
@@ -76,7 +91,7 @@ public class SpnegoRequestToken extends AbstractAuthenticationToken {
 		if (getClass() != obj.getClass())
 			return false;
 		SpnegoRequestToken other = (SpnegoRequestToken) obj;
-		return Arrays.equals(token, other.token);
+		return Arrays.equals(spnegoInitToken, other.spnegoInitToken);
 	}
 
 	@Override
@@ -92,7 +107,7 @@ public class SpnegoRequestToken extends AbstractAuthenticationToken {
 	@Override
 	public void eraseCredentials() {
 		super.eraseCredentials();
-		Arrays.fill(token, (byte) 0);
+		Arrays.fill(spnegoInitToken, (byte) 0);
 	}
 
 	/**
@@ -100,7 +115,7 @@ public class SpnegoRequestToken extends AbstractAuthenticationToken {
 	 * @return the token data
 	 */
 	public byte[] getToken() {
-		return this.token;
+		return this.spnegoInitToken;
 	}
 
 }

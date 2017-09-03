@@ -24,6 +24,6 @@ package org.springframework.security.kerberos.authentication;
  */
 public interface KerberosClient {
 
-    public String login(String username, String password);
+    String login(String username, String password);
 
 }

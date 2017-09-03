@@ -177,7 +177,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
 			if (!holdOnToGSSContext) {
 				context.dispose();
 			}
-			return new SpnegoAuthenticationToken(gssName.toString(), servicePrincipal, responseToken, context);
+			return new SpnegoAuthenticationToken(kerberosTicket, gssName.toString(), responseToken);
         }
     }
 

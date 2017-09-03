@@ -83,9 +83,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
 
     private static SpnegoAuthenticationToken UNUSED_TICKET_VALIDATION = mock(SpnegoAuthenticationToken.class);
 
-    private static final Authentication AUTHENTICATION = new SpnegoRequestToken(
-            "test", UNUSED_TICKET_VALIDATION, AuthorityUtils.createAuthorityList("ROLE_ADMIN"),
-            TEST_TOKEN);
+    private static final Authentication AUTHENTICATION = new SpnegoRequestToken(TEST_TOKEN);
 
     private static final String HEADER = "Authorization";
 

@@ -58,8 +58,7 @@ public class KerberosServiceAuthenticationProvider implements
 	private UserDetailsChecker userDetailsChecker = new AccountStatusUserDetailsChecker();
 
 	@Override
-	public Authentication authenticate(Authentication authentication)
-			throws AuthenticationException {
+	public SpnegoAuthenticationToken authenticate(Authentication authentication) {
 		SpnegoRequestToken auth = (SpnegoRequestToken) authentication;
 		byte[] token = auth.getToken();
 		LOG.debug("Try to validate Kerberos Token");
@@ -68,15 +67,16 @@ public class KerberosServiceAuthenticationProvider implements
 		UserDetails userDetails = this.userDetailsService.loadUserByUsername(ticketValidation.username());
 		userDetailsChecker.check(userDetails);
 		additionalAuthenticationChecks(userDetails, auth);
-		SpnegoRequestToken responseAuth = new SpnegoRequestToken(
-				userDetails, ticketValidation,
-				userDetails.getAuthorities(), token);
+		SpnegoAuthenticationToken responseAuth = new SpnegoAuthenticationToken(
+				userDetails.getAuthorities(), ticketValidation.getToken(),
+				userDetails.getUsername(), ticketValidation.responseToken()
+		);
 		responseAuth.setDetails(authentication.getDetails());
 		return  responseAuth;
 	}
 
 	@Override
-	public boolean supports(Class<? extends Object> auth) {
+	public boolean supports(Class<?> auth) {
 		return SpnegoRequestToken.class.isAssignableFrom(auth);
 	}
 

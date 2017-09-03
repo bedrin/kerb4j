@@ -37,6 +37,7 @@ public interface KerberosTicketValidator {
      * @return authenticated kerberos principal
      * @throws BadCredentialsException if the ticket is not valid
      */
-    public SpnegoAuthenticationToken validateTicket(byte[] token)
+    SpnegoAuthenticationToken validateTicket(byte[] token)
             throws BadCredentialsException;
+
 }
