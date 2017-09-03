@@ -15,6 +15,7 @@
  */
 package org.springframework.security.kerberos.authentication;
 
+import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import org.springframework.security.authentication.BadCredentialsException;
 
 /**
@@ -36,6 +37,6 @@ public interface KerberosTicketValidator {
      * @return authenticated kerberos principal
      * @throws BadCredentialsException if the ticket is not valid
      */
-    public KerberosTicketValidation validateTicket(byte[] token)
+    public SpnegoAuthenticationToken validateTicket(byte[] token)
             throws BadCredentialsException;
 }

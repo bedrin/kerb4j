@@ -20,6 +20,7 @@ import static org.mockito.Mockito.*;
 
 import java.util.List;
 
+import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.security.authentication.AccountExpiredException;
@@ -54,7 +55,7 @@ public class KerberosServiceAuthenticationProviderTest {
     private static final byte[] RESPONSE_TOKEN = "ResponseToken".getBytes();
     private static final String TEST_USER = "Testuser@SPRINGSOURCE.ORG";
 
-    private static final KerberosTicketValidation TICKET_VALIDATION = new KerberosTicketValidation(TEST_USER, "XXX", RESPONSE_TOKEN, null);
+    private static final SpnegoAuthenticationToken TICKET_VALIDATION = new SpnegoAuthenticationToken(TEST_USER, "XXX", RESPONSE_TOKEN, null);
 
     private static final List<GrantedAuthority> AUTHORITY_LIST = AuthorityUtils.createAuthorityList("ROLE_ADMIN");
     private static final UserDetails USER_DETAILS = new User(TEST_USER, "empty", true, true, true,true, AUTHORITY_LIST);

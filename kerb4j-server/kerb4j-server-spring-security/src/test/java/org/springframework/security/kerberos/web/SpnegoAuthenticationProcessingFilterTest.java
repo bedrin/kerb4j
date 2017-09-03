@@ -45,7 +45,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.kerb4j.server.spring.SpnegoRequestToken;
-import org.springframework.security.kerberos.authentication.KerberosTicketValidation;
+import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import com.kerb4j.server.spring.SpnegoAuthenticationProcessingFilter;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -81,7 +81,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
 
     private static final String TEST_TOKEN_BASE64 = "VGVzdFRva2Vu";
 
-    private static KerberosTicketValidation UNUSED_TICKET_VALIDATION = mock(KerberosTicketValidation.class);
+    private static SpnegoAuthenticationToken UNUSED_TICKET_VALIDATION = mock(SpnegoAuthenticationToken.class);
 
     private static final Authentication AUTHENTICATION = new SpnegoRequestToken(
             "test", UNUSED_TICKET_VALIDATION, AuthorityUtils.createAuthorityList("ROLE_ADMIN"),

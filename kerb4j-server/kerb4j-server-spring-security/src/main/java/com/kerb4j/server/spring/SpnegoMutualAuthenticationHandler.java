@@ -62,7 +62,7 @@ public class SpnegoMutualAuthenticationHandler implements AuthenticationSuccessH
     @Override
 	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
 			Authentication authentication) throws IOException, ServletException {
-		SpnegoRequestToken auth = (SpnegoRequestToken) authentication;
+        SpnegoAuthenticationToken auth = (SpnegoAuthenticationToken) authentication;
 		if (auth.hasResponseToken()) {
 			response.addHeader(headerName, headerPrefix + auth.getEncodedResponseToken());
 		}

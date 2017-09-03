@@ -39,7 +39,7 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.kerberos.authentication.KerberosTicketValidation;
+import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import org.springframework.security.kerberos.authentication.KerberosTicketValidator;
 import org.springframework.util.Assert;
 
@@ -63,7 +63,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
     private static final Log LOG = LogFactory.getLog(SunJaasKerberosTicketValidator.class);
 
     @Override
-    public KerberosTicketValidation validateTicket(byte[] token) {
+    public SpnegoAuthenticationToken validateTicket(byte[] token) {
         try {
             return Subject.doAs(this.serviceSubject, new KerberosValidateAction(token));
         }
@@ -150,7 +150,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
      * This class is needed, because the validation must run with previously generated JAAS subject
      * which belongs to the service principal and was loaded out of the keytab during startup.
      */
-    private class KerberosValidateAction implements PrivilegedExceptionAction<KerberosTicketValidation> {
+    private class KerberosValidateAction implements PrivilegedExceptionAction<SpnegoAuthenticationToken> {
         byte[] kerberosTicket;
 
         public KerberosValidateAction(byte[] kerberosTicket) {
@@ -158,7 +158,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
         }
 
         @Override
-        public KerberosTicketValidation run() throws Exception {
+        public SpnegoAuthenticationToken run() throws Exception {
 			byte[] responseToken = new byte[0];
 			GSSName gssName = null;
 			GSSContext context = GSSManager.getInstance().createContext((GSSCredential) null);
@@ -177,7 +177,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
 			if (!holdOnToGSSContext) {
 				context.dispose();
 			}
-			return new KerberosTicketValidation(gssName.toString(), servicePrincipal, responseToken, context);
+			return new SpnegoAuthenticationToken(gssName.toString(), servicePrincipal, responseToken, context);
         }
     }
 

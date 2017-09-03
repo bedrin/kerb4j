@@ -15,6 +15,7 @@
  */
 package org.springframework.security.kerberos.authentication;
 
+import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import com.kerb4j.server.spring.SpnegoRequestToken;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -62,7 +63,7 @@ public class KerberosServiceAuthenticationProvider implements
 		SpnegoRequestToken auth = (SpnegoRequestToken) authentication;
 		byte[] token = auth.getToken();
 		LOG.debug("Try to validate Kerberos Token");
-		KerberosTicketValidation ticketValidation = this.ticketValidator.validateTicket(token);
+		SpnegoAuthenticationToken ticketValidation = this.ticketValidator.validateTicket(token);
 		LOG.debug("Successfully validated " + ticketValidation.username());
 		UserDetails userDetails = this.userDetailsService.loadUserByUsername(ticketValidation.username());
 		userDetailsChecker.check(userDetails);
