@@ -15,6 +15,7 @@
  */
 package com.kerb4j.server.spring;
 
+import com.kerb4j.common.util.Constants;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,12 +31,10 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.util.Assert;
-import org.springframework.web.filter.GenericFilterBean;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -105,33 +104,31 @@ import java.io.IOException;
  * @see KerberosServiceAuthenticationProvider
  * @see SpnegoEntryPoint
  */
-public class SpnegoAuthenticationProcessingFilter extends GenericFilterBean {
+public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
 
 	private AuthenticationDetailsSource<HttpServletRequest,?> authenticationDetailsSource = new WebAuthenticationDetailsSource();
     private AuthenticationManager authenticationManager;
-    private AuthenticationSuccessHandler successHandler;
-    private AuthenticationFailureHandler failureHandler;
-    private SessionAuthenticationStrategy sessionStrategy = new NullAuthenticatedSessionStrategy();
+    private AuthenticationSuccessHandler authenticationSuccessHandler;
+    private AuthenticationFailureHandler authenticationFailureHandler;
+    private SessionAuthenticationStrategy sessionAuthenticationStrategy = new NullAuthenticatedSessionStrategy();
     private boolean skipIfAlreadyAuthenticated = true;
 
     @Override
-    public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
-        HttpServletRequest request = (HttpServletRequest) req;
-        HttpServletResponse response = (HttpServletResponse) res;
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
         if (skipIfAlreadyAuthenticated) {
             Authentication existingAuth = SecurityContextHolder.getContext().getAuthentication();
 
-            if (existingAuth != null && existingAuth.isAuthenticated()
-                    && (existingAuth instanceof AnonymousAuthenticationToken) == false) {
-                chain.doFilter(request, response);
+            if (existingAuth != null && existingAuth.isAuthenticated() && !(existingAuth instanceof AnonymousAuthenticationToken)) {
+                filterChain.doFilter(request, response);
                 return;
             }
         }
 
-        String header = request.getHeader("Authorization");
+        String header = request.getHeader(Constants.AUTHZ_HEADER);
 
-        if (header != null && (header.startsWith("Negotiate ") || header.startsWith("Kerberos "))) {
+        // TODO: spring-security-kerberos used to support "Kerberos" scheme. Is it a valid use case?
+        if (header != null && (header.startsWith(Constants.NEGOTIATE_HEADER))) {
             if (logger.isDebugEnabled()) {
                 logger.debug("Received Negotiate Header for request " + request.getRequestURL() + ": " + header);
             }
@@ -147,23 +144,23 @@ public class SpnegoAuthenticationProcessingFilter extends GenericFilterBean {
                 // configuration on the server side
                 logger.warn("Negotiate Header was invalid: " + header, e);
                 SecurityContextHolder.clearContext();
-                if (failureHandler != null) {
-                    failureHandler.onAuthenticationFailure(request, response, e);
+                if (authenticationFailureHandler != null) {
+                    authenticationFailureHandler.onAuthenticationFailure(request, response, e);
                 } else {
-                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.flushBuffer();
                 }
                 return;
             }
-            sessionStrategy.onAuthentication(authentication, request, response);
+            sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            if (successHandler != null) {
-                successHandler.onAuthenticationSuccess(request, response, authentication);
+            if (authenticationSuccessHandler != null) {
+                authenticationSuccessHandler.onAuthenticationSuccess(request, response, authentication);
             }
 
         }
 
-        chain.doFilter(request, response);
+        filterChain.doFilter(request, response);
 
     }
 
@@ -187,10 +184,10 @@ public class SpnegoAuthenticationProcessingFilter extends GenericFilterBean {
      * additional authentication behavior by setting this.</p>
      * <p>Default is null, which means nothing additional happens</p>
      *
-     * @param successHandler the authentication success handler
+     * @param authenticationSuccessHandler the authentication success handler
      */
-    public void setSuccessHandler(AuthenticationSuccessHandler successHandler) {
-        this.successHandler = successHandler;
+    public void setAuthenticationSuccessHandler(AuthenticationSuccessHandler authenticationSuccessHandler) {
+        this.authenticationSuccessHandler = authenticationSuccessHandler;
     }
 
     /**
@@ -201,10 +198,10 @@ public class SpnegoAuthenticationProcessingFilter extends GenericFilterBean {
      * handler will not be called in this case.</p>
      * <p>Default is null, which means that the Filter returns the HTTP 500 code</p>
      *
-     * @param failureHandler the authentication failure handler
+     * @param authenticationFailureHandler the authentication failure handler
      */
-    public void setFailureHandler(AuthenticationFailureHandler failureHandler) {
-        this.failureHandler = failureHandler;
+    public void setAuthenticationFailureHandler(AuthenticationFailureHandler authenticationFailureHandler) {
+        this.authenticationFailureHandler = authenticationFailureHandler;
     }
 
 
@@ -228,7 +225,7 @@ public class SpnegoAuthenticationProcessingFilter extends GenericFilterBean {
 	 *                        implementation is used.
 	 */
     public void setSessionAuthenticationStrategy(SessionAuthenticationStrategy sessionStrategy) {
-        this.sessionStrategy = sessionStrategy;
+        this.sessionAuthenticationStrategy = sessionStrategy;
     }
 
 

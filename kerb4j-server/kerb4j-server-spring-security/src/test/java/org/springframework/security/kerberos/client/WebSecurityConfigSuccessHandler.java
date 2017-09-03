@@ -75,7 +75,7 @@ public class WebSecurityConfigSuccessHandler extends WebSecurityConfigurerAdapte
 		SpnegoAuthenticationProcessingFilter filter = new SpnegoAuthenticationProcessingFilter();
 
 		SpnegoMutualAuthenticationHandler successHandler = new SpnegoMutualAuthenticationHandler();
-		filter.setSuccessHandler(successHandler);
+		filter.setAuthenticationSuccessHandler(successHandler);
 
 		filter.setAuthenticationManager(authenticationManager);
 		return filter;
