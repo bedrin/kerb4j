@@ -22,7 +22,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.security.core.Authentication;
-import org.springframework.security.kerberos.authentication.KerberosServiceRequestToken;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
 /**
@@ -63,7 +62,7 @@ public class SpnegoMutualAuthenticationHandler implements AuthenticationSuccessH
     @Override
 	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
 			Authentication authentication) throws IOException, ServletException {
-		KerberosServiceRequestToken auth = (KerberosServiceRequestToken) authentication;
+		SpnegoRequestToken auth = (SpnegoRequestToken) authentication;
 		if (auth.hasResponseToken()) {
 			response.addHeader(headerName, headerPrefix + auth.getEncodedResponseToken());
 		}

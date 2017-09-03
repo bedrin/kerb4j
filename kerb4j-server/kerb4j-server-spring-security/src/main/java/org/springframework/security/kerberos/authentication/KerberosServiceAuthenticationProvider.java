@@ -15,6 +15,7 @@
  */
 package org.springframework.security.kerberos.authentication;
 
+import com.kerb4j.server.spring.SpnegoRequestToken;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -58,7 +59,7 @@ public class KerberosServiceAuthenticationProvider implements
 	@Override
 	public Authentication authenticate(Authentication authentication)
 			throws AuthenticationException {
-		KerberosServiceRequestToken auth = (KerberosServiceRequestToken) authentication;
+		SpnegoRequestToken auth = (SpnegoRequestToken) authentication;
 		byte[] token = auth.getToken();
 		LOG.debug("Try to validate Kerberos Token");
 		KerberosTicketValidation ticketValidation = this.ticketValidator.validateTicket(token);
@@ -66,7 +67,7 @@ public class KerberosServiceAuthenticationProvider implements
 		UserDetails userDetails = this.userDetailsService.loadUserByUsername(ticketValidation.username());
 		userDetailsChecker.check(userDetails);
 		additionalAuthenticationChecks(userDetails, auth);
-		KerberosServiceRequestToken responseAuth = new KerberosServiceRequestToken(
+		SpnegoRequestToken responseAuth = new SpnegoRequestToken(
 				userDetails, ticketValidation,
 				userDetails.getAuthorities(), token);
 		responseAuth.setDetails(authentication.getDetails());
@@ -75,7 +76,7 @@ public class KerberosServiceAuthenticationProvider implements
 
 	@Override
 	public boolean supports(Class<? extends Object> auth) {
-		return KerberosServiceRequestToken.class.isAssignableFrom(auth);
+		return SpnegoRequestToken.class.isAssignableFrom(auth);
 	}
 
 	@Override
@@ -109,11 +110,11 @@ public class KerberosServiceAuthenticationProvider implements
 	 * for a given authentication request.
 	 *
 	 * @param userDetails as retrieved from the {@link UserDetailsService}
-	 * @param authentication validated {@link KerberosServiceRequestToken}
+	 * @param authentication validated {@link SpnegoRequestToken}
 	 * @throws AuthenticationException AuthenticationException if the credentials could not be validated (generally a
 	 *         <code>BadCredentialsException</code>, an <code>AuthenticationServiceException</code>)
 	 */
-	protected void additionalAuthenticationChecks(UserDetails userDetails, KerberosServiceRequestToken authentication)
+	protected void additionalAuthenticationChecks(UserDetails userDetails, SpnegoRequestToken authentication)
 			throws AuthenticationException {
 	}
 

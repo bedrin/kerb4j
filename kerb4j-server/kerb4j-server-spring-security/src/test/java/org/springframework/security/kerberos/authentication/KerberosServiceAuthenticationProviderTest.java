@@ -34,10 +34,7 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.kerberos.authentication.KerberosServiceAuthenticationProvider;
-import org.springframework.security.kerberos.authentication.KerberosServiceRequestToken;
-import org.springframework.security.kerberos.authentication.KerberosTicketValidation;
-import org.springframework.security.kerberos.authentication.KerberosTicketValidator;
+import com.kerb4j.server.spring.SpnegoRequestToken;
 
 /**
  * Test class for {@link KerberosServiceAuthenticationProvider}
@@ -61,7 +58,7 @@ public class KerberosServiceAuthenticationProviderTest {
 
     private static final List<GrantedAuthority> AUTHORITY_LIST = AuthorityUtils.createAuthorityList("ROLE_ADMIN");
     private static final UserDetails USER_DETAILS = new User(TEST_USER, "empty", true, true, true,true, AUTHORITY_LIST);
-    private static final KerberosServiceRequestToken INPUT_TOKEN = new KerberosServiceRequestToken(TEST_TOKEN);
+    private static final SpnegoRequestToken INPUT_TOKEN = new SpnegoRequestToken(TEST_TOKEN);
 
     @Before
     public void before() {
@@ -84,7 +81,7 @@ public class KerberosServiceAuthenticationProviderTest {
 
     @Test
     public void testAuthenticationDetailsPropagation() throws Exception {
-    	KerberosServiceRequestToken requestToken = new KerberosServiceRequestToken(TEST_TOKEN);
+    	SpnegoRequestToken requestToken = new SpnegoRequestToken(TEST_TOKEN);
     	requestToken.setDetails("TestDetails");
         Authentication output = callProviderAndReturnUser(USER_DETAILS, requestToken);
         assertNotNull(output);

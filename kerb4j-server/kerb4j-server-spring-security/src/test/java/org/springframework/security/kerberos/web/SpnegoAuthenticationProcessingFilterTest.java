@@ -44,7 +44,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.kerberos.authentication.KerberosServiceRequestToken;
+import com.kerb4j.server.spring.SpnegoRequestToken;
 import org.springframework.security.kerberos.authentication.KerberosTicketValidation;
 import com.kerb4j.server.spring.SpnegoAuthenticationProcessingFilter;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
@@ -83,7 +83,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
 
     private static KerberosTicketValidation UNUSED_TICKET_VALIDATION = mock(KerberosTicketValidation.class);
 
-    private static final Authentication AUTHENTICATION = new KerberosServiceRequestToken(
+    private static final Authentication AUTHENTICATION = new SpnegoRequestToken(
             "test", UNUSED_TICKET_VALIDATION, AuthorityUtils.createAuthorityList("ROLE_ADMIN"),
             TEST_TOKEN);
 
@@ -142,7 +142,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
             ServletException {
         // stubbing
 		when(request.getHeader(HEADER)).thenReturn(tokenPrefix + TEST_TOKEN_BASE64);
-		KerberosServiceRequestToken requestToken = new KerberosServiceRequestToken(TEST_TOKEN);
+		SpnegoRequestToken requestToken = new SpnegoRequestToken(TEST_TOKEN);
 		requestToken.setDetails(detailsSource.buildDetails(request));
 		when(authenticationManager.authenticate(requestToken)).thenReturn(AUTHENTICATION);
 

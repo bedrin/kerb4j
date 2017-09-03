@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.authentication;
+package com.kerb4j.server.spring;
 
 import java.io.UnsupportedEncodingException;
 import java.security.PrivilegedActionException;
@@ -29,6 +29,8 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.codec.Base64;
+import org.springframework.security.kerberos.authentication.KerberosServiceAuthenticationProvider;
+import org.springframework.security.kerberos.authentication.KerberosTicketValidation;
 
 /**
  * <p>Holds the Kerberos/SPNEGO token for requesting a kerberized service and is
@@ -44,7 +46,7 @@ import org.springframework.security.crypto.codec.Base64;
  * @since 1.0
  * @see KerberosServiceAuthenticationProvider
  */
-public class KerberosServiceRequestToken extends AbstractAuthenticationToken {
+public class SpnegoRequestToken extends AbstractAuthenticationToken {
 
 	private static final long serialVersionUID = 395488921064775014L;
 
@@ -64,8 +66,8 @@ public class KerberosServiceRequestToken extends AbstractAuthenticationToken {
 	 * @param token the Kerberos/SPNEGO token
 	 * @see UserDetails
 	 */
-	public KerberosServiceRequestToken(Object principal, KerberosTicketValidation ticketValidation,
-			Collection<? extends GrantedAuthority> authorities, byte[] token) {
+	public SpnegoRequestToken(Object principal, KerberosTicketValidation ticketValidation,
+							  Collection<? extends GrantedAuthority> authorities, byte[] token) {
 		super(authorities);
 		this.token = token;
 		this.principal = principal;
@@ -80,7 +82,7 @@ public class KerberosServiceRequestToken extends AbstractAuthenticationToken {
 	 * @param token Kerberos/SPNEGO token
 	 * @see KerberosServiceAuthenticationProvider
 	 */
-	public KerberosServiceRequestToken(byte[] token) {
+	public SpnegoRequestToken(byte[] token) {
 		super(null);
 		this.token = token;
 		this.ticketValidation = null;
@@ -109,7 +111,7 @@ public class KerberosServiceRequestToken extends AbstractAuthenticationToken {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		KerberosServiceRequestToken other = (KerberosServiceRequestToken) obj;
+		SpnegoRequestToken other = (SpnegoRequestToken) obj;
 		if (!Arrays.equals(token, other.token))
 			return false;
 		return true;
