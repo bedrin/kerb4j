@@ -15,6 +15,9 @@
  */
 package com.kerb4j.server.spring.jaas.sun;
 
+import com.kerb4j.client.SpnegoClient;
+import com.kerb4j.client.SpnegoContext;
+import com.kerb4j.server.spring.KerberosTicketValidator;
 import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -23,20 +26,14 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.kerberos.authentication.KerberosTicketValidator;
 import org.springframework.util.Assert;
 
-import javax.security.auth.Subject;
-import javax.security.auth.kerberos.KerberosPrincipal;
 import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.Configuration;
-import javax.security.auth.login.LoginContext;
-import java.security.Principal;
+import java.io.IOException;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Implementation of {@link KerberosTicketValidator} which uses the SUN JAAS
@@ -50,21 +47,39 @@ import java.util.Set;
  */
 public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, InitializingBean {
 
+    private static final Log LOG = LogFactory.getLog(SunJaasKerberosTicketValidator.class);
+
     private String servicePrincipal;
     private Resource keyTabLocation;
-    private Subject serviceSubject;
+
+    private SpnegoClient spnegoClient;
+
     private boolean holdOnToGSSContext;
-    private boolean debug = false;
-    private static final Log LOG = LogFactory.getLog(SunJaasKerberosTicketValidator.class);
 
     @Override
     public SpnegoAuthenticationToken validateTicket(byte[] token) {
+
+        token = tweakJdkRegression(token);
+
         try {
-            return Subject.doAs(this.serviceSubject, new KerberosValidateAction(token));
-        }
-        catch (PrivilegedActionException e) {
+            SpnegoContext acceptContext = spnegoClient.createAcceptContext();
+            byte[] responseToken = acceptContext.acceptToken(token);
+            GSSName srcName = acceptContext.getSrcName();
+
+            if (null == srcName) {
+                throw new BadCredentialsException("Kerberos validation not successful");
+            }
+
+            if (!holdOnToGSSContext) {
+                acceptContext.close();
+            }
+
+            return new SpnegoAuthenticationToken(token, srcName.toString(), responseToken);
+
+        } catch (IOException | GSSException | PrivilegedActionException e) {
             throw new BadCredentialsException("Kerberos validation not successful", e);
         }
+
     }
 
     @Override
@@ -72,28 +87,23 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
         Assert.notNull(this.servicePrincipal, "servicePrincipal must be specified");
         Assert.notNull(this.keyTabLocation, "keyTab must be specified");
         if (keyTabLocation instanceof ClassPathResource) {
-			LOG.warn("Your keytab is in the classpath. This file needs special protection and shouldn't be in the classpath. JAAS may also not be able to load this file from classpath.");
+            LOG.warn("Your keytab is in the classpath. This file needs special protection and shouldn't be in the classpath. JAAS may also not be able to load this file from classpath.");
         }
         String keyTabLocationAsString = this.keyTabLocation.getURL().toExternalForm();
         // We need to remove the file prefix (if there is one), as it is not supported in Java 7 anymore.
         // As Java 6 accepts it with and without the prefix, we don't need to check for Java 7
         if (keyTabLocationAsString.startsWith("file:"))
         {
-        	keyTabLocationAsString = keyTabLocationAsString.substring(5);
+            keyTabLocationAsString = keyTabLocationAsString.substring(5);
         }
-        LoginConfig loginConfig = new LoginConfig(keyTabLocationAsString, this.servicePrincipal,
-                this.debug);
-        Set<Principal> princ = new HashSet<Principal>(1);
-        princ.add(new KerberosPrincipal(this.servicePrincipal));
-        Subject sub = new Subject(false, princ, new HashSet<Object>(), new HashSet<Object>());
-        LoginContext lc = new LoginContext("", sub, null, loginConfig);
-        lc.login();
-        this.serviceSubject = lc.getSubject();
+
+        spnegoClient = SpnegoClient.loginWithKeyTab(servicePrincipal, keyTabLocationAsString);
     }
 
     /**
      * The service principal of the application.
      * For web apps this is <code>HTTP/full-qualified-domain-name@DOMAIN</code>.
+     * todo: add warning on UPN
      * The keytab must contain the key for this principal.
      *
      * @param servicePrincipal service principal to use
@@ -121,15 +131,6 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
     }
 
     /**
-     * Enables the debug mode of the JAAS Kerberos login module.
-     *
-     * @param debug default is false
-     */
-    public void setDebug(boolean debug) {
-        this.debug = debug;
-    }
-
-    /**
      * Determines whether to hold on to the {@link GSSContext GSS security context} or
      * otherwise {@link GSSContext#dispose() dispose} of it immediately (the default behaviour).
      * <p>Holding on to the GSS context allows decrypt and encrypt operations for subsequent
@@ -154,25 +155,25 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
 
         @Override
         public SpnegoAuthenticationToken run() throws Exception {
-			byte[] responseToken = new byte[0];
-			GSSName gssName = null;
-			GSSContext context = GSSManager.getInstance().createContext((GSSCredential) null);
-			boolean first = true;
-			while (!context.isEstablished()) {
-				if (first) {
-					kerberosTicket = tweakJdkRegression(kerberosTicket);
-				}
-				responseToken = context.acceptSecContext(kerberosTicket, 0, kerberosTicket.length);
-				gssName = context.getSrcName();
-				if (gssName == null) {
-					throw new BadCredentialsException("GSSContext name of the context initiator is null");
-				}
-				first = false;
-			}
-			if (!holdOnToGSSContext) {
-				context.dispose();
-			}
-			return new SpnegoAuthenticationToken(kerberosTicket, gssName.toString(), responseToken);
+            byte[] responseToken = new byte[0];
+            GSSName gssName = null;
+            GSSContext context = GSSManager.getInstance().createContext((GSSCredential) null);
+            boolean first = true;
+            while (!context.isEstablished()) {
+                if (first) {
+                    kerberosTicket = tweakJdkRegression(kerberosTicket);
+                }
+                responseToken = context.acceptSecContext(kerberosTicket, 0, kerberosTicket.length);
+                gssName = context.getSrcName();
+                if (gssName == null) {
+                    throw new BadCredentialsException("GSSContext name of the context initiator is null");
+                }
+                first = false;
+            }
+            if (!holdOnToGSSContext) {
+                context.dispose();
+            }
+            return new SpnegoAuthenticationToken(kerberosTicket, gssName.toString(), responseToken);
         }
     }
 
@@ -210,7 +211,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
 
     }
 
-    private static byte[] tweakJdkRegression(byte[] token) throws GSSException {
+    private static byte[] tweakJdkRegression(byte[] token) {
 
 //    	Due to regression in 8u40/8u45 described in
 //    	https://bugs.openjdk.java.net/browse/JDK-8078439
@@ -238,25 +239,25 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
 //		0000: 06 09 2A 86 48 86 F7 12   01 02 02
 //		0000: 06 09 2A 86 48 82 F7 12   01 02 02
 
-		if (token == null || token.length < 48) {
-			return token;
-		}
+        if (token == null || token.length < 48) {
+            return token;
+        }
 
-		int[] toCheck = new int[] { 0x06, 0x09, 0x2A, 0x86, 0x48, 0x82, 0xF7, 0x12, 0x01, 0x02, 0x02, 0x06, 0x09, 0x2A,
-				0x86, 0x48, 0x86, 0xF7, 0x12, 0x01, 0x02, 0x02 };
+        int[] toCheck = new int[] { 0x06, 0x09, 0x2A, 0x86, 0x48, 0x82, 0xF7, 0x12, 0x01, 0x02, 0x02, 0x06, 0x09, 0x2A,
+                0x86, 0x48, 0x86, 0xF7, 0x12, 0x01, 0x02, 0x02 };
 
-		for (int i = 0; i < 22; i++) {
-			if ((byte) toCheck[i] != token[i + 24]) {
-				return token;
-			}
-		}
+        for (int i = 0; i < 22; i++) {
+            if ((byte) toCheck[i] != token[i + 24]) {
+                return token;
+            }
+        }
 
-		byte[] nt = new byte[token.length];
-		System.arraycopy(token, 0, nt, 0, 24);
-		System.arraycopy(token, 35, nt, 24, 11);
-		System.arraycopy(token, 24, nt, 35, 11);
-		System.arraycopy(token, 46, nt, 46, token.length - 24 - 11 - 11);
-		return nt;
+        byte[] nt = new byte[token.length];
+        System.arraycopy(token, 0, nt, 0, 24);
+        System.arraycopy(token, 35, nt, 24, 11);
+        System.arraycopy(token, 24, nt, 35, 11);
+        System.arraycopy(token, 46, nt, 46, token.length - 24 - 11 - 11);
+        return nt;
     }
 
 }
