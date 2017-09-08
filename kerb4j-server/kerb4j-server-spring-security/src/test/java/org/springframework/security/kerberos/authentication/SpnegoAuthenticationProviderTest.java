@@ -20,7 +20,7 @@ import static org.mockito.Mockito.*;
 
 import java.util.List;
 
-import com.kerb4j.server.spring.KerberosServiceAuthenticationProvider;
+import com.kerb4j.server.spring.SpnegoAuthenticationProvider;
 import com.kerb4j.server.spring.KerberosTicketValidator;
 import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import org.junit.Before;
@@ -40,15 +40,15 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import com.kerb4j.server.spring.SpnegoRequestToken;
 
 /**
- * Test class for {@link com.kerb4j.server.spring.KerberosServiceAuthenticationProvider}
+ * Test class for {@link SpnegoAuthenticationProvider}
  *
  * @author Mike Wiesner
  * @author Jeremy Stone
  * @since 1.0
  */
-public class KerberosServiceAuthenticationProviderTest {
+public class SpnegoAuthenticationProviderTest {
 
-    private com.kerb4j.server.spring.KerberosServiceAuthenticationProvider provider;
+    private SpnegoAuthenticationProvider provider;
     private com.kerb4j.server.spring.KerberosTicketValidator ticketValidator;
     private UserDetailsService userDetailsService;
 
@@ -68,7 +68,7 @@ public class KerberosServiceAuthenticationProviderTest {
         // mocking
         this.ticketValidator = mock(KerberosTicketValidator.class);
         this.userDetailsService = mock(UserDetailsService.class);
-        this.provider = new KerberosServiceAuthenticationProvider();
+        this.provider = new SpnegoAuthenticationProvider();
         this.provider.setTicketValidator(this.ticketValidator);
         this.provider.setUserDetailsService(this.userDetailsService);
     }

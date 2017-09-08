@@ -15,6 +15,7 @@
  */
 package org.springframework.security.kerberos.client;
 
+import com.kerb4j.server.spring.SpnegoAuthenticationProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,7 +30,6 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import com.kerb4j.server.spring.KerberosServiceAuthenticationProvider;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 import com.kerb4j.server.spring.SpnegoMutualAuthenticationHandler;
 import com.kerb4j.server.spring.SpnegoAuthenticationProcessingFilter;
@@ -82,8 +82,8 @@ public class WebSecurityConfigSuccessHandler extends WebSecurityConfigurerAdapte
 	}
 
 	@Bean
-	public KerberosServiceAuthenticationProvider kerberosServiceAuthenticationProvider() {
-		KerberosServiceAuthenticationProvider provider = new KerberosServiceAuthenticationProvider();
+	public SpnegoAuthenticationProvider kerberosServiceAuthenticationProvider() {
+		SpnegoAuthenticationProvider provider = new SpnegoAuthenticationProvider();
 		provider.setTicketValidator(sunJaasKerberosTicketValidator());
 		provider.setUserDetailsService(dummyUserDetailsService());
 		return provider;

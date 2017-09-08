@@ -46,10 +46,10 @@ import org.springframework.util.Assert;
  * @see KerberosTicketValidator
  * @see UserDetailsService
  */
-public class KerberosServiceAuthenticationProvider implements
+public class SpnegoAuthenticationProvider implements
 		AuthenticationProvider, InitializingBean {
 
-	private static final Log LOG = LogFactory.getLog(KerberosServiceAuthenticationProvider.class);
+	private static final Log LOG = LogFactory.getLog(SpnegoAuthenticationProvider.class);
 
 	private KerberosTicketValidator ticketValidator;
 	private UserDetailsService userDetailsService;

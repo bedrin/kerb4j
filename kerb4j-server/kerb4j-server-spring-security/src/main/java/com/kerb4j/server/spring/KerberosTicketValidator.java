@@ -19,13 +19,13 @@ import org.springframework.security.authentication.BadCredentialsException;
 
 /**
  * Implementations of this interface are used in
- * {@link KerberosServiceAuthenticationProvider} to validate a Kerberos/SPNEGO
+ * {@link SpnegoAuthenticationProvider} to validate a Kerberos/SPNEGO
  * Ticket.
  *
  * @author Mike Wiesner
  * @author Jeremy Stone
  * @since 1.0
- * @see KerberosServiceAuthenticationProvider
+ * @see SpnegoAuthenticationProvider
  */
 public interface KerberosTicketValidator {
 

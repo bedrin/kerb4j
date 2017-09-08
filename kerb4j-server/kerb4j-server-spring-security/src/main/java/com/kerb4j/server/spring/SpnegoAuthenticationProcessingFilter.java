@@ -67,7 +67,7 @@ import java.io.IOException;
  * &lt;/sec:authentication-manager&gt;
  *
  * &lt;bean id=&quot;kerberosServiceAuthenticationProvider&quot;
- * 	class=&quot;org.springframework.security.kerberos.authenitcation.KerberosServiceAuthenticationProvider&quot;&gt;
+ * 	class=&quot;org.springframework.security.kerberos.authenitcation.SpnegoAuthenticationProvider&quot;&gt;
  * 	&lt;property name=&quot;ticketValidator&quot;&gt;
  * 		&lt;bean class=&quot;com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator&quot;&gt;
  * 			&lt;property name=&quot;servicePrincipal&quot; value=&quot;HTTP/web.springsource.com&quot; /&gt;
@@ -99,7 +99,7 @@ import java.io.IOException;
  * @author Mike Wiesner
  * @author Jeremy Stone
  * @since 1.0
- * @see KerberosServiceAuthenticationProvider
+ * @see SpnegoAuthenticationProvider
  * @see SpnegoEntryPoint
  */
 public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {

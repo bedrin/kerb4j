@@ -15,14 +15,13 @@
  */
 package org.springframework.security.kerberos.docs;
 
+import com.kerb4j.server.spring.KerberosAuthenticationProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.annotation.web.servlet.configuration.EnableWebMvcSecurity;
-import com.kerb4j.server.spring.KerberosAuthenticationProvider;
-import com.kerb4j.client.SunJaasKerberosClient;
 
 //tag::snippetA[]
 @Configuration
@@ -51,11 +50,7 @@ public class AuthProviderConfig extends WebSecurityConfigurerAdapter {
 
     @Bean
     public KerberosAuthenticationProvider kerberosAuthenticationProvider() {
-        KerberosAuthenticationProvider provider =
-        		new KerberosAuthenticationProvider();
-        SunJaasKerberosClient client = new SunJaasKerberosClient();
-        client.setDebug(true);
-        provider.setKerberosClient(client);
+        KerberosAuthenticationProvider provider = new KerberosAuthenticationProvider();
         provider.setUserDetailsService(dummyUserDetailsService());
         return provider;
     }

@@ -15,7 +15,7 @@
  */
 package com.kerb4j.server.spring;
 
-import com.kerb4j.client.KerberosClient;
+import com.kerb4j.client.SpnegoClient;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -34,16 +34,16 @@ import javax.security.auth.login.LoginException;
  */
 public class KerberosAuthenticationProvider implements AuthenticationProvider {
 
-    private KerberosClient kerberosClient;
-
     private UserDetailsService userDetailsService;
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
 		UsernamePasswordAuthenticationToken auth = (UsernamePasswordAuthenticationToken) authentication;
-        String validatedUsername = null;
+        String validatedUsername;
+
         try {
-            validatedUsername = kerberosClient.login(auth.getName(), auth.getCredentials().toString());
+            SpnegoClient.loginWithUsernamePassword(auth.getName(), auth.getCredentials().toString());
+            validatedUsername = auth.getName(); // TODO: take frmo spnegoClient instead ?
         } catch (LoginException e) {
             throw new BadCredentialsException("Kerberos validation not successful", e);
         }
@@ -58,15 +58,6 @@ public class KerberosAuthenticationProvider implements AuthenticationProvider {
     @Override
     public boolean supports(Class<? extends Object> authentication) {
         return (UsernamePasswordAuthenticationToken.class.isAssignableFrom(authentication));
-    }
-
-    /**
-     * Sets the kerberos client.
-     *
-     * @param kerberosClient the new kerberos client
-     */
-    public void setKerberosClient(KerberosClient kerberosClient) {
-        this.kerberosClient = kerberosClient;
     }
 
     /**

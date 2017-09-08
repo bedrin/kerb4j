@@ -13,11 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.authentication.sun;
+package com.kerb4j.server.spring.jaas.sun;
 
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.config.BeanPostProcessor;
+import javax.annotation.PostConstruct;
 
 /**
  * Config for global jaas.
@@ -25,13 +23,13 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
  * @author Mike Wiesner
  * @since 1.0
  */
-public class GlobalSunJaasKerberosConfig implements BeanPostProcessor, InitializingBean {
+public class GlobalSunJaasKerberosConfig {
 
     private boolean debug = false;
 
     private String krbConfLocation;
 
-    @Override
+    @PostConstruct
     public void afterPropertiesSet() throws Exception {
         if (debug) {
             System.setProperty("sun.security.krb5.debug", "true");
@@ -58,20 +56,6 @@ public class GlobalSunJaasKerberosConfig implements BeanPostProcessor, Initializ
      */
     public void setKrbConfLocation(String krbConfLocation) {
         this.krbConfLocation = krbConfLocation;
-    }
-
-    //  The following methods are not used here. This Bean implements only BeanPostProcessor to ensure that it
-    //  is created before any other bean is created, because the system properties needed to be set very early
-    //  in the startup-phase, but after the BeanFactoryPostProcessing.
-
-    @Override
-    public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
-        return bean;
-    }
-
-    @Override
-    public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
-        return bean;
     }
 
 }

@@ -26,11 +26,6 @@
   <bean id="kerberosAuthenticationProvider"
     class="com.kerb4j.server.spring.KerberosAuthenticationProvider">
     <property name="userDetailsService" ref="dummyUserDetailsService"/>
-    <property name="kerberosClient">
-      <bean class="com.kerb4j.client.SunJaasKerberosClient">
-        <property name="debug" value="true"/>
-      </bean>
-    </property>
   </bean>
 
   <bean id="spnegoEntryPoint"
@@ -44,7 +39,7 @@
   </bean>
 
   <bean id="kerberosServiceAuthenticationProvider"
-    class="com.kerb4j.server.spring.KerberosServiceAuthenticationProvider">
+    class="com.kerb4j.server.spring.SpnegoAuthenticationProvider">
     <property name="ticketValidator">
       <bean
         class="com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator">

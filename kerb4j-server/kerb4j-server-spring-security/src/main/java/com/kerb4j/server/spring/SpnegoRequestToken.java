@@ -25,9 +25,9 @@ import java.util.Collections;
 
 /**
  * <p>Holds the Kerberos/SPNEGO token for requesting a kerberized service and is
- * also the output of <code>KerberosServiceAuthenticationProvider</code>.</p>
+ * also the output of <code>SpnegoAuthenticationProvider</code>.</p>
  * <p>Will mostly be created in <code>SpnegoAuthenticationProcessingFilter</code>
- * and authenticated in <code>KerberosServiceAuthenticationProvider</code>.</p>
+ * and authenticated in <code>SpnegoAuthenticationProvider</code>.</p>
  *
  * This token cannot be re-authenticated, as you will get a Kerberos Reply
  * error.
@@ -35,7 +35,7 @@ import java.util.Collections;
  * @author Mike Wiesner
  * @author Jeremy Stone
  * @since 1.0
- * @see KerberosServiceAuthenticationProvider
+ * @see SpnegoAuthenticationProvider
  */
 public class SpnegoRequestToken extends AbstractAuthenticationToken {
 
@@ -58,10 +58,10 @@ public class SpnegoRequestToken extends AbstractAuthenticationToken {
 
 	/**
 	 * Creates an unauthenticated instance which should then be authenticated by
-	 * <code>KerberosServiceAuthenticationProvider</code>.
+	 * <code>SpnegoAuthenticationProvider</code>.
 	 *
 	 * @param token Kerberos/SPNEGO token
-	 * @see KerberosServiceAuthenticationProvider
+	 * @see SpnegoAuthenticationProvider
 	 */
 	public SpnegoRequestToken(byte[] token) {
 		this(Collections.emptySet(), token);

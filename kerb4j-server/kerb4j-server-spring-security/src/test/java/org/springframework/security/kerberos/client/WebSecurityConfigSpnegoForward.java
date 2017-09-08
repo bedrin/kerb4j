@@ -29,7 +29,7 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import com.kerb4j.server.spring.KerberosServiceAuthenticationProvider;
+import com.kerb4j.server.spring.SpnegoAuthenticationProvider;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 import com.kerb4j.server.spring.SpnegoAuthenticationProcessingFilter;
 import com.kerb4j.server.spring.SpnegoEntryPoint;
@@ -77,8 +77,8 @@ public class WebSecurityConfigSpnegoForward extends WebSecurityConfigurerAdapter
 	}
 
 	@Bean
-	public KerberosServiceAuthenticationProvider kerberosServiceAuthenticationProvider() {
-		KerberosServiceAuthenticationProvider provider = new KerberosServiceAuthenticationProvider();
+	public SpnegoAuthenticationProvider kerberosServiceAuthenticationProvider() {
+		SpnegoAuthenticationProvider provider = new SpnegoAuthenticationProvider();
 		provider.setTicketValidator(sunJaasKerberosTicketValidator());
 		provider.setUserDetailsService(dummyUserDetailsService());
 		return provider;
