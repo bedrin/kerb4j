@@ -20,7 +20,7 @@
   </sec:authentication-manager>
 
   <bean id="kerberosAuthenticationProvider"
-    class="org.springframework.security.kerberos.authentication.KerberosAuthenticationProvider">
+    class="com.kerb4j.server.spring.KerberosAuthenticationProvider">
     <property name="kerberosClient">
       <bean class="com.kerb4j.client.SunJaasKerberosClient">
         <property name="debug" value="true"/>

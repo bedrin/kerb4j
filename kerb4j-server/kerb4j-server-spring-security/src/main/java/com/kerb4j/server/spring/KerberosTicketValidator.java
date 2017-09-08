@@ -15,9 +15,7 @@
  */
 package com.kerb4j.server.spring;
 
-import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.kerberos.authentication.KerberosServiceAuthenticationProvider;
 
 /**
  * Implementations of this interface are used in

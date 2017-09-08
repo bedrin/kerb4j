@@ -29,7 +29,7 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.kerberos.authentication.KerberosServiceAuthenticationProvider;
+import com.kerb4j.server.spring.KerberosServiceAuthenticationProvider;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 import com.kerb4j.server.spring.SpnegoMutualAuthenticationHandler;
 import com.kerb4j.server.spring.SpnegoAuthenticationProcessingFilter;

@@ -20,6 +20,7 @@ import static org.mockito.Mockito.*;
 
 import java.util.List;
 
+import com.kerb4j.server.spring.KerberosAuthenticationProvider;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -32,14 +33,14 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import com.kerb4j.client.KerberosClient;
 
 /**
- * Test class for {@link KerberosAuthenticationProvider}
+ * Test class for {@link com.kerb4j.server.spring.KerberosAuthenticationProvider}
  *
  * @author Mike Wiesner
  * @since 1.0
  */
 public class KerberosAuthenticationProviderTest {
 
-    private KerberosAuthenticationProvider provider;
+    private com.kerb4j.server.spring.KerberosAuthenticationProvider provider;
     private KerberosClient kerberosClient;
     private UserDetailsService userDetailsService;
 

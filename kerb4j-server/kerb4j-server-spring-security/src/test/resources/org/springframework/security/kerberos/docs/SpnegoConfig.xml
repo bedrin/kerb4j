@@ -24,7 +24,7 @@
   </sec:authentication-manager>
 
   <bean id="kerberosAuthenticationProvider"
-    class="org.springframework.security.kerberos.authentication.KerberosAuthenticationProvider">
+    class="com.kerb4j.server.spring.KerberosAuthenticationProvider">
     <property name="userDetailsService" ref="dummyUserDetailsService"/>
     <property name="kerberosClient">
       <bean class="com.kerb4j.client.SunJaasKerberosClient">
@@ -44,7 +44,7 @@
   </bean>
 
   <bean id="kerberosServiceAuthenticationProvider"
-    class="org.springframework.security.kerberos.authentication.KerberosServiceAuthenticationProvider">
+    class="com.kerb4j.server.spring.KerberosServiceAuthenticationProvider">
     <property name="ticketValidator">
       <bean
         class="com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator">

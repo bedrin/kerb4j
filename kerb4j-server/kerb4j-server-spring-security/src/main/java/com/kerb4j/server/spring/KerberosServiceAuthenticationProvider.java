@@ -13,11 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.authentication;
+package com.kerb4j.server.spring;
 
-import com.kerb4j.server.spring.KerberosTicketValidator;
-import com.kerb4j.server.spring.SpnegoAuthenticationToken;
-import com.kerb4j.server.spring.SpnegoRequestToken;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.InitializingBean;
