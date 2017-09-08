@@ -105,7 +105,7 @@ public class SpnegoConfig extends WebSecurityConfigurerAdapter {
         		new SunJaasKerberosTicketValidator();
         ticketValidator.setServicePrincipal("HTTP/servicehost.example.org@EXAMPLE.ORG");
         ticketValidator.setKeyTabLocation(new FileSystemResource("/tmp/service.keytab"));
-        ticketValidator.setDebug(true);
+        //ticketValidator.setDebug(true);
         return ticketValidator;
     }
 

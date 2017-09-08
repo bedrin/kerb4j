@@ -184,7 +184,7 @@ public final class SpnegoClient {
         return new SpnegoContext(this, getGSSContext(url));
     }
 
-    public SpnegoContext createAcceptContext(byte[] token) throws PrivilegedActionException {
+    public SpnegoContext createAcceptContext() throws PrivilegedActionException {
 
         return new SpnegoContext(this, Subject.doAs(getSubject(), (PrivilegedExceptionAction<GSSContext>) () -> {
 

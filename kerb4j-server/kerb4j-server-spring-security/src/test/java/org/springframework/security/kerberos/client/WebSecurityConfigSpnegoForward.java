@@ -89,7 +89,7 @@ public class WebSecurityConfigSpnegoForward extends WebSecurityConfigurerAdapter
 		SunJaasKerberosTicketValidator ticketValidator = new SunJaasKerberosTicketValidator();
 		ticketValidator.setServicePrincipal(serverPrincipal);
 		ticketValidator.setKeyTabLocation(new FileSystemResource(serverKeytab));
-		ticketValidator.setDebug(true);
+		//ticketValidator.setDebug(true);
 		return ticketValidator;
 	}
 

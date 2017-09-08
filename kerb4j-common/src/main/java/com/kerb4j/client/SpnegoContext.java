@@ -2,6 +2,7 @@ package com.kerb4j.client;
 
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
+import org.ietf.jgss.GSSName;
 
 import javax.security.auth.Subject;
 import java.io.Closeable;
@@ -40,6 +41,14 @@ public class SpnegoContext implements Closeable {
         Subject.doAs(spnegoClient.getSubject(), (PrivilegedExceptionAction<byte[]>) () ->
                 gssContext.initSecContext(data, offset, length)
         );
+    }
+
+    public byte[] acceptToken(byte[] token) throws GSSException {
+        return this.gssContext.acceptSecContext(token, 0, token.length);
+    }
+
+    public GSSName getSrcName() throws GSSException {
+        return gssContext.getSrcName();
     }
 
     public boolean isEstablished() {
