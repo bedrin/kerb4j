@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.authentication;
+package com.kerb4j.server.spring;
 
 import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.kerberos.authentication.KerberosServiceAuthenticationProvider;
 
 /**
  * Implementations of this interface are used in

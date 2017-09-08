@@ -183,6 +183,22 @@ public final class SpnegoClient {
     public SpnegoContext createContext(URL url) throws PrivilegedActionException, GSSException {
         return new SpnegoContext(this, getGSSContext(url));
     }
+
+    public SpnegoContext createAcceptContext(byte[] token) throws PrivilegedActionException {
+
+        return new SpnegoContext(this, Subject.doAs(getSubject(), (PrivilegedExceptionAction<GSSContext>) () -> {
+
+            GSSCredential credential = SpnegoProvider.GSS_MANAGER.createCredential(
+                    null
+                    , GSSCredential.DEFAULT_LIFETIME
+                    , SpnegoProvider.SUPPORTED_OIDS
+                    , GSSCredential.ACCEPT_ONLY); // TODO should it be INIT and ACCEPT ?
+
+            return SpnegoProvider.GSS_MANAGER.createContext(credential);
+
+        }));
+
+    }
     
     /**
      * Returns a GSSContext for the given url with a default lifetime.

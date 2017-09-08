@@ -18,6 +18,7 @@ package org.springframework.security.kerberos.authentication.sun;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.not;
 
+import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -74,7 +75,7 @@ public class SunJaasKerberosTicketValidatorTests {
 		thrown.expect(BadCredentialsException.class);
 		thrown.expectMessage(not(containsString("GSSContext name of the context initiator is null")));
 		thrown.expectMessage(containsString("Kerberos validation not successful"));
-		SunJaasKerberosTicketValidator validator = new SunJaasKerberosTicketValidator();
+		SunJaasKerberosTicketValidator validator = new com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator();
 		byte[] kerberosTicket = Base64.decode(header.getBytes());
 		validator.validateTicket(kerberosTicket);
 	}

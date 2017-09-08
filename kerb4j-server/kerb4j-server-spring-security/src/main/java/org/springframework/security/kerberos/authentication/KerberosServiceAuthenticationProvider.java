@@ -15,6 +15,7 @@
  */
 package org.springframework.security.kerberos.authentication;
 
+import com.kerb4j.server.spring.KerberosTicketValidator;
 import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import com.kerb4j.server.spring.SpnegoRequestToken;
 import org.apache.commons.logging.Log;

@@ -26,7 +26,7 @@ import org.springframework.security.config.annotation.web.servlet.configuration.
 import org.springframework.security.kerberos.authentication.KerberosAuthenticationProvider;
 import org.springframework.security.kerberos.authentication.KerberosServiceAuthenticationProvider;
 import org.springframework.security.kerberos.authentication.sun.SunJaasKerberosClient;
-import org.springframework.security.kerberos.authentication.sun.SunJaasKerberosTicketValidator;
+import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 import com.kerb4j.server.spring.SpnegoAuthenticationProcessingFilter;
 import com.kerb4j.server.spring.SpnegoEntryPoint;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;

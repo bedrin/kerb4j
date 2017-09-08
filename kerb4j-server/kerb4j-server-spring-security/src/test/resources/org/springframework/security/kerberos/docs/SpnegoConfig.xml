@@ -47,7 +47,7 @@
     class="org.springframework.security.kerberos.authentication.KerberosServiceAuthenticationProvider">
     <property name="ticketValidator">
       <bean
-        class="org.springframework.security.kerberos.authentication.sun.SunJaasKerberosTicketValidator">
+        class="com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator">
         <property name="servicePrincipal" value="${app.service-principal}" />
         <property name="keyTabLocation" value="${app.keytab-location}" />
         <property name="debug" value="true" />

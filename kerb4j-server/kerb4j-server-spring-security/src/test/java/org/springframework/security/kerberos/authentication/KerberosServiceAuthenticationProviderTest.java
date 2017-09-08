@@ -20,6 +20,7 @@ import static org.mockito.Mockito.*;
 
 import java.util.List;
 
+import com.kerb4j.server.spring.KerberosTicketValidator;
 import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,7 +48,7 @@ import com.kerb4j.server.spring.SpnegoRequestToken;
 public class KerberosServiceAuthenticationProviderTest {
 
     private KerberosServiceAuthenticationProvider provider;
-    private KerberosTicketValidator ticketValidator;
+    private com.kerb4j.server.spring.KerberosTicketValidator ticketValidator;
     private UserDetailsService userDetailsService;
 
     // data
