@@ -17,11 +17,14 @@ package org.springframework.security.kerberos.authentication;
 
 import com.kerb4j.client.KerberosClient;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+
+import javax.security.auth.login.LoginException;
 
 /**
  * {@link AuthenticationProvider} for kerberos.
@@ -38,8 +41,13 @@ public class KerberosAuthenticationProvider implements AuthenticationProvider {
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
 		UsernamePasswordAuthenticationToken auth = (UsernamePasswordAuthenticationToken) authentication;
-		String validatedUsername = kerberosClient.login(auth.getName(), auth.getCredentials().toString());
-		UserDetails userDetails = this.userDetailsService.loadUserByUsername(validatedUsername);
+        String validatedUsername = null;
+        try {
+            validatedUsername = kerberosClient.login(auth.getName(), auth.getCredentials().toString());
+        } catch (LoginException e) {
+            throw new BadCredentialsException("Kerberos validation not successful", e);
+        }
+        UserDetails userDetails = this.userDetailsService.loadUserByUsername(validatedUsername);
 		UsernamePasswordAuthenticationToken output = new UsernamePasswordAuthenticationToken(userDetails,
 				auth.getCredentials(), userDetails.getAuthorities());
 		output.setDetails(authentication.getDetails());
