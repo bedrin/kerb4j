@@ -13,25 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.authentication.sun;
+package com.kerb4j.client;
 
-import java.io.IOException;
-import java.util.HashMap;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-import javax.security.auth.callback.Callback;
-import javax.security.auth.callback.CallbackHandler;
-import javax.security.auth.callback.NameCallback;
-import javax.security.auth.callback.PasswordCallback;
-import javax.security.auth.callback.UnsupportedCallbackException;
+import javax.security.auth.callback.*;
 import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.Configuration;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.kerberos.authentication.KerberosClient;
+import java.io.IOException;
+import java.util.HashMap;
 
 /**
  * Implementation of {@link KerberosClient} which uses the SUN JAAS
@@ -49,22 +42,19 @@ public class SunJaasKerberosClient implements KerberosClient {
     private static final Log LOG = LogFactory.getLog(SunJaasKerberosClient.class);
 
     @Override
-    public String login(String username, String password) {
+    public String login(String username, String password) throws LoginException {
         LOG.debug("Trying to authenticate " + username + " with Kerberos");
         String validatedUsername;
 
-        try {
-            LoginContext loginContext = new LoginContext("", null, new KerberosClientCallbackHandler(username, password),
-                    new LoginConfig(this.debug));
-            loginContext.login();
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Kerberos authenticated user: "+loginContext.getSubject());
-            }
-            validatedUsername = loginContext.getSubject().getPrincipals().iterator().next().toString();
-            loginContext.logout();
-        } catch (LoginException e) {
-            throw new BadCredentialsException("Kerberos authentication failed", e);
+        LoginContext loginContext = new LoginContext("", null, new KerberosClientCallbackHandler(username, password),
+                new LoginConfig(this.debug));
+        loginContext.login();
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Kerberos authenticated user: "+loginContext.getSubject());
         }
+        validatedUsername = loginContext.getSubject().getPrincipals().iterator().next().toString();
+        loginContext.logout();
+
         return validatedUsername;
 
     }

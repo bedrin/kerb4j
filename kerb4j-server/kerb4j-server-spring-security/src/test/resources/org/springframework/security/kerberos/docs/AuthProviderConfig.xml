@@ -22,7 +22,7 @@
   <bean id="kerberosAuthenticationProvider"
     class="org.springframework.security.kerberos.authentication.KerberosAuthenticationProvider">
     <property name="kerberosClient">
-      <bean class="org.springframework.security.kerberos.authentication.sun.SunJaasKerberosClient">
+      <bean class="com.kerb4j.client.SunJaasKerberosClient">
         <property name="debug" value="true"/>
       </bean>
     </property>

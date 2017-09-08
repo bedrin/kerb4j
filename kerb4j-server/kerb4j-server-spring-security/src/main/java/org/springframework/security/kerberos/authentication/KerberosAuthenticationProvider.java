@@ -15,6 +15,7 @@
  */
 package org.springframework.security.kerberos.authentication;
 
+import com.kerb4j.client.KerberosClient;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;

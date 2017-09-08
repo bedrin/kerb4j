@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-package org.springframework.security.kerberos.authentication;
+package com.kerb4j.client;
+
+import javax.security.auth.login.LoginException;
 
 /**
  * 
@@ -24,6 +26,6 @@ package org.springframework.security.kerberos.authentication;
  */
 public interface KerberosClient {
 
-    String login(String username, String password);
+    String login(String username, String password) throws LoginException;
 
 }
