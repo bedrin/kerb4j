@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.kerb4j.server.spring.jaas.sun;
+package com.kerb4j.common.jaas.sun;
 
 import javax.annotation.PostConstruct;
 

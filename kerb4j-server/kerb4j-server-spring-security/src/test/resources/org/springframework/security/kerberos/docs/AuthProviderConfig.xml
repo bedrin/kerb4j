@@ -25,7 +25,7 @@
   </bean>
 
   <bean
-    class="com.kerb4j.server.spring.jaas.sun.GlobalSunJaasKerberosConfig">
+    class="com.kerb4j.common.jaas.sun.GlobalSunJaasKerberosConfig">
     <property name="debug" value="true" />
     <property name="krbConfLocation" value="/path/to/krb5.ini"/>
   </bean>

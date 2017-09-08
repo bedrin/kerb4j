@@ -18,7 +18,7 @@ package org.springframework.security.kerberos.client.docs;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.security.kerberos.client.config.SunJaasKrb5LoginConfig;
+import org.springframework.security.kerberos.client.ldap.SunJaasKrb5LoginConfig;
 import org.springframework.security.kerberos.client.ldap.KerberosLdapContextSource;
 import org.springframework.security.ldap.search.FilterBasedLdapUserSearch;
 import org.springframework.security.ldap.userdetails.LdapUserDetailsMapper;

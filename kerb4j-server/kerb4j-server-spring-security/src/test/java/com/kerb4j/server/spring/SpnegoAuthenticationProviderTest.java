@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.authentication;
+package com.kerb4j.server.spring;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
