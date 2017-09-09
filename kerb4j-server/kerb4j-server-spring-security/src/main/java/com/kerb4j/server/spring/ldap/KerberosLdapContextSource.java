@@ -15,56 +15,41 @@
  */
 package com.kerb4j.server.spring.ldap;
 
-import java.security.PrivilegedAction;
-import java.util.Hashtable;
-import java.util.List;
+import com.kerb4j.client.SpnegoClient;
+import org.springframework.ldap.core.support.LdapContextSource;
+import org.springframework.security.ldap.DefaultSpringSecurityContextSource;
 
-import javax.naming.AuthenticationException;
 import javax.naming.Context;
 import javax.naming.NamingException;
 import javax.naming.directory.DirContext;
 import javax.security.auth.Subject;
-import javax.security.auth.login.Configuration;
-import javax.security.auth.login.LoginContext;
-import javax.security.auth.login.LoginException;
-
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.ldap.core.support.LdapContextSource;
-import org.springframework.security.ldap.DefaultSpringSecurityContextSource;
-import org.springframework.util.Assert;
+import java.security.PrivilegedAction;
+import java.util.Hashtable;
+import java.util.List;
 
 /**
  * Implementation of an {@link LdapContextSource} that authenticates with the
  * ldap server using Kerberos.
  *
  * Example usage:
- *
  * <pre>
  *  &lt;bean id=&quot;authorizationContextSource&quot; class=&quot;org.springframework.security.kerberos.ldap.KerberosLdapContextSource&quot;&gt;
  *      &lt;constructor-arg value=&quot;${authentication.ldap.ldapUrl}&quot; /&gt;
  *      &lt;property name=&quot;referral&quot; value=&quot;ignore&quot; /&gt;
- *
- *       &lt;property name=&quot;loginConfig&quot;&gt;
- *           &lt;bean class=&quot;com.kerb4j.server.spring.ldap.SunJaasKrb5LoginConfig&quot;&gt;
- *               &lt;property name=&quot;servicePrincipal&quot; value=&quot;${authentication.ldap.servicePrincipal}&quot; /&gt;
- *               &lt;property name=&quot;useTicketCache&quot; value=&quot;true&quot; /&gt;
- *               &lt;property name=&quot;isInitiator&quot; value=&quot;true&quot; /&gt;
- *               &lt;property name=&quot;debug&quot; value=&quot;false&quot; /&gt;
- *           &lt;/bean&gt;
- *       &lt;/property&gt;
+ *       &lt;property name=&quot;spnegoClient&quot; ref=&quot;spnegoClient&quot;/&gt;
  *   &lt;/bean&gt;
  *
  *   &lt;sec:ldap-user-service id=&quot;ldapUserService&quot; server-ref=&quot;authorizationContextSource&quot; user-search-filter=&quot;(| (userPrincipalName={0}) (sAMAccountName={0}))&quot;
  *       group-search-filter=&quot;(member={0})&quot; group-role-attribute=&quot;cn&quot; role-prefix=&quot;none&quot; /&gt;
  * </pre>
  *
- * @see SunJaasKrb5LoginConfig
+ * @see SpnegoClient
  * @author Nelson Rodrigues
  *
  */
-public class KerberosLdapContextSource extends DefaultSpringSecurityContextSource implements InitializingBean {
+public class KerberosLdapContextSource extends DefaultSpringSecurityContextSource {
 
-	private Configuration loginConfig;
+	private SpnegoClient spnegoClient;
 
 	/**
 	 * Instantiates a new kerberos ldap context source.
@@ -86,41 +71,22 @@ public class KerberosLdapContextSource extends DefaultSpringSecurityContextSourc
 	}
 
 	@Override
-	public void afterPropertiesSet() /*throws Exception*/ {
-		// org.springframework.ldap.core.support.AbstractContextSource in 4.x
-		// doesn't throw Exception for its InitializingBean method, so
-		// we had to remove it from here also. Addition to that
-		// we need to catch super call and re-throw.
-		try {
-			super.afterPropertiesSet();
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-		Assert.notNull(this.loginConfig, "loginConfig must be specified");
-	}
-
-
-	@SuppressWarnings("unchecked")
-	@Override
-	protected DirContext getDirContextInstance(final @SuppressWarnings("rawtypes") Hashtable environment)
+	protected DirContext getDirContextInstance(final Hashtable<String, Object> environment)
 			throws NamingException {
-		environment.put(Context.SECURITY_AUTHENTICATION, "GSSAPI");
 
-		Subject serviceSubject = login();
+	    environment.put(Context.SECURITY_AUTHENTICATION, "GSSAPI");
+
+		Subject serviceSubject = spnegoClient.getSubject();
 
 		final NamingException[] suppressedException = new NamingException[] { null };
-		DirContext dirContext = Subject.doAs(serviceSubject, new PrivilegedAction<DirContext>() {
-
-			@Override
-			public DirContext run() {
-				try {
-					return KerberosLdapContextSource.super.getDirContextInstance(environment);
-				} catch (NamingException e) {
-					suppressedException[0] = e;
-					return null;
-				}
-			}
-		});
+		DirContext dirContext = Subject.doAs(serviceSubject, (PrivilegedAction<DirContext>) () -> {
+            try {
+                return KerberosLdapContextSource.super.getDirContextInstance(environment);
+            } catch (NamingException e) {
+                suppressedException[0] = e;
+                return null;
+            }
+        });
 
 		if (suppressedException[0] != null) {
 			throw suppressedException[0];
@@ -130,27 +96,16 @@ public class KerberosLdapContextSource extends DefaultSpringSecurityContextSourc
 	}
 
 	/**
-	 * The login configuration to get the serviceSubject from LoginContext
+	 * The spnegoClient to get the serviceSubject for LDAP authentication
 	 *
-	 * @param loginConfig the login config
+	 * @param spnegoClient the spnegoClient
 	 */
-	public void setLoginConfig(Configuration loginConfig) {
-		this.loginConfig = loginConfig;
+	public void setSpnegoClient(SpnegoClient spnegoClient) {
+		this.spnegoClient = spnegoClient;
 	}
 
-	private Subject login() throws AuthenticationException {
-		try {
-			LoginContext lc = new LoginContext(KerberosLdapContextSource.class.getSimpleName(), null, null,
-					this.loginConfig);
-
-			lc.login();
-
-			return lc.getSubject();
-		} catch (LoginException e) {
-			AuthenticationException ae = new AuthenticationException(e.getMessage());
-			ae.initCause(e);
-			throw ae;
-		}
+	public SpnegoClient getSpnegoClient() {
+		return spnegoClient;
 	}
 
 }

@@ -15,14 +15,15 @@
  */
 package org.springframework.security.kerberos.client.docs;
 
+import com.kerb4j.client.SpnegoClient;
+import com.kerb4j.server.spring.ldap.KerberosLdapContextSource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.core.io.FileSystemResource;
-import com.kerb4j.server.spring.ldap.SunJaasKrb5LoginConfig;
-import com.kerb4j.server.spring.ldap.KerberosLdapContextSource;
 import org.springframework.security.ldap.search.FilterBasedLdapUserSearch;
 import org.springframework.security.ldap.userdetails.LdapUserDetailsMapper;
 import org.springframework.security.ldap.userdetails.LdapUserDetailsService;
+
+import javax.security.auth.login.LoginException;
 
 public class KerberosLdapContextSourceConfig {
 
@@ -43,19 +44,14 @@ public class KerberosLdapContextSourceConfig {
 	private String ldapSearchFilter;
 
 	@Bean
-	public KerberosLdapContextSource kerberosLdapContextSource() {
+	public KerberosLdapContextSource kerberosLdapContextSource() throws LoginException {
 		KerberosLdapContextSource contextSource = new KerberosLdapContextSource(adServer);
-		SunJaasKrb5LoginConfig loginConfig = new SunJaasKrb5LoginConfig();
-		loginConfig.setKeyTabLocation(new FileSystemResource(keytabLocation));
-		loginConfig.setServicePrincipal(servicePrincipal);
-		loginConfig.setDebug(true);
-		loginConfig.setIsInitiator(true);
-		contextSource.setLoginConfig(loginConfig);
+		contextSource.setSpnegoClient(SpnegoClient.loginWithKeyTab(servicePrincipal, keytabLocation));
 		return contextSource;
 	}
 
 	@Bean
-	public LdapUserDetailsService ldapUserDetailsService() {
+	public LdapUserDetailsService ldapUserDetailsService() throws LoginException {
 		FilterBasedLdapUserSearch userSearch =
 				new FilterBasedLdapUserSearch(ldapSearchBase, ldapSearchFilter, kerberosLdapContextSource());
 		LdapUserDetailsService service = new LdapUserDetailsService(userSearch);
