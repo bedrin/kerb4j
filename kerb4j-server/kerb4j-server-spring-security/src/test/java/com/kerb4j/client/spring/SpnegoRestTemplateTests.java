@@ -15,33 +15,15 @@
  */
 package com.kerb4j.client.spring;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-
-import java.io.File;
-import java.io.IOException;
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-import java.net.InetAddress;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.MiniKdc;
+import com.kerb4j.client.SpnegoClient;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.PropertyPlaceholderAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.SecurityAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.DispatcherServletAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.EmbeddedServletContainerAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.ErrorMvcAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.HttpMessageConvertersAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.ServerPropertiesAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.WebMvcAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.*;
 import org.springframework.boot.context.embedded.EmbeddedServletContainerInitializedEvent;
 import org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedServletContainerFactory;
 import org.springframework.context.ApplicationListener;
@@ -57,6 +39,16 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
+
+import java.io.File;
+import java.io.IOException;
+import java.lang.annotation.*;
+import java.net.InetAddress;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
 
 public class SpnegoRestTemplateTests extends KerberosSecurityTestcase {
 
@@ -95,7 +87,7 @@ public class SpnegoRestTemplateTests extends KerberosSecurityTestcase {
 		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
 		int port = portInitListener.port;
 
-		SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(clientKeytab.getAbsolutePath(), clientPrincipal);
+		SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
 
 		String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
 		assertThat(response, is("home"));
@@ -162,7 +154,7 @@ public class SpnegoRestTemplateTests extends KerberosSecurityTestcase {
 		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
 		int port = portInitListener.port;
 
-		SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(clientKeytab.getAbsolutePath(), clientPrincipal);
+		SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
 
 		String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
 		assertThat(response, is("home"));
@@ -225,7 +217,7 @@ public class SpnegoRestTemplateTests extends KerberosSecurityTestcase {
                     DispatcherServletAutoConfiguration.class, WebMvcAutoConfiguration.class,
                     HttpMessageConvertersAutoConfiguration.class,
                     ErrorMvcAutoConfiguration.class, PropertyPlaceholderAutoConfiguration.class })
-    protected static @interface MinimalWebConfiguration {
+    protected @interface MinimalWebConfiguration {
     }
 
 }

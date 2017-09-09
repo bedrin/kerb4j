@@ -148,6 +148,8 @@ public final class SpnegoClient {
 
     }
 
+    // TODO: add factory methods with implicit principal name
+
     /**
      * Creates an instance where authentication is done using username and password
      * 
