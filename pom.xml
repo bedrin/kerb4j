@@ -73,14 +73,14 @@
             <version>[1.6,1.7.99)</version>
             <scope>provided</scope>
         </dependency>
+
+        <!-- TODO: provide two implementations: based on Kerby and vanila JRE -->
         <dependency>
             <groupId>commons-logging</groupId>
             <artifactId>commons-logging</artifactId>
             <version>1.2</version>
             <scope>provided</scope>
         </dependency>
-
-
         <dependency>
             <groupId>org.apache.kerby</groupId>
             <artifactId>kerb-crypto</artifactId>
