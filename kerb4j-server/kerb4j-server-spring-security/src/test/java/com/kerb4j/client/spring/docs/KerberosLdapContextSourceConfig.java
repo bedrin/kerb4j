@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.client.docs;
+package com.kerb4j.client.spring.docs;
 
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.server.spring.ldap.KerberosLdapContextSource;

@@ -52,7 +52,7 @@
   </bean>
 
   <bean id="dummyUserDetailsService"
-    class="org.springframework.security.kerberos.docs.DummyUserDetailsService" />
+    class="com.kerb4j.server.spring.docs.DummyUserDetailsService" />
 
 </beans>
 <!-- end::snippetA[] -->

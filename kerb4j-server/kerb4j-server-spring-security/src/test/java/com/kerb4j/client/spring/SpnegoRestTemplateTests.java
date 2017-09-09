@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.client;
+package com.kerb4j.client.spring;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -31,7 +31,6 @@ import java.util.concurrent.TimeUnit;
 
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.MiniKdc;
-import com.kerb4j.client.SpnegoRestTemplate;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.boot.SpringApplication;

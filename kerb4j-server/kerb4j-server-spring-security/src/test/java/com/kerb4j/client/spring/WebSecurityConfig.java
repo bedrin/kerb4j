@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.client;
+package com.kerb4j.client.spring;
 
 import com.kerb4j.server.spring.SpnegoAuthenticationProvider;
 import org.springframework.beans.factory.annotation.Value;

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.kerb4j.client;
+package com.kerb4j.client.spring;
 
 import java.net.URI;
 import java.security.Principal;
