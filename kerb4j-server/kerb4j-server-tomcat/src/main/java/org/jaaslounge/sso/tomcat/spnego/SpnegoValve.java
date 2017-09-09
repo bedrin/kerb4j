@@ -109,9 +109,8 @@ public class SpnegoValve extends AuthenticatorBase {
      * Realise l'authentification de l'utilisateur
      */
     @Override
-    public boolean authenticate(Request request, HttpServletResponse response) throws IOException {
+    protected boolean doAuthenticate(Request request, HttpServletResponse resp) throws IOException {
 		HttpServletRequest req = (HttpServletRequest) request;
-        HttpServletResponse resp = (HttpServletResponse) response;
         Principal principal = null;
         String authType = null;
         String msg = req.getHeader("Authorization");        
@@ -171,7 +170,7 @@ public class SpnegoValve extends AuthenticatorBase {
         }	
 		
         if (principal == null) return false;
-        register(request, response, principal, authType, principal.getName(), "");
+        register(request, resp, principal, authType, principal.getName(), "");
 		return true;
 	}
 	
