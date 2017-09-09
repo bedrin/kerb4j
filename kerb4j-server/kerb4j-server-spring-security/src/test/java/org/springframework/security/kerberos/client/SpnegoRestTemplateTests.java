@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.MiniKdc;
-import com.kerb4j.client.KerberosRestTemplate;
+import com.kerb4j.client.SpnegoRestTemplate;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.boot.SpringApplication;
@@ -59,7 +59,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
-public class KerberosRestTemplateTests extends KerberosSecurityTestcase {
+public class SpnegoRestTemplateTests extends KerberosSecurityTestcase {
 
 	private ConfigurableApplicationContext context;
 
@@ -96,7 +96,7 @@ public class KerberosRestTemplateTests extends KerberosSecurityTestcase {
 		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
 		int port = portInitListener.port;
 
-		KerberosRestTemplate restTemplate = new KerberosRestTemplate(clientKeytab.getAbsolutePath(), clientPrincipal);
+		SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(clientKeytab.getAbsolutePath(), clientPrincipal);
 
 		String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
 		assertThat(response, is("home"));
@@ -163,7 +163,7 @@ public class KerberosRestTemplateTests extends KerberosSecurityTestcase {
 		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
 		int port = portInitListener.port;
 
-		KerberosRestTemplate restTemplate = new KerberosRestTemplate(clientKeytab.getAbsolutePath(), clientPrincipal);
+		SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(clientKeytab.getAbsolutePath(), clientPrincipal);
 
 		String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
 		assertThat(response, is("home"));

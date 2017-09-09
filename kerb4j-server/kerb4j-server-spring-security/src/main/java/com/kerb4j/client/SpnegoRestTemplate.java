@@ -50,7 +50,7 @@ import org.springframework.web.client.RestTemplate;
 
 /**
  * {@code RestTemplate} that is able to make kerberos SPNEGO authenticated REST
- * requests. Under a hood this {@code KerberosRestTemplate} is using {@link HttpClient} to
+ * requests. Under a hood this {@code SpnegoRestTemplate} is using {@link HttpClient} to
  * support Kerberos.
  *
  * <p>Generally this template can be configured in few different ways.
@@ -64,7 +64,7 @@ import org.springframework.web.client.RestTemplate;
  * @author Janne Valkealahti
  *
  */
-public class KerberosRestTemplate extends RestTemplate {
+public class SpnegoRestTemplate extends RestTemplate {
 
 	private static final Credentials credentials = new NullCredentials();
 
@@ -75,7 +75,7 @@ public class KerberosRestTemplate extends RestTemplate {
 	/**
 	 * Instantiates a new kerberos rest template.
 	 */
-	public KerberosRestTemplate() {
+	public SpnegoRestTemplate() {
 		this(null, null, null, buildHttpClient());
 	}
 
@@ -84,7 +84,7 @@ public class KerberosRestTemplate extends RestTemplate {
 	 *
 	 * @param httpClient the http client
 	 */
-	public KerberosRestTemplate(HttpClient httpClient) {
+	public SpnegoRestTemplate(HttpClient httpClient) {
 		this(null, null, null, httpClient);
 	}
 
@@ -94,7 +94,7 @@ public class KerberosRestTemplate extends RestTemplate {
 	 * @param keyTabLocation the key tab location
 	 * @param userPrincipal the user principal
 	 */
-	public KerberosRestTemplate(String keyTabLocation, String userPrincipal) {
+	public SpnegoRestTemplate(String keyTabLocation, String userPrincipal) {
 		this(keyTabLocation, userPrincipal, buildHttpClient());
 	}
 
@@ -105,7 +105,7 @@ public class KerberosRestTemplate extends RestTemplate {
 	 * @param userPrincipal the user principal
 	 * @param httpClient the http client
 	 */
-	public KerberosRestTemplate(String keyTabLocation, String userPrincipal, HttpClient httpClient) {
+	public SpnegoRestTemplate(String keyTabLocation, String userPrincipal, HttpClient httpClient) {
 		this(keyTabLocation, userPrincipal, null, httpClient);
 	}
 
@@ -114,7 +114,7 @@ public class KerberosRestTemplate extends RestTemplate {
 	 *
 	 * @param loginOptions the login options
 	 */
-	public KerberosRestTemplate(Map<String, Object> loginOptions) {
+	public SpnegoRestTemplate(Map<String, Object> loginOptions) {
 		this(null, null, loginOptions, buildHttpClient());
 	}
 
@@ -124,7 +124,7 @@ public class KerberosRestTemplate extends RestTemplate {
 	 * @param loginOptions the login options
 	 * @param httpClient the http client
 	 */
-	public KerberosRestTemplate(Map<String, Object> loginOptions, HttpClient httpClient) {
+	public SpnegoRestTemplate(Map<String, Object> loginOptions, HttpClient httpClient) {
 		this(null, null, loginOptions, httpClient);
 	}
 
@@ -135,7 +135,7 @@ public class KerberosRestTemplate extends RestTemplate {
 	 * @param userPrincipal the user principal
 	 * @param loginOptions the login options
 	 */
-	public KerberosRestTemplate(String keyTabLocation, String userPrincipal, Map<String, Object> loginOptions) {
+	public SpnegoRestTemplate(String keyTabLocation, String userPrincipal, Map<String, Object> loginOptions) {
 		this(keyTabLocation, userPrincipal, loginOptions, buildHttpClient());
 	}
 
@@ -147,7 +147,7 @@ public class KerberosRestTemplate extends RestTemplate {
 	 * @param loginOptions the login options
 	 * @param httpClient the http client
 	 */
-	private KerberosRestTemplate(String keyTabLocation, String userPrincipal, Map<String, Object> loginOptions, HttpClient httpClient) {
+	private SpnegoRestTemplate(String keyTabLocation, String userPrincipal, Map<String, Object> loginOptions, HttpClient httpClient) {
 		super(new HttpComponentsClientHttpRequestFactory(httpClient));
 		this.keyTabLocation = keyTabLocation;
 		this.userPrincipal = userPrincipal;
@@ -188,7 +188,7 @@ public class KerberosRestTemplate extends RestTemplate {
 
 				@Override
 				public T run() {
-					return KerberosRestTemplate.this.doExecuteSubject(url, method, requestCallback, responseExtractor);
+					return SpnegoRestTemplate.this.doExecuteSubject(url, method, requestCallback, responseExtractor);
 				}
 			});
 

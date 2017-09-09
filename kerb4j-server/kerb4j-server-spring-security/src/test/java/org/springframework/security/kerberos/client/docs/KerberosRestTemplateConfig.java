@@ -15,22 +15,22 @@
  */
 package org.springframework.security.kerberos.client.docs;
 
-import com.kerb4j.client.KerberosRestTemplate;
+import com.kerb4j.client.SpnegoRestTemplate;
 
 public class KerberosRestTemplateConfig {
 
 //tag::snippetA[]
     public void doWithTicketCache() {
-        KerberosRestTemplate restTemplate =
-                new KerberosRestTemplate();
+        SpnegoRestTemplate restTemplate =
+                new SpnegoRestTemplate();
         restTemplate.getForObject("http://neo.example.org:8080/hello", String.class);
     }
 //end::snippetA[]
 
 //tag::snippetB[]
     public void doWithKeytabFile() {
-        KerberosRestTemplate restTemplate =
-                new KerberosRestTemplate("/tmp/user2.keytab", "user2@EXAMPLE.ORG");
+        SpnegoRestTemplate restTemplate =
+                new SpnegoRestTemplate("/tmp/user2.keytab", "user2@EXAMPLE.ORG");
         restTemplate.getForObject("http://neo.example.org:8080/hello", String.class);
     }
 //end::snippetB[]
