@@ -1,4 +1,6 @@
-package org.jaaslounge.decoding.pac;
+package com.kerb4j.common.marshall.pac;
+
+import com.kerb4j.common.marshall.Kerb4JException;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -6,8 +8,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
-import org.jaaslounge.decoding.DecodingException;
 
 /**
  * Structure representing the S4U_DELEGATION_INFO record
@@ -19,7 +19,7 @@ public class PacDelegationInfo {
     private String proxyTarget;
     private List<String> transitedServices;
 		
-    public PacDelegationInfo(byte[] data) throws DecodingException {
+    public PacDelegationInfo(byte[] data) throws Kerb4JException {
         try {
             final PacDataInputStream pacStream = new PacDataInputStream(new DataInputStream(
                     new ByteArrayInputStream(data)));
@@ -40,7 +40,7 @@ public class PacDelegationInfo {
             
             final int listSize = pacStream.readInt();
             
-            if(transitedListSize!=listSize) throw new DecodingException("pac.delegationinfo.transitedlist.sizenotmatching");
+            if(transitedListSize!=listSize) throw new Kerb4JException("pac.delegationinfo.transitedlist.sizenotmatching");
             
             for(int i=0;i<listSize;i++){
             	transitedServiceStrings[i] = pacStream.readUnicodeString();
@@ -55,7 +55,7 @@ public class PacDelegationInfo {
         	
             this.transitedServices = Collections.unmodifiableList(Arrays.asList(transitedServices));
         } catch(IOException e) {
-            throw new DecodingException("pac.delegationinfo.malformed", null, e);
+            throw new Kerb4JException("pac.delegationinfo.malformed", null, e);
         }
     }
 

@@ -10,13 +10,19 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.security.Key;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 // https://msdn.microsoft.com/en-us/library/cc237917.aspx
 public class Pac {
 
     private PacLogonInfo logonInfo;
     private PacCredentialType credentialType;
+    private List<PacDelegationInfo> delegationInfos = new ArrayList<>();
+    private List<PacDelegationInfo> delegationInfosReadOnly = Collections.unmodifiableList(delegationInfos);
+
     private PacSignature serverSignature;
     private PacSignature kdcSignature;
 
@@ -54,6 +60,10 @@ public class Pac {
                     case PacConstants.CREDENTIAL_TYPE:
                         // PAC Credential Type
                         credentialType = new PacCredentialType(bufferData);
+                        break;
+                    case PacConstants.S4U_DELEGATION_INFO:
+                        // PAC S4U Delegation Info Type, according to [MS-PAC] �2.9, can "be used multiple times"
+                        delegationInfos.add(new PacDelegationInfo(bufferData));
                         break;
                     case PacConstants.SERVER_CHECKSUM:
                         // PAC Server Signature
@@ -103,5 +113,9 @@ public class Pac {
 
     public PacSignature getKdcSignature() {
         return kdcSignature;
+    }
+
+    public List<PacDelegationInfo> getDelegationInfos(){
+    	return delegationInfosReadOnly;
     }
 }
