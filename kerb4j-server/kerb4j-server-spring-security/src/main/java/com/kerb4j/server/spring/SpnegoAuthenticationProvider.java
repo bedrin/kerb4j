@@ -61,6 +61,9 @@ public class SpnegoAuthenticationProvider implements
 		byte[] token = auth.getToken();
 		LOG.debug("Try to validate Kerberos Token");
 		SpnegoAuthenticationToken ticketValidation = this.ticketValidator.validateTicket(token);
+
+		// Extract roles from PAC
+
 		LOG.debug("Successfully validated " + ticketValidation.username());
 		UserDetails userDetails = this.userDetailsService.loadUserByUsername(ticketValidation.username());
 		userDetailsChecker.check(userDetails);
