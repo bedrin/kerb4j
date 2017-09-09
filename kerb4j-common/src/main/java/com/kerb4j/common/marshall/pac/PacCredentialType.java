@@ -21,7 +21,7 @@ public class PacCredentialType {
     }
 
     public boolean isCredentialTypeCorrect() {
-        return credentialType != null && credentialType.length < MINIMAL_BUFFER_SIZE;
+        return credentialType != null && credentialType.length > MINIMAL_BUFFER_SIZE;
     }
 
 }
