@@ -21,19 +21,17 @@ import com.kerb4j.server.spring.KerberosTicketValidator;
 import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.ietf.jgss.*;
+import org.ietf.jgss.GSSContext;
+import org.ietf.jgss.GSSException;
+import org.ietf.jgss.GSSName;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.util.Assert;
 
-import javax.security.auth.login.AppConfigurationEntry;
-import javax.security.auth.login.Configuration;
 import java.io.IOException;
 import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
-import java.util.HashMap;
 
 /**
  * Implementation of {@link KerberosTicketValidator} which uses the SUN JAAS
@@ -140,75 +138,6 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
      */
     public void setHoldOnToGSSContext(boolean holdOnToGSSContext) {
         this.holdOnToGSSContext = holdOnToGSSContext;
-    }
-
-    /**
-     * This class is needed, because the validation must run with previously generated JAAS subject
-     * which belongs to the service principal and was loaded out of the keytab during startup.
-     */
-    private class KerberosValidateAction implements PrivilegedExceptionAction<SpnegoAuthenticationToken> {
-        byte[] kerberosTicket;
-
-        public KerberosValidateAction(byte[] kerberosTicket) {
-            this.kerberosTicket = kerberosTicket;
-        }
-
-        @Override
-        public SpnegoAuthenticationToken run() throws Exception {
-            byte[] responseToken = new byte[0];
-            GSSName gssName = null;
-            GSSContext context = GSSManager.getInstance().createContext((GSSCredential) null);
-            boolean first = true;
-            while (!context.isEstablished()) {
-                if (first) {
-                    kerberosTicket = tweakJdkRegression(kerberosTicket);
-                }
-                responseToken = context.acceptSecContext(kerberosTicket, 0, kerberosTicket.length);
-                gssName = context.getSrcName();
-                if (gssName == null) {
-                    throw new BadCredentialsException("GSSContext name of the context initiator is null");
-                }
-                first = false;
-            }
-            if (!holdOnToGSSContext) {
-                context.dispose();
-            }
-            return new SpnegoAuthenticationToken(kerberosTicket, gssName.toString(), responseToken);
-        }
-    }
-
-    /**
-     * Normally you need a JAAS config file in order to use the JAAS Kerberos Login Module,
-     * with this class it is not needed and you can have different configurations in one JVM.
-     */
-    private static class LoginConfig extends Configuration {
-        private String keyTabLocation;
-        private String servicePrincipalName;
-        private boolean debug;
-
-        public LoginConfig(String keyTabLocation, String servicePrincipalName, boolean debug) {
-            this.keyTabLocation = keyTabLocation;
-            this.servicePrincipalName = servicePrincipalName;
-            this.debug = debug;
-        }
-
-        @Override
-        public AppConfigurationEntry[] getAppConfigurationEntry(String name) {
-            HashMap<String, String> options = new HashMap<String, String>();
-            options.put("useKeyTab", "true");
-            options.put("keyTab", this.keyTabLocation);
-            options.put("principal", this.servicePrincipalName);
-            options.put("storeKey", "true");
-            options.put("doNotPrompt", "true");
-            if (this.debug) {
-                options.put("debug", "true");
-            }
-            options.put("isInitiator", "false");
-
-            return new AppConfigurationEntry[] { new AppConfigurationEntry("com.sun.security.auth.module.Krb5LoginModule",
-                    AppConfigurationEntry.LoginModuleControlFlag.REQUIRED, options), };
-        }
-
     }
 
     private static byte[] tweakJdkRegression(byte[] token) {

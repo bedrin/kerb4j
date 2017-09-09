@@ -51,6 +51,7 @@ public class Krb5LoginConfig extends Configuration {
 		options.put("storeKey", "true");
 
 		options.put("doNotPrompt", "true");
+		// TODO: add isInitiator true
 
 		return new Krb5LoginConfig(options);
 	}

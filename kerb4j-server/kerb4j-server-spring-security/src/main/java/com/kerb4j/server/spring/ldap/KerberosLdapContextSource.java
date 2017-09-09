@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.security.kerberos.client.ldap;
+package com.kerb4j.server.spring.ldap;
 
 import java.security.PrivilegedAction;
 import java.util.Hashtable;
@@ -45,7 +45,7 @@ import org.springframework.util.Assert;
  *      &lt;property name=&quot;referral&quot; value=&quot;ignore&quot; /&gt;
  *
  *       &lt;property name=&quot;loginConfig&quot;&gt;
- *           &lt;bean class=&quot;org.springframework.security.kerberos.client.ldap.SunJaasKrb5LoginConfig&quot;&gt;
+ *           &lt;bean class=&quot;com.kerb4j.server.spring.ldap.SunJaasKrb5LoginConfig&quot;&gt;
  *               &lt;property name=&quot;servicePrincipal&quot; value=&quot;${authentication.ldap.servicePrincipal}&quot; /&gt;
  *               &lt;property name=&quot;useTicketCache&quot; value=&quot;true&quot; /&gt;
  *               &lt;property name=&quot;isInitiator&quot; value=&quot;true&quot; /&gt;

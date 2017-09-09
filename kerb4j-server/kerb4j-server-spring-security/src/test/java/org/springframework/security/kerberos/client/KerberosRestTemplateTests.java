@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.MiniKdc;
+import com.kerb4j.client.KerberosRestTemplate;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.boot.SpringApplication;

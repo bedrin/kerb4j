@@ -15,7 +15,7 @@
  */
 package org.springframework.security.kerberos.client.docs;
 
-import org.springframework.security.kerberos.client.KerberosRestTemplate;
+import com.kerb4j.client.KerberosRestTemplate;
 
 public class KerberosRestTemplateConfig {
 
