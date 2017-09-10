@@ -1,4 +1,4 @@
-package org.jaaslounge.sso.tomcat.spnego;
+package com.kerb4j.server.tomcat;
 
 import org.apache.catalina.realm.RealmBase;
 
@@ -31,7 +31,7 @@ public class SpnegoRealm extends RealmBase {
 	}
 	
 	public String getInfo() {
-		return "org.org.jaaslounge.sso.tomcat.spnego.SpnegoRealm/1.0";
+		return "org.com.kerb4j.server.tomcat.SpnegoRealm/1.0";
 	}
 	
 	protected String getName() {

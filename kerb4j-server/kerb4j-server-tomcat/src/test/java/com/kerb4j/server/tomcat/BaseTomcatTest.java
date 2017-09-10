@@ -10,8 +10,6 @@ import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.webresources.DirResourceSet;
 import org.apache.catalina.webresources.StandardRoot;
-import org.jaaslounge.sso.tomcat.spnego.SpnegoRealm;
-import org.jaaslounge.sso.tomcat.spnego.SpnegoAuthenticator;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

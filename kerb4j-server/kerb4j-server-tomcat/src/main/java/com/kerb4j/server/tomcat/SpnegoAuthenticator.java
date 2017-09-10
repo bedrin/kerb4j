@@ -1,4 +1,4 @@
-package org.jaaslounge.sso.tomcat.spnego;
+package com.kerb4j.server.tomcat;
 
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;

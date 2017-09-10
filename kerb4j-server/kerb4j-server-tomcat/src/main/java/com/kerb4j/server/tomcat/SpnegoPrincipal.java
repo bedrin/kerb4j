@@ -1,4 +1,4 @@
-package org.jaaslounge.sso.tomcat.spnego;
+package com.kerb4j.server.tomcat;
 
 import org.apache.catalina.realm.GenericPrincipal;
 
