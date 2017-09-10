@@ -1,11 +1,10 @@
 package org.jaaslounge.sso.tomcat.spnego;
 
+import org.apache.catalina.realm.RealmBase;
+
 import java.security.Principal;
 import java.util.HashMap;
 import java.util.Map;
-
-import org.apache.catalina.realm.RealmBase;
-import org.jaaslounge.sso.tomcat.Configurator;
 
 /**
  * Defini le realm permettant de gorer des utilisateurs configuras via Active Directory.<br>
@@ -23,59 +22,12 @@ import org.jaaslounge.sso.tomcat.Configurator;
 public class SpnegoRealm extends RealmBase {
 	/** cache des associations nom d'utilisateur - principal */
 	private Map<String, Principal> realm;
-	private Configurator config;
-	
-    // ------ propri�t�s - permet de configurer le realm depuis la configuration de tomcat	
-	public void setContextFactory(String contextFactory) {
-		config.setContextFactory(contextFactory);
-	}
-	public void setDomainController(String domainController) {
-		config.setDomainController(domainController);
-	}
-	public void setLdapSearchContext(String ldapSearchContext) {
-		config.setLdapSearchContext(ldapSearchContext);
-	}
-	public void setLoginModule(String loginModule) {
-		config.setLoginContext(loginModule);
-	}
-	public void setServicePassword(String servicePassword) {
-		config.setServicePassword(servicePassword);
-	}
-	public void setServicePrincipalName(String servicePrincipalName) {
-		config.setServicePrincipalName(servicePrincipalName);
-	}
-	public void setStripGroupNames(boolean stripGroupNames) {
-		config.setStripGroupNames(stripGroupNames);
-	}
-	
-	public String getDomainController() {
-		return config.getDomainController();
-	}	
-	public String getServicePrincipalName() {
-		return config.getServicePrincipalName();
-	}
-	public String getServicePassword() {
-		return config.getServicePassword();
-	}
-	public String getLoginModule() {
-		return config.getLoginContext();
-	}
-	public String getLdapSearchContext() {
-		return config.getLdapSearchContext();
-	}
-	public String getContextFactory() {
-		return config.getContextFactory();
-	}
-	public boolean isStripGroupNames() {
-		return config.isStripGroupNames();
-	}
 
 	/**
 	 * Initialise le realm
 	 */
 	public SpnegoRealm() {
 		realm = new HashMap();
-		config = Configurator.getConfigurator();
 	}
 	
 	public String getInfo() {
