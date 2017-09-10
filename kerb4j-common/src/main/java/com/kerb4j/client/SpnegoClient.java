@@ -19,6 +19,7 @@
 package com.kerb4j.client;
 
 import com.kerb4j.common.jaas.sun.Krb5LoginContext;
+import com.kerb4j.common.util.JreVendor;
 import com.kerb4j.common.util.SpnegoProvider;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
@@ -190,9 +191,17 @@ public final class SpnegoClient {
 
         return new SpnegoContext(this, Subject.doAs(getSubject(), (PrivilegedExceptionAction<GSSContext>) () -> {
 
+            // IBM JDK only understands indefinite lifetime
+            final int credentialLifetime;
+            if (JreVendor.IS_IBM_JVM) {
+                credentialLifetime = GSSCredential.INDEFINITE_LIFETIME;
+            } else {
+                credentialLifetime = GSSCredential.DEFAULT_LIFETIME;
+            }
+
             GSSCredential credential = SpnegoProvider.GSS_MANAGER.createCredential(
                     null
-                    , GSSCredential.DEFAULT_LIFETIME
+                    , credentialLifetime
                     , SpnegoProvider.SUPPORTED_OIDS
                     , GSSCredential.ACCEPT_ONLY); // TODO should it be INIT and ACCEPT ?
 
