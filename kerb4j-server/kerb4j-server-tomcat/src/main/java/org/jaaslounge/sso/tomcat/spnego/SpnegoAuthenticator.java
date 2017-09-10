@@ -5,7 +5,6 @@ import com.kerb4j.client.SpnegoContext;
 import com.kerb4j.common.util.Constants;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.authenticator.AuthenticatorBase;
-import org.apache.catalina.authenticator.SpnegoAuthenticator;
 import org.apache.catalina.connector.Request;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
@@ -36,9 +35,9 @@ import java.security.PrivilegedActionException;
  * </ul>
  * @author damien
  */
-public class SpnegoValve extends AuthenticatorBase {
+public class SpnegoAuthenticator extends AuthenticatorBase {
 
-    private static final Log log = LogFactory.getLog(SpnegoValve.class);
+    private static final Log log = LogFactory.getLog(SpnegoAuthenticator.class);
 
 
     private static final String HTTP_NEGOTIATE = "Negotiate";
@@ -166,7 +165,7 @@ public class SpnegoValve extends AuthenticatorBase {
                 authorizationBC.getLength());
 
         if (getApplyJava8u40Fix()) {
-            SpnegoAuthenticator.SpnegoTokenFixer.fix(decoded);
+            org.apache.catalina.authenticator.SpnegoAuthenticator.SpnegoTokenFixer.fix(decoded);
         }
 
         if (decoded.length == 0) {
@@ -203,7 +202,7 @@ public class SpnegoValve extends AuthenticatorBase {
             GSSContext gssContext = acceptContext.getGSSContext();
 
             // TODO: check realm call?
-            principal = Subject.doAs(subject, new SpnegoAuthenticator.AuthenticateAction(
+            principal = Subject.doAs(subject, new org.apache.catalina.authenticator.SpnegoAuthenticator.AuthenticateAction(
                     context.getRealm(), gssContext, storeDelegatedCredential
             ));
 

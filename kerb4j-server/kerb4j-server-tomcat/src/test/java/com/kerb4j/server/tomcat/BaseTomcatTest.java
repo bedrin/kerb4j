@@ -7,25 +7,21 @@ import com.kerb4j.client.SpnegoHttpURLConnection;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.WebResourceRoot;
 import org.apache.catalina.core.StandardContext;
-import org.apache.catalina.realm.MemoryRealm;
-import org.apache.catalina.realm.NullRealm;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.webresources.DirResourceSet;
 import org.apache.catalina.webresources.StandardRoot;
 import org.jaaslounge.sso.tomcat.spnego.SpnegoRealm;
-import org.jaaslounge.sso.tomcat.spnego.SpnegoValve;
+import org.jaaslounge.sso.tomcat.spnego.SpnegoAuthenticator;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import javax.servlet.ServletException;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
-import java.net.UnknownHostException;
 
 import static org.junit.Assert.assertEquals;
 
@@ -57,7 +53,7 @@ public class BaseTomcatTest extends KerberosSecurityTestcase {
         tomcat.setPort(8080);
 
         StandardContext ctx = (StandardContext) tomcat.addWebapp("/", new File(".").getAbsolutePath());
-        SpnegoValve valve = new SpnegoValve();
+        SpnegoAuthenticator valve = new SpnegoAuthenticator();
         valve.setKeyTab(serverKeytab.getAbsolutePath());
         valve.setPrincipalName(serverPrincipal);
         ctx.addValve(valve);
