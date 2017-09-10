@@ -22,7 +22,7 @@ import org.jaaslounge.sso.tomcat.Configurator;
  */
 public class SpnegoRealm extends RealmBase {
 	/** cache des associations nom d'utilisateur - principal */
-	private Map realm;
+	private Map<String, Principal> realm;
 	private Configurator config;
 	
     // ------ propri�t�s - permet de configurer le realm depuis la configuration de tomcat	
@@ -92,19 +92,11 @@ public class SpnegoRealm extends RealmBase {
 
 	protected Principal getPrincipal(String princ) {
 		SpnegoPrincipal principal = (SpnegoPrincipal) realm.get(princ);
-		if (principal != null) {
-			return principal.getPrincipal();
-		}
-		return null;
-	}
-	
-	public boolean hasRole(Principal princ, String role) {
-		String pname = princ.getName();
-		SpnegoPrincipal principal = (SpnegoPrincipal) realm.get(pname);
 		if (principal == null) {
 			principal = new SpnegoPrincipal(princ);
-			realm.put(pname, principal);
-		}		
-		return principal.hasRole(role);
+			realm.put(princ, principal);
+		}
+		return principal;
 	}
+
 }

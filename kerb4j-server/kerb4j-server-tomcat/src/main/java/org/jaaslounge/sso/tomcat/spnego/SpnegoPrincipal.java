@@ -1,6 +1,9 @@
 package org.jaaslounge.sso.tomcat.spnego;
 
+import org.apache.catalina.realm.GenericPrincipal;
+
 import java.security.Principal;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -8,35 +11,14 @@ import java.util.List;
  * Les roles sont recuperes y la volve lors du premier appel y hasRole.
  * @author damien
  */
-public class SpnegoPrincipal {
-	/** reference vers le principal */
-	private Principal principal;
-	/** liste des roles obtenus */
-	private List roles;
-	
+public class SpnegoPrincipal extends GenericPrincipal {
+
 	/**
 	 * Construit une identite
-	 * @param principal principal
+	 * @param name principal name
 	 */
-	public SpnegoPrincipal(Principal principal) {
-		this.principal = principal;
-	}
-	
-	/**
-	 * Obtient la reference vers le principal
-	 * @return Principal
-	 */
-	public Principal getPrincipal() {
-		return principal;
+	public SpnegoPrincipal(String name) {
+		super(name, "N/A", Collections.singletonList("AUTHETICATED_USER"));
 	}
 
-	
-	/**
-	 * Permet de savoir si le role indique est contenu dans la liste des roles recuperes.
-	 * @param role role recherche
-	 * @return vrai si l'utilisateur appartient au role, faux sinon
-	 */
-	public boolean hasRole(String role) {
-		return roles.contains(role);
-	}
 }

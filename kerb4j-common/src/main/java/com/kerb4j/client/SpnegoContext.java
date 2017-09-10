@@ -47,9 +47,16 @@ public class SpnegoContext implements Closeable {
         return this.gssContext.acceptSecContext(token, 0, token.length);
     }
 
+    //
+
     public GSSName getSrcName() throws GSSException {
         return gssContext.getSrcName();
     }
+
+    public GSSContext getGSSContext() {
+        return gssContext;
+    }
+
 
     public boolean isEstablished() {
         return gssContext.isEstablished();

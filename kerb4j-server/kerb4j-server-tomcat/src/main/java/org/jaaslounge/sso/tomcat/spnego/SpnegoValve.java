@@ -1,17 +1,29 @@
 package org.jaaslounge.sso.tomcat.spnego;
 
-import java.io.IOException;
-import java.security.Principal;
-import java.util.logging.Logger;
+import com.kerb4j.client.SpnegoClient;
+import com.kerb4j.client.SpnegoContext;
+import com.kerb4j.common.util.Constants;
+import org.apache.catalina.LifecycleException;
+import org.apache.catalina.authenticator.AuthenticatorBase;
+import org.apache.catalina.authenticator.SpnegoAuthenticator;
+import org.apache.catalina.connector.Request;
+import org.apache.juli.logging.Log;
+import org.apache.juli.logging.LogFactory;
+import org.apache.tomcat.util.buf.ByteChunk;
+import org.apache.tomcat.util.buf.MessageBytes;
+import org.apache.tomcat.util.codec.binary.Base64;
+import org.ietf.jgss.GSSContext;
+import org.ietf.jgss.GSSException;
 
+import javax.security.auth.Subject;
+import javax.security.auth.login.LoginException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-
-import org.apache.catalina.authenticator.AuthenticatorBase;
-import org.apache.catalina.connector.Request;
-import org.jaaslounge.sso.tomcat.Configurator;
+import java.io.IOException;
+import java.security.Principal;
+import java.security.PrivilegedActionException;
 
 /**
  * Valve permettant de gerer l'authentification d'un utilisateur par SPNEGO
@@ -25,64 +37,72 @@ import org.jaaslounge.sso.tomcat.Configurator;
  * @author damien
  */
 public class SpnegoValve extends AuthenticatorBase {
+
+    private static final Log log = LogFactory.getLog(SpnegoValve.class);
+
+
     private static final String HTTP_NEGOTIATE = "Negotiate";
     private static final String HTTP_NTLM = "NTLM";
     private static final String HTTP_BASIC = "Basic";
 
+    private SpnegoClient spnegoClient;
+
     // ------ proprietes - permet de configurer la valve depuis la configuration de tomcat
-    private String domainController = null;
-    private String domainName = null;
-    
-    private static Logger log = Logger.getLogger(SpnegoValve.class.getName());
-    
-    /**
-     * Obtient l'adresse du controlleur de domaine configure
-     * @return adresse du controlleur de domaine
-     */
-    public String getDomainController() {
-    	if (domainController == null) {
-    		domainController = Configurator.getConfigurator().getDomainController();
-    	}
-    	return domainController;
+    private String keyTab = null;
+    private String principalName = null;
+
+    public String getKeyTab() {
+        return keyTab;
     }
-    
-    /**
-     * Obtient le nom du domaine configur�
-     * @return nom du domaine
-     */
-    public String getDomainName() {
-    	if (domainName == null) {
-    		domainName = Configurator.getConfigurator().getDomainName();
-    	}
-    	return domainName;
+
+    public void setKeyTab(String keyTab) {
+        this.keyTab = keyTab;
+        log.info("Using keytab : " + principalName);
+    }
+
+    public String getPrincipalName() {
+        return principalName;
+    }
+
+    public void setPrincipalName(String principalName) {
+        this.principalName = principalName;
+        log.info("Using principal name : " + principalName);
+    }
+
+
+    private boolean storeDelegatedCredential = true;
+    public boolean isStoreDelegatedCredential() {
+        return storeDelegatedCredential;
+    }
+    public void setStoreDelegatedCredential(
+            boolean storeDelegatedCredential) {
+        this.storeDelegatedCredential = storeDelegatedCredential;
+    }
+
+    private boolean applyJava8u40Fix = true;
+    public boolean getApplyJava8u40Fix() {
+        return applyJava8u40Fix;
+    }
+    public void setApplyJava8u40Fix(boolean applyJava8u40Fix) {
+        this.applyJava8u40Fix = applyJava8u40Fix;
+    }
+
+    @Override
+    protected void initInternal() throws LifecycleException {
+        super.initInternal();
+
+        try {
+            spnegoClient = SpnegoClient.loginWithKeyTab(principalName, keyTab);
+        } catch (LoginException e) {
+            throw new LifecycleException(e);
+        }
+
     }
 
     @Override
     protected String getAuthMethod() {
-        return "NEGOTIATE";
+        return HTTP_NEGOTIATE.toUpperCase(); // TODO: what does it mean ? should it be "SPNEGO" ?
     }
-
-    /**
-     * Configure l'adresse du controlleur de domaine
-     * @param domainController adresse du controlleur de domaine
-     */
-    public void setDomainController(String domainController) {
-    	this.domainController = domainController;
-    	System.setProperty("jcifs.http.domainController", domainController);
-    	Configurator.getConfigurator().setDomainController(domainController);
-    	log.info("Using domain controller : " + domainController);
-    }    
-
-    /**
-     * Configure le nom du domaine
-     * @param domainName nom du domaine
-     */
-    public void setDomainName(String domainName) {
-    	this.domainName = domainName;
-    	System.setProperty("jcifs.http.domainName", domainName);
-    	Configurator.getConfigurator().setDomainName(domainName);
-    	log.info("Using domain : " + domainName);
-    }       
 	
     /**
      * Action realisee en cas d'echec de l'authentification
@@ -105,73 +125,142 @@ public class SpnegoValve extends AuthenticatorBase {
         resp.flushBuffer();
     }
 
-    /**
-     * Realise l'authentification de l'utilisateur
-     */
     @Override
-    protected boolean doAuthenticate(Request request, HttpServletResponse resp) throws IOException {
-		HttpServletRequest req = (HttpServletRequest) request;
-        Principal principal = null;
-        String authType = null;
-        String msg = req.getHeader("Authorization");        
-        if (msg != null && (msg.regionMatches(true, 0, "Negotiate ", 0, 10) ||
-                msg.regionMatches(true, 0, "NTLM ", 0, 5))) {
-            authType = msg.regionMatches(true, 0, "Negotiate ", 0, 10) ?
-                    HTTP_NEGOTIATE : msg.regionMatches(true, 0, "NTLM ", 0, 5) ?
-                            HTTP_NTLM : HTTP_BASIC;
-            // TODO: replace with proper authentication
+    protected boolean doAuthenticate(Request request, HttpServletResponse response)
+            throws IOException {
 
-            /*try {
-                if (HTTP_NEGOTIATE.equals(authType) ||
-                        HTTP_NTLM.equals(authType)) {
-                    principal = Negotiate.authenticate(req, resp);
-                    if (principal == null) return false;
-                    req.getSession().setAttribute("jcifs.http.principal",
-                            principal);
+        if (checkForCachedAuthentication(request, response, true)) {
+            return true;
+        }
 
-                    register(request, response, principal, authType, principal.getName(), "");
-                    
-                    log.fine("Authentifi� en tant que " + principal.getName());
-                    return true;
+        MessageBytes authorization =
+                request.getCoyoteRequest().getMimeHeaders()
+                        .getValue("authorization");
+
+        if (authorization == null) {
+            if (log.isDebugEnabled()) {
+                log.debug(sm.getString("authenticator.noAuthHeader"));
+            }
+            response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+            return false;
+        }
+
+        authorization.toBytes();
+        ByteChunk authorizationBC = authorization.getByteChunk();
+
+        if (!authorizationBC.startsWithIgnoreCase("negotiate ", 0)) {
+            if (log.isDebugEnabled()) {
+                log.debug(sm.getString(
+                        "spnegoAuthenticator.authHeaderNotNego"));
+            }
+            response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+            return false;
+        }
+
+        authorizationBC.setOffset(authorizationBC.getOffset() + 10);
+
+        byte[] decoded = Base64.decodeBase64(authorizationBC.getBuffer(),
+                authorizationBC.getOffset(),
+                authorizationBC.getLength());
+
+        if (getApplyJava8u40Fix()) {
+            SpnegoAuthenticator.SpnegoTokenFixer.fix(decoded);
+        }
+
+        if (decoded.length == 0) {
+            if (log.isDebugEnabled()) {
+                log.debug(sm.getString(
+                        "spnegoAuthenticator.authHeaderNoToken"));
+            }
+            response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+            return false;
+        }
+
+        SpnegoContext acceptContext = null;
+        Principal principal;
+        byte[] outToken;
+
+        try {
+
+            acceptContext = spnegoClient.createAcceptContext();
+            outToken = acceptContext.acceptToken(decoded);
+
+            if (outToken == null) {
+                if (log.isDebugEnabled()) {
+                    log.debug(sm.getString(
+                            "spnegoAuthenticator.ticketValidateFail"));
                 }
-                UniAddress dc = UniAddress.getByName(getDomainController(), true);
-                String auth = new String(Base64.decode(msg.substring(6)),
-                        "US-ASCII");
-                int index = auth.indexOf(':');
-                String user = (index != -1) ? auth.substring(0, index) : auth;
-                String password = (index != -1) ? auth.substring(index + 1) :
-                        "";
-                index = user.indexOf('\\');
-                if (index == -1) index = user.indexOf('/');
-                String domain = (index != -1) ? user.substring(0, index) : getDomainName();
-                user = (index != -1) ? user.substring(index + 1) : user;
-                principal = new NtlmPasswordAuthentication(domain, user,
-                        password);
-                SmbSession.logon(dc, (NtlmPasswordAuthentication) principal);
-            } catch (SmbAuthException sae) {
-            	try {
-	                fail((sae.getNtStatus() == NtStatus.NT_STATUS_ACCESS_VIOLATION),
-	                        req, resp);
-            	} catch (ServletException e) { }
-                return false;
-            } catch (ServletException e) {
-			}*/
-            HttpSession ssn = req.getSession();
-            ssn.setAttribute("jcifs.http.principal", principal);
-        } else {
-            HttpSession ssn = req.getSession(false);
-            if (ssn == null || (principal = (Principal)
-                    ssn.getAttribute("jcifs.http.principal")) == null) {
-            	try {
-            		fail(false, req, resp);
-            	} catch (ServletException e) {}
+                // Start again
+                response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
                 return false;
             }
-        }	
-		
-        if (principal == null) return false;
-        register(request, resp, principal, authType, principal.getName(), "");
-		return true;
+
+            Subject subject = spnegoClient.getSubject();
+            GSSContext gssContext = acceptContext.getGSSContext();
+
+            // TODO: check realm call?
+            principal = Subject.doAs(subject, new SpnegoAuthenticator.AuthenticateAction(
+                    context.getRealm(), gssContext, storeDelegatedCredential
+            ));
+
+        } catch (GSSException e) {
+            if (log.isDebugEnabled()) {
+                log.debug(sm.getString("spnegoAuthenticator.ticketValidateFail"), e);
+            }
+            response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+            return false;
+        } catch (PrivilegedActionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof GSSException) {
+                if (log.isDebugEnabled()) {
+                    log.debug(sm.getString("spnegoAuthenticator.serviceLoginFail"), e);
+                }
+            } else {
+                log.error(sm.getString("spnegoAuthenticator.serviceLoginFail"), e);
+            }
+            response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+            return false;
+        } finally {
+            if (acceptContext != null) {
+                try {
+                    acceptContext.close();
+                } catch (IOException e) {
+                    // Ignore
+                }
+            }
+        }
+
+        // Send response token on success and failure
+        response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER + " "
+                + Base64.encodeBase64String(outToken));
+
+        if (principal != null) {
+            register(request, response, principal, HTTP_NEGOTIATE.toUpperCase(), // TODO: what does it mean ? should it be "SPNEGO" ?,
+                    principal.getName(), null);
+
+            // TODO: do we need code below?
+
+            /*Pattern p = noKeepAliveUserAgents;
+            if (p != null) {
+                MessageBytes ua =
+                        request.getCoyoteRequest().getMimeHeaders().getValue(
+                                "user-agent");
+                if (ua != null && p.matcher(ua.toString()).matches()) {
+                    response.setHeader("Connection", "close");
+                }
+            }*/
+            return true;
+        }
+
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+        return false;
+
 	}
 	
 }
