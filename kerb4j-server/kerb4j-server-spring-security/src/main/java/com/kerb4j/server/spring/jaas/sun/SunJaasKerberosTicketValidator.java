@@ -73,7 +73,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
                 acceptContext.close();
             }
 
-            return new SpnegoAuthenticationToken(token, srcName.toString(), responseToken);
+            return new SpnegoAuthenticationToken(token, srcName.toString(), responseToken, spnegoClient.getSubject());
 
         } catch (IOException | GSSException | PrivilegedActionException e) {
             throw new BadCredentialsException("Kerberos validation not successful", e);

@@ -33,11 +33,10 @@ import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.userdetails.*;
 import com.kerb4j.server.spring.SpnegoRequestToken;
+
+import javax.security.auth.Subject;
 
 /**
  * Test class for {@link SpnegoAuthenticationProvider}
@@ -50,6 +49,7 @@ public class SpnegoAuthenticationProviderTest {
 
     private SpnegoAuthenticationProvider provider;
     private com.kerb4j.server.spring.KerberosTicketValidator ticketValidator;
+    private AuthenticationUserDetailsService<SpnegoAuthenticationToken> extractGroupsUserDetailsService;
     private UserDetailsService userDetailsService;
 
     // data
@@ -57,7 +57,9 @@ public class SpnegoAuthenticationProviderTest {
     private static final byte[] RESPONSE_TOKEN = "ResponseToken".getBytes();
     private static final String TEST_USER = "Testuser@SPRINGSOURCE.ORG";
 
-    private static final SpnegoAuthenticationToken TICKET_VALIDATION = new SpnegoAuthenticationToken(TEST_TOKEN, TEST_USER, RESPONSE_TOKEN);
+    private static final Subject subject = new Subject();
+
+    private static final SpnegoAuthenticationToken TICKET_VALIDATION = new SpnegoAuthenticationToken(TEST_TOKEN, TEST_USER, RESPONSE_TOKEN, subject);
 
     private static final List<GrantedAuthority> AUTHORITY_LIST = AuthorityUtils.createAuthorityList("ROLE_ADMIN");
     private static final UserDetails USER_DETAILS = new User(TEST_USER, "empty", true, true, true,true, AUTHORITY_LIST);
@@ -68,9 +70,12 @@ public class SpnegoAuthenticationProviderTest {
         // mocking
         this.ticketValidator = mock(KerberosTicketValidator.class);
         this.userDetailsService = mock(UserDetailsService.class);
+        this.extractGroupsUserDetailsService = mock(AuthenticationUserDetailsService.class);
+
         this.provider = new SpnegoAuthenticationProvider();
         this.provider.setTicketValidator(this.ticketValidator);
         this.provider.setUserDetailsService(this.userDetailsService);
+        this.provider.setExtractGroupsUserDetailsService(this.extractGroupsUserDetailsService);
     }
 
     @Test
@@ -139,6 +144,7 @@ public class SpnegoAuthenticationProviderTest {
         // stubbing
         when(ticketValidator.validateTicket(TEST_TOKEN)).thenReturn(TICKET_VALIDATION);
         when(userDetailsService.loadUserByUsername(TEST_USER)).thenReturn(userDetails);
+        when(extractGroupsUserDetailsService.loadUserDetails(any())).thenReturn(userDetails);
 
         // testing
         return provider.authenticate(inputToken);

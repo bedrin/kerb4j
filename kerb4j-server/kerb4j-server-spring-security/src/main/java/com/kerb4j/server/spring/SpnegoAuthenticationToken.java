@@ -3,6 +3,7 @@ package com.kerb4j.server.spring;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.codec.Base64;
 
+import javax.security.auth.Subject;
 import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 
@@ -13,19 +14,22 @@ public class SpnegoAuthenticationToken extends SpnegoRequestToken {
 
 	private final String username;
 	private final byte[] responseToken;
+	private final Subject subject;
 
 	// TODO: should contain everything for delegated auhentication
 
-	public SpnegoAuthenticationToken(Collection<? extends GrantedAuthority> authorities, byte[] spnegoInitToken, String username, byte[] responseToken) {
+	public SpnegoAuthenticationToken(Collection<? extends GrantedAuthority> authorities, byte[] spnegoInitToken, String username, byte[] responseToken, Subject subject) {
 		super(authorities, spnegoInitToken);
 		this.username = username;
 		this.responseToken = responseToken;
+		this.subject = subject;
 	}
 
-	public SpnegoAuthenticationToken(byte[] token, String username, byte[] responseToken) {
+	public SpnegoAuthenticationToken(byte[] token, String username, byte[] responseToken, Subject subject) {
 		super(token);
 		this.username = username;
 		this.responseToken = responseToken;
+		this.subject = subject;
 	}
 
 	public String username() {
@@ -66,4 +70,7 @@ public class SpnegoAuthenticationToken extends SpnegoRequestToken {
 		return username; // TODO: should return UserDetails
 	}
 
+	public Subject getSubject() {
+		return subject;
+	}
 }
