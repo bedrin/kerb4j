@@ -59,24 +59,29 @@ public class SpnegoAuthenticationProvider implements
 
 	@Override
 	public SpnegoAuthenticationToken authenticate(Authentication authentication) {
-		SpnegoRequestToken auth = (SpnegoRequestToken) authentication;
+
+	    SpnegoRequestToken auth = (SpnegoRequestToken) authentication;
 		byte[] token = auth.getToken();
+
 		LOG.debug("Try to validate Kerberos Token");
 		SpnegoAuthenticationToken ticketValidation = this.ticketValidator.validateTicket(token);
-
-		// Extract roles from PAC
-		UserDetails userDetails1 = extractGroupsUserDetailsService.loadUserDetails(ticketValidation);
-
 		LOG.debug("Successfully validated " + ticketValidation.username());
-		UserDetails userDetails = this.userDetailsService.loadUserByUsername(ticketValidation.username());
+
+        // Extract roles from PAC
+        UserDetails userDetails = null != extractGroupsUserDetailsService ? extractGroupsUserDetailsService.loadUserDetails(ticketValidation) : null;
+		userDetails = null == userDetails ? userDetailsService.loadUserByUsername(ticketValidation.username()) : userDetails;
+
 		userDetailsChecker.check(userDetails);
+
 		additionalAuthenticationChecks(userDetails, auth);
+
 		SpnegoAuthenticationToken responseAuth = new SpnegoAuthenticationToken(
 				userDetails.getAuthorities(), ticketValidation.getToken(),
 				userDetails.getUsername(), ticketValidation.responseToken(),
 				ticketValidation.getSubject()
 		);
 		responseAuth.setDetails(authentication.getDetails());
+
 		return  responseAuth;
 	}
 
