@@ -117,4 +117,13 @@ public class SpnegoRequestToken extends AbstractAuthenticationToken {
 		return this.spnegoInitToken;
 	}
 
+	@Override
+	public boolean isAuthenticated() {
+		return false;
+	}
+
+	@Override
+	public void setAuthenticated(boolean authenticated) {
+		if (authenticated) throw new IllegalArgumentException();
+	}
 }
