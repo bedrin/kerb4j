@@ -22,6 +22,7 @@ import org.springframework.security.authentication.AccountStatusUserDetailsCheck
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.AuthenticationUserDetailsService;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsChecker;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -53,26 +54,35 @@ public class SpnegoAuthenticationProvider implements
 
 	private KerberosTicketValidator ticketValidator;
 	private UserDetailsService userDetailsService;
+    private AuthenticationUserDetailsService<SpnegoAuthenticationToken> extractGroupsUserDetailsService =
+            new ExtractGroupsUserDetailsService();
 	private UserDetailsChecker userDetailsChecker = new AccountStatusUserDetailsChecker();
 
 	@Override
 	public SpnegoAuthenticationToken authenticate(Authentication authentication) {
-		SpnegoRequestToken auth = (SpnegoRequestToken) authentication;
+
+	    SpnegoRequestToken auth = (SpnegoRequestToken) authentication;
 		byte[] token = auth.getToken();
+
 		LOG.debug("Try to validate Kerberos Token");
 		SpnegoAuthenticationToken ticketValidation = this.ticketValidator.validateTicket(token);
-
-		// Extract roles from PAC
-
 		LOG.debug("Successfully validated " + ticketValidation.username());
-		UserDetails userDetails = this.userDetailsService.loadUserByUsername(ticketValidation.username());
+
+        // Extract roles from PAC
+        UserDetails userDetails = null != extractGroupsUserDetailsService ? extractGroupsUserDetailsService.loadUserDetails(ticketValidation) : null;
+		userDetails = null == userDetails ? userDetailsService.loadUserByUsername(ticketValidation.username()) : userDetails;
+
 		userDetailsChecker.check(userDetails);
+
 		additionalAuthenticationChecks(userDetails, auth);
+
 		SpnegoAuthenticationToken responseAuth = new SpnegoAuthenticationToken(
 				userDetails.getAuthorities(), ticketValidation.getToken(),
-				userDetails.getUsername(), ticketValidation.responseToken()
+				userDetails.getUsername(), ticketValidation.responseToken(),
+				ticketValidation.getSubject(), ticketValidation.getKerberosKeys()
 		);
 		responseAuth.setDetails(authentication.getDetails());
+
 		return  responseAuth;
 	}
 
@@ -97,7 +107,11 @@ public class SpnegoAuthenticationProvider implements
 		this.userDetailsService = userDetailsService;
 	}
 
-	/**
+    public void setExtractGroupsUserDetailsService(AuthenticationUserDetailsService<SpnegoAuthenticationToken> extractGroupsUserDetailsService) {
+        this.extractGroupsUserDetailsService = extractGroupsUserDetailsService;
+    }
+
+    /**
 	 * The <code>KerberosTicketValidator</code> to use, for validating
 	 * the Kerberos/SPNEGO tickets.
 	 *

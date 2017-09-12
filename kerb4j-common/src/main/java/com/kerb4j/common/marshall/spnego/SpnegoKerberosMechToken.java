@@ -115,7 +115,10 @@ public class SpnegoKerberosMechToken {
         KerberosKey kerberosKey = getKerberosKey(encryptedData.getEType(), kerberosKeys);
         EncTicketPart tgsRep = getEncryptedTicketPart(encryptedData.getCipher(), kerberosKey);
 
-        List<AuthorizationDataEntry> authorizationDataEntries = tgsRep.getAuthorizationData().getElements();
+        AuthorizationData authorizationData = tgsRep.getAuthorizationData();
+        if (null == authorizationData) return null;
+
+        List<AuthorizationDataEntry> authorizationDataEntries = authorizationData.getElements();
 
         return extractPac(authorizationDataEntries, kerberosKey);
 
