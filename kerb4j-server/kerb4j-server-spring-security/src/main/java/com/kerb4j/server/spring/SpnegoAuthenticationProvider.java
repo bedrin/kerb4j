@@ -54,7 +54,8 @@ public class SpnegoAuthenticationProvider implements
 
 	private KerberosTicketValidator ticketValidator;
 	private UserDetailsService userDetailsService;
-    private AuthenticationUserDetailsService<SpnegoAuthenticationToken> extractGroupsUserDetailsService = new ExtractGroupsUserDetailsService();;
+    private AuthenticationUserDetailsService<SpnegoAuthenticationToken> extractGroupsUserDetailsService =
+            new ExtractGroupsUserDetailsService();
 	private UserDetailsChecker userDetailsChecker = new AccountStatusUserDetailsChecker();
 
 	@Override
@@ -78,7 +79,7 @@ public class SpnegoAuthenticationProvider implements
 		SpnegoAuthenticationToken responseAuth = new SpnegoAuthenticationToken(
 				userDetails.getAuthorities(), ticketValidation.getToken(),
 				userDetails.getUsername(), ticketValidation.responseToken(),
-				ticketValidation.getSubject()
+				ticketValidation.getSubject(), ticketValidation.getKerberosKeys()
 		);
 		responseAuth.setDetails(authentication.getDetails());
 

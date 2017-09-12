@@ -2,12 +2,19 @@ package com.kerb4j.server.tomcat;
 
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;
+import com.kerb4j.common.marshall.Kerb4JException;
+import com.kerb4j.common.marshall.pac.Pac;
+import com.kerb4j.common.marshall.pac.PacLogonInfo;
+import com.kerb4j.common.marshall.pac.PacSid;
+import com.kerb4j.common.marshall.spnego.SpnegoInitToken;
+import com.kerb4j.common.marshall.spnego.SpnegoKerberosMechToken;
 import com.kerb4j.common.util.Constants;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.authenticator.AuthenticatorBase;
 import org.apache.catalina.connector.Request;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
+import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.tomcat.util.buf.ByteChunk;
 import org.apache.tomcat.util.buf.MessageBytes;
 import org.apache.tomcat.util.codec.binary.Base64;
@@ -15,6 +22,7 @@ import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 
 import javax.security.auth.Subject;
+import javax.security.auth.kerberos.KerberosKey;
 import javax.security.auth.login.LoginException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -23,6 +31,10 @@ import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.security.Principal;
 import java.security.PrivilegedActionException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Valve permettant de gerer l'authentification d'un utilisateur par SPNEGO
@@ -179,7 +191,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
         }
 
         SpnegoContext acceptContext = null;
-        Principal principal;
+        Principal principal = null;
         byte[] outToken;
 
         try {
@@ -199,12 +211,35 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
             }
 
             Subject subject = spnegoClient.getSubject();
-            GSSContext gssContext = acceptContext.getGSSContext();
 
-            // TODO: check realm call?
-            principal = Subject.doAs(subject, new org.apache.catalina.authenticator.SpnegoAuthenticator.AuthenticateAction(
-                    context.getRealm(), gssContext, storeDelegatedCredential
-            ));
+            try {
+                SpnegoInitToken spnegoInitToken = new SpnegoInitToken(decoded);
+                SpnegoKerberosMechToken spnegoKerberosMechToken = spnegoInitToken.getSpnegoKerberosMechToken();
+                Pac pac = spnegoKerberosMechToken.getPac(spnegoClient.getKerberosKeys());
+
+                if (null != pac) {
+                    PacLogonInfo logonInfo = pac.getLogonInfo();
+                    List<String> roles = Stream.of(logonInfo.getGroupSids()).map(PacSid::toHumanReadableString).collect(Collectors.toList());
+                    principal = new SpnegoPrincipal(acceptContext.getSrcName().toString(), roles);
+                }
+
+            } catch (Kerb4JException | KrbException e) {
+                if (log.isDebugEnabled()) {
+                    log.debug(sm.getString("spnegoAuthenticator.ticketValidateFail"), e);
+                }
+                response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                return false;
+            }
+
+            if (null == principal) {
+                GSSContext gssContext = acceptContext.getGSSContext();
+
+                // TODO: check realm call?
+                principal = Subject.doAs(subject, new org.apache.catalina.authenticator.SpnegoAuthenticator.AuthenticateAction(
+                        context.getRealm(), gssContext, storeDelegatedCredential
+                ));
+            }
 
         } catch (GSSException e) {
             if (log.isDebugEnabled()) {

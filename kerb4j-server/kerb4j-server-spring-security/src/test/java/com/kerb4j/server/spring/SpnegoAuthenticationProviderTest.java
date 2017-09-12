@@ -37,6 +37,7 @@ import org.springframework.security.core.userdetails.*;
 import com.kerb4j.server.spring.SpnegoRequestToken;
 
 import javax.security.auth.Subject;
+import javax.security.auth.kerberos.KerberosKey;
 
 /**
  * Test class for {@link SpnegoAuthenticationProvider}
@@ -58,8 +59,9 @@ public class SpnegoAuthenticationProviderTest {
     private static final String TEST_USER = "Testuser@SPRINGSOURCE.ORG";
 
     private static final Subject subject = new Subject();
+    private static final KerberosKey[] kerberosKeys = new KerberosKey[0];
 
-    private static final SpnegoAuthenticationToken TICKET_VALIDATION = new SpnegoAuthenticationToken(TEST_TOKEN, TEST_USER, RESPONSE_TOKEN, subject);
+    private static final SpnegoAuthenticationToken TICKET_VALIDATION = new SpnegoAuthenticationToken(TEST_TOKEN, TEST_USER, RESPONSE_TOKEN, subject, kerberosKeys);
 
     private static final List<GrantedAuthority> AUTHORITY_LIST = AuthorityUtils.createAuthorityList("ROLE_ADMIN");
     private static final UserDetails USER_DETAILS = new User(TEST_USER, "empty", true, true, true,true, AUTHORITY_LIST);

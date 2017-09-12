@@ -18,7 +18,11 @@ public class SpnegoPrincipal extends GenericPrincipal {
 	 * @param name principal name
 	 */
 	public SpnegoPrincipal(String name) {
-		super(name, "N/A", Collections.singletonList("AUTHETICATED_USER"));
+		this(name, Collections.singletonList("AUTHETICATED_USER"));
 	}
+
+    public SpnegoPrincipal(String name, List<String> roles) {
+        super(name, "N/A", roles);
+    }
 
 }

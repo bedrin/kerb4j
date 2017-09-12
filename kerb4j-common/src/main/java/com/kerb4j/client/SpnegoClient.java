@@ -28,13 +28,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.Subject;
+import javax.security.auth.kerberos.KerberosKey;
+import javax.security.auth.kerberos.KerberosPrincipal;
 import javax.security.auth.kerberos.KerberosTicket;
+import javax.security.auth.kerberos.KeyTab;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 import java.net.URL;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -130,6 +135,26 @@ public final class SpnegoClient {
         }
 
         return subjectTgtPair.subject;
+
+    }
+
+    public KerberosKey[] getKerberosKeys() {
+
+        Set<KerberosKey> kerberosKeys = getSubject().getPrivateCredentials(KerberosKey.class);
+        if (!kerberosKeys.isEmpty()) {
+            return new ArrayList<>(kerberosKeys).toArray(new KerberosKey[kerberosKeys.size()]);
+        } else {
+            Set<KerberosPrincipal> kerberosPrincipals = getSubject().getPrincipals(KerberosPrincipal.class);
+            for (KerberosPrincipal kerberosPrincipal : kerberosPrincipals) {
+                Set<KeyTab> keyTabs = getSubject().getPrivateCredentials(KeyTab.class);
+                for (KeyTab keyTab : keyTabs) {
+                    KerberosKey[] keys = keyTab.getKeys(kerberosPrincipal);
+                    if (null != keys && keys.length > 0) return keys;
+                }
+            }
+        }
+
+        return null;
 
     }
 
