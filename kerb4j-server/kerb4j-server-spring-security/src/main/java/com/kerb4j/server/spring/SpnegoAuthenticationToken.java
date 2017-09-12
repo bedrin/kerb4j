@@ -69,7 +69,17 @@ public class SpnegoAuthenticationToken extends SpnegoRequestToken {
 		}
 	}
 
-	@Override
+    @Override
+    public boolean isAuthenticated() {
+        return true;
+    }
+
+    @Override
+    public void setAuthenticated(boolean authenticated) {
+        if (!authenticated) throw new IllegalArgumentException();
+    }
+
+    @Override
 	public Object getPrincipal() {
 		return username; // TODO: should return UserDetails
 	}

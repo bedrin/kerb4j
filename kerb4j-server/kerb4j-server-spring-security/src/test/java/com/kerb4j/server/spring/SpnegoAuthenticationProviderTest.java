@@ -86,6 +86,7 @@ public class SpnegoAuthenticationProviderTest {
         assertNotNull(output);
         assertEquals(TEST_USER, output.getName());
         assertEquals(AUTHORITY_LIST, output.getAuthorities());
+        assertTrue(output.isAuthenticated());
         // assertEquals(USER_DETAILS, output.getPrincipal()); // TODO: principal should contain UserDetails object
     }
 
@@ -96,6 +97,7 @@ public class SpnegoAuthenticationProviderTest {
         Authentication output = callProviderAndReturnUser(USER_DETAILS, requestToken);
         assertNotNull(output);
         assertEquals(requestToken.getDetails(), output.getDetails());
+        assertTrue(output.isAuthenticated());
     }
 
     @Test(expected=DisabledException.class)
