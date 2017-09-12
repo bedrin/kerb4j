@@ -5,8 +5,14 @@
 
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j</artifactId>
-    <version>0.0.3</version>
-    <packaging>jar</packaging>
+    <version>0.0.4</version>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>kerb4j-common</module>
+        <module>kerb4j-client</module>
+        <module>kerb4j-server</module>
+    </modules>
 
     <name>Kerb4J</name>
     <url>http://kerb4j.com/</url>
@@ -68,16 +74,51 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- TODO: provide two implementations: based on Kerby and vanila JRE -->
+        <dependency>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+            <version>1.2</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>org.apache.kerby</groupId>
             <artifactId>kerb-crypto</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.1</version>
         </dependency>
 
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+
+
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-api-mockito2</artifactId>
+            <version>1.7.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-module-junit4-rule</artifactId>
+            <version>1.7.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-classloading-xstream</artifactId>
+            <version>1.7.1</version>
+            <scope>test</scope>
+        </dependency>
+
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-all</artifactId>
+            <version>1.10.19</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -187,12 +228,6 @@
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-config</artifactId>
             <version>4.2.3.RELEASE</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security.kerberos</groupId>
-            <artifactId>spring-security-kerberos-web</artifactId>
-            <version>1.0.1.RELEASE</version>
             <scope>test</scope>
         </dependency>
 

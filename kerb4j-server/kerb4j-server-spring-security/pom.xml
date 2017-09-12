@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.kerb4j</groupId>
+        <artifactId>kerb4j-server</artifactId>
+        <version>0.0.4</version>
+    </parent>
+
+    <artifactId>kerb4j-server-spring-security</artifactId>
+    <name>kerb4j-server-spring-security</name>
+
+    <properties>
+        <spring.security.version>4.2.3.RELEASE</spring.security.version>
+        <apache.httpcomponents.version>4.5.3</apache.httpcomponents.version>
+    </properties>
+
+
+    <dependencies>
+        <dependency>
+            <groupId>com.kerb4j</groupId>
+            <artifactId>kerb4j-server-common</artifactId>
+            <version>0.0.4</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-core</artifactId>
+            <version>${spring.security.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-web</artifactId>
+            <version>${spring.security.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-ldap</artifactId>
+            <version>${spring.security.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <version>4.3.10.RELEASE</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+</project>
