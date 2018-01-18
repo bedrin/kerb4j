@@ -34,6 +34,12 @@
 
         <dependency>
             <groupId>com.kerb4j</groupId>
+            <artifactId>kerb4j-client</artifactId>
+            <version>0.0.5-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-common</artifactId>
             <version>0.0.5-SNAPSHOT</version>
             <classifier>tests</classifier>
