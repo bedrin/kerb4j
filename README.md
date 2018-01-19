@@ -16,7 +16,7 @@ Maven
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-client</artifactId>
-    <version>0.0.5-SNAPSHOT</version>
+    <version>0.0.5</version>
 </dependency>
 ```
 
@@ -25,7 +25,7 @@ Maven
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-server-spring-security</artifactId>
-    <version>0.0.5-SNAPSHOT</version>
+    <version>0.0.5</version>
 </dependency>
 ```
 
@@ -34,6 +34,6 @@ Maven
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-server-tomcat</artifactId>
-    <version>0.0.5-SNAPSHOT</version>
+    <version>0.0.5</version>
 </dependency>
 ```
