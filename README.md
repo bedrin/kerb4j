@@ -78,8 +78,10 @@ One `SpnegoClient` is created, Kerb4J will make first request for TGT (authentic
 TGT will be cached and renewed only when tickets expired. 
 Reuse the `SpnegoClient` instance for all requests you want to make using the same credentials.
 
-When you create a `SpnegoContext` instance, Kerb4J will make another request for a service ticket.
-Again keep the `SpnegoContext` instance to reuse the same service ticket (while it is not expired).   
+When you create first `SpnegoContext` instance for the given SPN, Kerb4J will make another request for a service ticket.
+This service ticket will be reused when creating new `SpnegoContext` instances from the same `SpnegoClient`.
+
+So the rule of thumb - reuse the same `SpnegoClient` instance (it is threadsafe by the way), create new `SpnegoContext` instance for each request.   
 
 
 SPNEGO/Kerberos Server
