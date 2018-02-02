@@ -1,6 +1,7 @@
 Kerb4J
 ========
 [![Build Status](https://travis-ci.org/bedrin/kerb4j.svg?branch=master)](https://travis-ci.org/bedrin/kerb4j)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.kerb4j/kerb4j/badge.svg?style=flat)](https://maven-badges.herokuapp.com/maven-central/com.kerb4j/kerb4j)
 
 Industry standard library for working with Kerberos/SPNEGO authentication in Java in 2018.
 
@@ -108,4 +109,4 @@ PacLogonInfo logonInfo = pac.getLogonInfo();
 List<String> roles = Stream.of(logonInfo.getGroupSids()).map(PacSid::toHumanReadableString).collect(Collectors.toList());
 ```
   
-This functionality is specific to Microsoft Active Directory and supported both by Kerb4J Tomcat and Active Directory integrations. 
+This functionality is specific to Microsoft Active Directory and supported both by Kerb4J Tomcat and Spring Security integrations. 
