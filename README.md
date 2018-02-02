@@ -1,5 +1,6 @@
 Kerb4J
 ========
+[![Build Status](https://travis-ci.org/bedrin/kerb4j.svg?branch=master)](https://travis-ci.org/bedrin/kerb4j)
 
 Industry standard library for working with Kerberos/SPNEGO authentication in Java in 2018.
 

@@ -74,7 +74,7 @@ public class SpnegoKerberosMechToken {
             apReq.decode(item3);
             apRequest = apReq;
 
-            //apRequest = KrbCodec.decode(krbToken.getEncoded(), ApReq.class);
+            //apRequest = KrbCodec.decodeImpl(krbToken.getEncoded(), ApReq.class);
 
         } catch (IOException e) {
             throw new Kerb4JException("kerberos.token.malformed", null, e);

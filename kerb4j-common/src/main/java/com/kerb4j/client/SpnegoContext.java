@@ -1,11 +1,11 @@
 package com.kerb4j.client;
 
+import com.kerb4j.common.util.Base64Codec;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 import org.ietf.jgss.GSSName;
 
 import javax.security.auth.Subject;
-import javax.xml.bind.DatatypeConverter;
 import java.io.Closeable;
 import java.io.IOException;
 import java.security.PrivilegedActionException;
@@ -38,7 +38,7 @@ public class SpnegoContext implements Closeable {
     }
 
     public String createTokenAsAuthroizationHeader() throws PrivilegedActionException {
-        return "Negotiate " + DatatypeConverter.printBase64Binary(createToken());
+        return "Negotiate " + Base64Codec.encode(createToken());
     }
 
     public byte[] processMutualAuthorization(final byte[] data, final int offset, final int length) throws PrivilegedActionException {
@@ -77,7 +77,6 @@ public class SpnegoContext implements Closeable {
             throw new IOException(e);
         }
     }
-
 
 
 }

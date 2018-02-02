@@ -65,7 +65,7 @@ public class SpnegoAuthenticationToken extends SpnegoRequestToken {
 		try {
 			return new String(Base64.encode(responseToken()), "UTF-8");
 		} catch (UnsupportedEncodingException e) {
-			throw new IllegalStateException("Unable to encode response token", e);
+			throw new IllegalStateException("Unable to encodeImpl response token", e);
 		}
 	}
 

@@ -84,7 +84,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *     public static void main(final String[] args) throws Exception {
  *         final String creds = "dfelix:myp@s5";
  *         
- *         final String token = Base64.encode(creds.getBytes());
+ *         final String token = Base64.encodeImpl(creds.getBytes());
  *         
  *         URL url = new URL("http://medusa:8080/index.jsp");
  *         
