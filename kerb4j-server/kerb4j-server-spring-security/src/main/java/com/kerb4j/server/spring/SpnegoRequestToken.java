@@ -64,7 +64,7 @@ public class SpnegoRequestToken extends AbstractAuthenticationToken {
 	 * @see SpnegoAuthenticationProvider
 	 */
 	public SpnegoRequestToken(byte[] token) {
-		this(Collections.emptySet(), token);
+		this(Collections.<GrantedAuthority>emptySet(), token);
 	}
 
 	/**
