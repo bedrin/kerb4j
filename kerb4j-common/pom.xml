@@ -28,7 +28,7 @@
                         <id>default-compile</id>
                         <configuration>
                             <excludes>
-                                <exclude>**/Java8Base64.java</exclude>
+                                <exclude>**/com/kerb4j/common/util/base64/Java8Base64.java</exclude>
                             </excludes>
                         </configuration>
                     </execution>
