@@ -89,7 +89,7 @@ So the rule of thumb - reuse the same `SpnegoClient` instance (it is threadsafe 
 SPNEGO/Kerberos Server
 ========
 
-Validating Kerberos/SPNEGO tickets on server side is even simpler then client side.
+Validating Kerberos/SPNEGO tickets on server side is even simpler than client side.
 
 Use `SpnegoClient` and authenticate in KDC (e.g. in Active Directory Domain Controller) using your server account.
 Call `spnegoClient.createAcceptContext()` method to create a `SpnegoContext` instance responsible for authenticating your client.
@@ -102,6 +102,8 @@ Kerb4J comes with an Authenticator for Apache Tomcat (kerb4j-server-tomcat artif
 Spnego allows you to extract user groups from SPNEGO token (one sent from client to server) without making any additional requests to Active Directory.
 
 ```java
+String negotiateHeaderValue = request.getHeader("Authorization").substring(10);
+byte[] decoded = Base64.decodeBase64(negotiateHeaderValue);
 SpnegoInitToken spnegoInitToken = new SpnegoInitToken(decoded);
 SpnegoKerberosMechToken spnegoKerberosMechToken = spnegoInitToken.getSpnegoKerberosMechToken();
 Pac pac = spnegoKerberosMechToken.getPac(spnegoClient.getKerberosKeys());
