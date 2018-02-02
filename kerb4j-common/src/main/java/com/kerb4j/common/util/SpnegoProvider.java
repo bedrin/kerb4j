@@ -25,11 +25,9 @@ import org.ietf.jgss.Oid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.security.auth.callback.CallbackHandler;
-import javax.security.auth.callback.NameCallback;
-import javax.security.auth.callback.PasswordCallback;
+import javax.security.auth.callback.*;
+import java.io.IOException;
 import java.net.URL;
-import java.util.Arrays;
 
 /**
  * This is a Utility Class that can be used for finer grained control 
@@ -160,21 +158,28 @@ public final class SpnegoProvider {
      * @param password client password
      * @return CallbackHandler to be used for establishing a LoginContext
      */
-    public static CallbackHandler getUsernameAndPasswordHandler(String username, String password) {
+    public static CallbackHandler getUsernameAndPasswordHandler(final String username, final String password) {
 
         LOGGER.trace("username=" + username + "; password=" + password.hashCode());
 
-        return callbacks -> Arrays.stream(callbacks).forEach(callback -> {
-            if (callback instanceof NameCallback) {
-                final NameCallback nameCallback = (NameCallback) callback;
-                nameCallback.setName(username);
-            } else if (callback instanceof PasswordCallback) {
-                final PasswordCallback passCallback = (PasswordCallback) callback;
-                passCallback.setPassword(password.toCharArray());
-            } else {
-                LOGGER.warn("Unsupported Callback class=" + callback.getClass().getName());
+        return new CallbackHandler() {
+            @Override
+            public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
+
+                for (Callback callback : callbacks) {
+                    if (callback instanceof NameCallback) {
+                        final NameCallback nameCallback = (NameCallback) callback;
+                        nameCallback.setName(username);
+                    } else if (callback instanceof PasswordCallback) {
+                        final PasswordCallback passCallback = (PasswordCallback) callback;
+                        passCallback.setPassword(password.toCharArray());
+                    } else {
+                        LOGGER.warn("Unsupported Callback class=" + callback.getClass().getName());
+                    }
+                }
+
             }
-        });
+        };
 
     }
 

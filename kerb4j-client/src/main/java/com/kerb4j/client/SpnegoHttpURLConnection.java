@@ -35,6 +35,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.PrivilegedActionException;
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -169,11 +170,14 @@ public final class SpnegoHttpURLConnection {
      */
     @Deprecated
     public SpnegoHttpURLConnection(final String loginModuleName) throws LoginException {
-        this.spnegoClient = new SpnegoClient(() -> {
-            try {
-                return new LoginContext(loginModuleName);
-            } catch (LoginException e) {
-                throw new RuntimeException(e);
+        this.spnegoClient = new SpnegoClient(new Callable<LoginContext>() {
+            @Override
+            public LoginContext call() throws Exception {
+                try {
+                    return new LoginContext(loginModuleName);
+                } catch (LoginException e) {
+                    throw new RuntimeException(e);
+                }
             }
         });
     }
@@ -189,16 +193,19 @@ public final class SpnegoHttpURLConnection {
      * @throws LoginException LoginException
      */
     @Deprecated
-    public SpnegoHttpURLConnection(String loginModuleName, String username, String password)
+    public SpnegoHttpURLConnection(final String loginModuleName, final String username, final String password)
             throws LoginException {
-        this.spnegoClient = new SpnegoClient(() -> {
-            try {
-                return new LoginContext(
-                        loginModuleName,
-                        SpnegoProvider.getUsernameAndPasswordHandler(username, password)
-                );
-            } catch (LoginException e) {
-                throw new RuntimeException(e);
+        this.spnegoClient = new SpnegoClient(new Callable<LoginContext>() {
+            @Override
+            public LoginContext call() throws Exception {
+                try {
+                    return new LoginContext(
+                            loginModuleName,
+                            SpnegoProvider.getUsernameAndPasswordHandler(username, password)
+                    );
+                } catch (LoginException e) {
+                    throw new RuntimeException(e);
+                }
             }
         });
     }

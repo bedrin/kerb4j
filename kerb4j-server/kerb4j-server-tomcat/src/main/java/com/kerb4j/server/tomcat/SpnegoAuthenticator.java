@@ -30,9 +30,8 @@ import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.security.Principal;
 import java.security.PrivilegedActionException;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Valve permettant de gerer l'authentification d'un utilisateur par SPNEGO
@@ -217,7 +216,11 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
 
                 if (null != pac) {
                     PacLogonInfo logonInfo = pac.getLogonInfo();
-                    List<String> roles = Stream.of(logonInfo.getGroupSids()).map(PacSid::toHumanReadableString).collect(Collectors.toList());
+                    PacSid[] groupSids = logonInfo.getGroupSids();
+                    List<String> roles = new ArrayList<>(groupSids.length);
+                    for (PacSid pacSid : groupSids) {
+                        roles.add(pacSid.toHumanReadableString());
+                    }
                     principal = new SpnegoPrincipal(acceptContext.getSrcName().toString(), roles);
                 }
 

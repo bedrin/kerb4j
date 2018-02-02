@@ -18,7 +18,7 @@
 
 package com.kerb4j.common.util;
 
-import java.util.Base64;
+import javax.xml.bind.DatatypeConverter;
 
 /**
  * Example schemes are "Negotiate" and "Basic". 
@@ -60,6 +60,6 @@ public class SpnegoAuthScheme {
      * @return copy of token
      */
     public byte[] getToken() {
-        return (null == this.token) ? EMPTY_BYTE_ARRAY : Base64.getDecoder().decode(this.token);
+        return (null == this.token) ? EMPTY_BYTE_ARRAY : DatatypeConverter.parseBase64Binary(this.token);
     }
 }

@@ -14,8 +14,8 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ExtractGroupsUserDetailsService implements AuthenticationUserDetailsService<SpnegoAuthenticationToken> {
 
@@ -40,9 +40,13 @@ public class ExtractGroupsUserDetailsService implements AuthenticationUserDetail
 
             PacLogonInfo logonInfo = pac.getLogonInfo();
 
-            return new User(token.username(), "N/A",
-                    Stream.of(logonInfo.getGroupSids()).map(PacSid::toHumanReadableString).map(SimpleGrantedAuthority::new).collect(Collectors.toList())
-            );
+            PacSid[] groupSids = logonInfo.getGroupSids();
+            List<SimpleGrantedAuthority> roles = new ArrayList<>(groupSids.length);
+            for (PacSid pacSid : groupSids) {
+                roles.add(new SimpleGrantedAuthority(pacSid.toHumanReadableString()));
+            }
+
+            return new User(token.username(), "N/A", roles);
 
         } catch (Kerb4JException | KrbException e) {
             throw new UsernameNotFoundException("Cannot parse Spnego INIT token", e);

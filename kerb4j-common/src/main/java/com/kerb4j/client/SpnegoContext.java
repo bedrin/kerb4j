@@ -5,11 +5,11 @@ import org.ietf.jgss.GSSException;
 import org.ietf.jgss.GSSName;
 
 import javax.security.auth.Subject;
+import javax.xml.bind.DatatypeConverter;
 import java.io.Closeable;
 import java.io.IOException;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
-import java.util.Base64;
 
 public class SpnegoContext implements Closeable {
 
@@ -28,18 +28,26 @@ public class SpnegoContext implements Closeable {
     }
 
     public byte[] createToken() throws PrivilegedActionException {
-        return Subject.doAs(spnegoClient.getSubject(), (PrivilegedExceptionAction<byte[]>) () ->
-                gssContext.initSecContext(EMPTY_BYTE, 0, 0)
+        return Subject.doAs(spnegoClient.getSubject(), new PrivilegedExceptionAction<byte[]>() {
+                    @Override
+                    public byte[] run() throws Exception {
+                        return gssContext.initSecContext(EMPTY_BYTE, 0, 0);
+                    }
+                }
         );
     }
 
     public String createTokenAsAuthroizationHeader() throws PrivilegedActionException {
-        return "Negotiate " + Base64.getEncoder().encodeToString(createToken());
+        return "Negotiate " + DatatypeConverter.printBase64Binary(createToken());
     }
 
-    public void processMutualAuthorization(byte[] data, int offset, int length) throws PrivilegedActionException {
-        Subject.doAs(spnegoClient.getSubject(), (PrivilegedExceptionAction<byte[]>) () ->
-                gssContext.initSecContext(data, offset, length)
+    public byte[] processMutualAuthorization(final byte[] data, final int offset, final int length) throws PrivilegedActionException {
+        return Subject.doAs(spnegoClient.getSubject(), new PrivilegedExceptionAction<byte[]>() {
+                    @Override
+                    public byte[] run() throws Exception {
+                        return gssContext.initSecContext(data, offset, length);
+                    }
+                }
         );
     }
 

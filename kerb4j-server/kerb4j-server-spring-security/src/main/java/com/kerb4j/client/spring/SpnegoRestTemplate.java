@@ -20,6 +20,7 @@ import com.kerb4j.client.SpnegoContext;
 import com.kerb4j.common.util.Constants;
 import org.ietf.jgss.GSSException;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.client.ClientHttpRequest;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.web.client.RequestCallback;
@@ -71,20 +72,23 @@ public class SpnegoRestTemplate extends RestTemplate {
 	}
 
 	@Override
-	protected <T> T doExecute(URI url, HttpMethod method, RequestCallback requestCallback, ResponseExtractor<T> responseExtractor) throws RestClientException {
-		return super.doExecute(url, method, request -> {
+	protected <T> T doExecute(final URI url, final HttpMethod method, final RequestCallback requestCallback, final ResponseExtractor<T> responseExtractor) throws RestClientException {
+		return super.doExecute(url, method, new RequestCallback() {
+			@Override
+			public void doWithRequest(ClientHttpRequest request) throws IOException {
 
-            requestCallback.doWithRequest(request);
+				requestCallback.doWithRequest(request);
 
-            // TODO: cache contexts
-            try {
-                SpnegoContext spnegoContext = spnegoClient.createContext(url.toURL());
-                request.getHeaders().add(Constants.AUTHZ_HEADER, spnegoContext.createTokenAsAuthroizationHeader());
-            } catch (PrivilegedActionException | GSSException e) {
-                throw new IOException(e);
-            }
+				// TODO: cache contexts
+				try {
+					SpnegoContext spnegoContext = spnegoClient.createContext(url.toURL());
+					request.getHeaders().add(Constants.AUTHZ_HEADER, spnegoContext.createTokenAsAuthroizationHeader());
+				} catch (PrivilegedActionException | GSSException e) {
+					throw new IOException(e);
+				}
 
-        }, responseExtractor);
+			}
+		}, responseExtractor);
 	}
 
 }
