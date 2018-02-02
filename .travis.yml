@@ -3,5 +3,3 @@ jdk:
   - oraclejdk8
   - oraclejdk9
   - openjdk7
-install:
-  - mvn clean install -U -X

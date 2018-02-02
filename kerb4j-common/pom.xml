@@ -15,20 +15,6 @@
 
     <build>
         <plugins>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.5.1</version>
-                <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
-                    <excludes>
-                        <exclude>com/kerb4j/common/util/base64/Java8Base64.java</exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -53,23 +39,20 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration>
-                            <source>1.7</source>
-                            <target>1.7</target>
-                        </configuration>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <version>3.0.0</version>
                         <executions>
                             <execution>
-                                <id>java-8-plus-compile</id>
-                                <phase>compile</phase>
+                                <id>add-source</id>
+                                <phase>generate-sources</phase>
                                 <goals>
-                                    <goal>compile</goal>
+                                    <goal>add-source</goal>
                                 </goals>
                                 <configuration>
-                                    <includes>
-                                        <include>**/Java8Base64.java</include>
-                                    </includes>
+                                    <sources>
+                                        <source>src/main/java8</source>
+                                    </sources>
                                 </configuration>
                             </execution>
                         </executions>
