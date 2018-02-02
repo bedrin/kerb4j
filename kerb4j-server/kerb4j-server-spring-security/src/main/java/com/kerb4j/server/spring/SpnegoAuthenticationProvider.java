@@ -22,11 +22,11 @@ import org.springframework.security.authentication.AccountStatusUserDetailsCheck
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.AuthenticationUserDetailsService;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsChecker;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.*;
 import org.springframework.util.Assert;
+
+import java.util.Collections;
 
 /**
  * <p>Authentication Provider which validates Kerberos Service Tickets
@@ -37,7 +37,7 @@ import org.springframework.util.Assert;
  * SUN and IBM JRE.<br>
  * It also needs an <code>UserDetailsService</code> to load the user properties
  * and the <code>GrantedAuthorities</code>, as we only get back the username
- * from Kerbeos</p>
+ * from Kerberos</p>
  *
  * You can see an example configuration in <code>SpnegoAuthenticationProcessingFilter</code>.
  *
@@ -70,7 +70,8 @@ public class SpnegoAuthenticationProvider implements
 
         // Extract roles from PAC
         UserDetails userDetails = null != extractGroupsUserDetailsService ? extractGroupsUserDetailsService.loadUserDetails(ticketValidation) : null;
-		userDetails = null == userDetails ? userDetailsService.loadUserByUsername(ticketValidation.username()) : userDetails;
+		userDetails = null == userDetails && null != userDetailsService ? userDetailsService.loadUserByUsername(ticketValidation.username()) : userDetails;
+		userDetails = null == userDetails ? new User(ticketValidation.username(), "", Collections.<GrantedAuthority>emptySet()) : userDetails;
 
 		userDetailsChecker.check(userDetails);
 
@@ -94,7 +95,6 @@ public class SpnegoAuthenticationProvider implements
 	@Override
 	public void afterPropertiesSet() throws Exception {
 		Assert.notNull(this.ticketValidator, "ticketValidator must be specified");
-		Assert.notNull(this.userDetailsService, "userDetailsService must be specified");
 	}
 
 	/**
