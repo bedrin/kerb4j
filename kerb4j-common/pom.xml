@@ -25,11 +25,7 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <id>java-7-compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
+                        <id>default-compile</id>
                         <configuration>
                             <excludes>
                                 <exclude>**/Java8Base64.java</exclude>
