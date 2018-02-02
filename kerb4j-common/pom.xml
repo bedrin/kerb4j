@@ -22,17 +22,10 @@
                 <configuration>
                     <source>1.7</source>
                     <target>1.7</target>
+                    <excludes>
+                        <exclude>**/com/kerb4j/common/util/base64/Java8Base64.java</exclude>
+                    </excludes>
                 </configuration>
-                <executions>
-                    <execution>
-                        <id>default-compile</id>
-                        <configuration>
-                            <excludes>
-                                <exclude>**/com/kerb4j/common/util/base64/Java8Base64.java</exclude>
-                            </excludes>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
 
             <plugin>
