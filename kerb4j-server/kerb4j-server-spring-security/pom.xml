@@ -12,16 +12,21 @@
     <name>kerb4j-server-spring-security</name>
 
     <properties>
-        <spring.security.version>4.2.3.RELEASE</spring.security.version>
-        <apache.httpcomponents.version>4.5.3</apache.httpcomponents.version>
+        <spring.security.version>4.2.4.RELEASE</spring.security.version>
     </properties>
-
 
     <dependencies>
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-server-common</artifactId>
             <version>0.0.6-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+            <version>1.2</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -42,7 +47,7 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-test</artifactId>
-            <version>4.3.10.RELEASE</version>
+            <version>4.3.14.RELEASE</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
