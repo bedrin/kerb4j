@@ -19,6 +19,8 @@ import com.kerb4j.client.SpnegoClient;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.rule.PowerMockRule;
@@ -71,13 +73,16 @@ public class KerberosAuthenticationProviderTest {
 
     @Test
     public void testLoginOk() throws Exception {
-        AtomicInteger counter = new AtomicInteger();
+        final AtomicInteger counter = new AtomicInteger();
 
         when(userDetailsService.loadUserByUsername(TEST_USER)).thenReturn(USER_DETAILS);
         when(SpnegoClient.loginWithUsernamePassword(anyString(), anyString()))
-                .then(invocationOnMock -> {
-                    counter.incrementAndGet();
-                    return null;
+                .then(new Answer<Object>() {
+                    @Override
+                    public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
+                        counter.incrementAndGet();
+                        return null;
+                    }
                 });
 
         Authentication authenticate = provider.authenticate(INPUT_TOKEN);
