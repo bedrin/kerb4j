@@ -1,6 +1,6 @@
 package com.kerb4j.client;
 
-import com.kerb4j.common.util.Base64Codec;
+import com.kerb4j.common.util.base64.Base64Codec;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 import org.ietf.jgss.GSSName;

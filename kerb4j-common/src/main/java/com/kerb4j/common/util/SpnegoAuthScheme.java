@@ -18,6 +18,8 @@
 
 package com.kerb4j.common.util;
 
+import com.kerb4j.common.util.base64.Base64Codec;
+
 /**
  * Example schemes are "Negotiate" and "Basic". 
  *
