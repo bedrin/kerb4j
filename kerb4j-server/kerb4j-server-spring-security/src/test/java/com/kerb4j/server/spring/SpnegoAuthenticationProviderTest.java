@@ -15,29 +15,20 @@
  */
 package com.kerb4j.server.spring;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
-
-import java.util.List;
-
-import com.kerb4j.server.spring.SpnegoAuthenticationProvider;
-import com.kerb4j.server.spring.KerberosTicketValidator;
-import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import org.junit.Before;
 import org.junit.Test;
-import org.springframework.security.authentication.AccountExpiredException;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.CredentialsExpiredException;
-import org.springframework.security.authentication.DisabledException;
-import org.springframework.security.authentication.LockedException;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.*;
-import com.kerb4j.server.spring.SpnegoRequestToken;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosKey;
+import java.util.List;
+
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Test class for {@link SpnegoAuthenticationProvider}
@@ -148,7 +139,7 @@ public class SpnegoAuthenticationProviderTest {
         // stubbing
         when(ticketValidator.validateTicket(TEST_TOKEN)).thenReturn(TICKET_VALIDATION);
         when(userDetailsService.loadUserByUsername(TEST_USER)).thenReturn(userDetails);
-        when(extractGroupsUserDetailsService.loadUserDetails(any())).thenReturn(userDetails);
+        when(extractGroupsUserDetailsService.loadUserDetails(any(SpnegoAuthenticationToken.class))).thenReturn(userDetails);
 
         // testing
         return provider.authenticate(inputToken);
