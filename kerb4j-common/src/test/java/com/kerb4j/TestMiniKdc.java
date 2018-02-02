@@ -133,6 +133,7 @@ public class TestMiniKdc extends KerberosSecurityTestcase {
 			Assert.assertEquals(KerberosPrincipal.class, subject.getPrincipals().iterator().next().getClass());
 			Assert.assertEquals(principal + "@" + kdc.getRealm(), subject.getPrincipals().iterator().next().getName());
 			loginContext.logout();
+			loginContext = null;
 
 			// server login
 			subject = new Subject(false, principals, new HashSet<Object>(), new HashSet<Object>());
@@ -144,6 +145,7 @@ public class TestMiniKdc extends KerberosSecurityTestcase {
 			Assert.assertEquals(KerberosPrincipal.class, subject.getPrincipals().iterator().next().getClass());
 			Assert.assertEquals(principal + "@" + kdc.getRealm(), subject.getPrincipals().iterator().next().getName());
 			loginContext.logout();
+			loginContext = null;
 
 		} finally {
 			if (loginContext != null) {
