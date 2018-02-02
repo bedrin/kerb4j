@@ -1,4 +1,4 @@
-package com.kerb4j.common.marshall.pac;
+package com.kerb4j.server.marshall.pac;
 
 public class PacSidAttributes {
 

@@ -17,6 +17,12 @@
 
     <dependencies>
 
+        <dependency>
+            <groupId>com.kerb4j</groupId>
+            <artifactId>kerb4j-server-common</artifactId>
+            <version>0.0.5-SNAPSHOT</version>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/org.apache.tomcat/tomcat-catalina -->
         <dependency>
             <groupId>org.apache.tomcat</groupId>

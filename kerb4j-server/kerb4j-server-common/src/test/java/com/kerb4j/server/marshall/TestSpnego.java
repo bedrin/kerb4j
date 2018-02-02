@@ -1,10 +1,10 @@
-package com.kerb4j.common.marshall;
+package com.kerb4j.server.marshall;
 
-import com.kerb4j.common.marshall.pac.Pac;
-import com.kerb4j.common.marshall.pac.PacLogonInfo;
-import com.kerb4j.common.marshall.pac.PacSid;
-import com.kerb4j.common.marshall.spnego.SpnegoInitToken;
-import com.kerb4j.common.marshall.spnego.SpnegoKerberosMechToken;
+import com.kerb4j.server.marshall.pac.Pac;
+import com.kerb4j.server.marshall.pac.PacLogonInfo;
+import com.kerb4j.server.marshall.pac.PacSid;
+import com.kerb4j.server.marshall.spnego.SpnegoInitToken;
+import com.kerb4j.server.marshall.spnego.SpnegoKerberosMechToken;
 import com.kerb4j.common.util.SpnegoProvider;
 import org.junit.Assert;
 import org.junit.Before;

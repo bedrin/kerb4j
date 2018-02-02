@@ -1,6 +1,6 @@
-package com.kerb4j.common.marshall.pac;
+package com.kerb4j.server.marshall.pac;
 
-import com.kerb4j.common.marshall.Kerb4JException;
+import com.kerb4j.server.marshall.Kerb4JException;
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.kerby.kerberos.kerb.crypto.CheckSumHandler;
 import org.apache.kerby.kerberos.kerb.type.base.CheckSumType;

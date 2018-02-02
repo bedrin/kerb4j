@@ -1,12 +1,12 @@
 package com.kerb4j.server.spring;
 
 import com.kerb4j.client.SpnegoClient;
-import com.kerb4j.common.marshall.Kerb4JException;
-import com.kerb4j.common.marshall.pac.Pac;
-import com.kerb4j.common.marshall.pac.PacLogonInfo;
-import com.kerb4j.common.marshall.pac.PacSid;
-import com.kerb4j.common.marshall.spnego.SpnegoInitToken;
-import com.kerb4j.common.marshall.spnego.SpnegoKerberosMechToken;
+import com.kerb4j.server.marshall.Kerb4JException;
+import com.kerb4j.server.marshall.pac.Pac;
+import com.kerb4j.server.marshall.pac.PacLogonInfo;
+import com.kerb4j.server.marshall.pac.PacSid;
+import com.kerb4j.server.marshall.spnego.SpnegoInitToken;
+import com.kerb4j.server.marshall.spnego.SpnegoKerberosMechToken;
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.AuthenticationUserDetailsService;
