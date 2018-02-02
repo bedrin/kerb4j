@@ -24,6 +24,7 @@ import com.kerb4j.common.util.SpnegoProvider;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
+import org.ietf.jgss.GSSName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +35,8 @@ import javax.security.auth.kerberos.KerberosTicket;
 import javax.security.auth.kerberos.KeyTab;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
+import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
@@ -235,6 +238,28 @@ public final class SpnegoClient {
         return new SpnegoContext(this, getGSSContext(url));
     }
 
+    public SpnegoContext createContextForSPN(String spn) throws PrivilegedActionException, GSSException, MalformedURLException {
+        return new SpnegoContext(this, getGSSContextForSPN(spn));
+    }
+
+    public String createAuthroizationHeader(URL url) throws PrivilegedActionException, GSSException, IOException {
+        SpnegoContext context = createContext(url);
+        try {
+            return context.createTokenAsAuthroizationHeader();
+        } finally {
+            context.close();
+        }
+    }
+
+    public String createAuthroizationHeaderForSPN(String spn) throws PrivilegedActionException, GSSException, IOException {
+        SpnegoContext contextForSPN = createContextForSPN(spn);
+        try {
+            return contextForSPN.createTokenAsAuthroizationHeader();
+        } finally {
+            contextForSPN.close();
+        }
+    }
+
     public SpnegoContext createAcceptContext() throws PrivilegedActionException {
 
         return new SpnegoContext(this, Subject.doAs(getSubject(), new PrivilegedExceptionAction<GSSContext>() {
@@ -261,14 +286,28 @@ public final class SpnegoClient {
         }));
 
     }
-    
+
+    /**
+     * Returns a GSSContext for the given SPN with a default lifetime.
+     *  
+     * @param spn
+     * @return GSSContext for the given url
+     */
+    private GSSContext getGSSContextForSPN(String spn) throws GSSException, PrivilegedActionException {
+        return getGSSContext(SpnegoProvider.createGSSNameForSPN(spn));
+    }
+
     /**
      * Returns a GSSContext for the given url with a default lifetime.
-     *  
+     *
      * @param url http address
      * @return GSSContext for the given url
      */
-    private GSSContext getGSSContext(final URL url) throws GSSException, PrivilegedActionException {
+    private GSSContext getGSSContext(URL url) throws GSSException, PrivilegedActionException {
+        return getGSSContext(SpnegoProvider.getServerName(url));
+    }
+
+    private GSSContext getGSSContext(final GSSName gssName) throws GSSException, PrivilegedActionException {
 
         // TODO: is it still a thing?
         // work-around to GSSContext/AD timestamp vs sequence field replay bug
@@ -283,7 +322,7 @@ public final class SpnegoClient {
                         , SpnegoProvider.SUPPORTED_OIDS
                         , GSSCredential.INITIATE_ONLY);
 
-                GSSContext context = SpnegoProvider.GSS_MANAGER.createContext(SpnegoProvider.getServerName(url)
+                GSSContext context = SpnegoProvider.GSS_MANAGER.createContext(gssName
                         , SpnegoProvider.SPNEGO_OID
                         , credential
                         , GSSContext.DEFAULT_LIFETIME);

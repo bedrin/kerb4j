@@ -72,16 +72,16 @@ public class SpnegoRestTemplate extends RestTemplate {
 	}
 
 	@Override
-	protected <T> T doExecute(final URI url, final HttpMethod method, final RequestCallback requestCallback, final ResponseExtractor<T> responseExtractor) throws RestClientException {
-		return super.doExecute(url, method, new RequestCallback() {
+	protected <T> T doExecute(final URI uri, final HttpMethod method, final RequestCallback requestCallback, final ResponseExtractor<T> responseExtractor) throws RestClientException {
+		return super.doExecute(uri, method, new RequestCallback() {
 			@Override
 			public void doWithRequest(ClientHttpRequest request) throws IOException {
 
 				requestCallback.doWithRequest(request);
 
-				// TODO: cache contexts
+				// TODO: process response if required
 				try {
-					SpnegoContext spnegoContext = spnegoClient.createContext(url.toURL());
+					SpnegoContext spnegoContext = spnegoClient.createContext(uri.toURL());
 					request.getHeaders().add(Constants.AUTHZ_HEADER, spnegoContext.createTokenAsAuthroizationHeader());
 				} catch (PrivilegedActionException | GSSException e) {
 					throw new IOException(e);

@@ -139,9 +139,20 @@ public final class SpnegoProvider {
     }
 
     /**
-     * Returns the {@link GSSName} constructed out of the passed-in 
-     * URL object.
+     * Returns the {@link GSSName} constructed out of the passed-in SPN
      * 
+     * @param spn
+     * @return GSSName of URL.
+     */
+    public static GSSName createGSSNameForSPN(String spn) throws GSSException {
+        return GSS_MANAGER.createName(spn.replaceAll("/","@"),
+                GSSName.NT_HOSTBASED_SERVICE, SpnegoProvider.SPNEGO_OID);
+    }
+
+    /**
+     * Returns the {@link GSSName} constructed out of the passed-in
+     * URL object.
+     *
      * @param url HTTP address of server
      * @return GSSName of URL.
      */
