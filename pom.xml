@@ -5,7 +5,7 @@
 
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j</artifactId>
-    <version>0.0.5</version>
+    <version>0.0.6-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <modules>
