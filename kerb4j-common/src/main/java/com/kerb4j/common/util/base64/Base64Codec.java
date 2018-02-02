@@ -14,10 +14,16 @@ public class Base64Codec {
 
     private static Base64CodecImpl getImpl() {
         try {
-            Class.forName("java.util.Base64");
-            return new Java8Base64();
-        } catch (ClassNotFoundException e) {
-            return new DatatypeConverterCodec();
+            try {
+                Class.forName("java.util.Base64");
+                return (Base64CodecImpl) Class.forName("com.kerb4j.common.util.base64.Java8Base64").
+                        getConstructor().newInstance();
+            } catch (ClassNotFoundException e) {
+                return (Base64CodecImpl) Class.forName("com.kerb4j.common.util.base64.DatatypeConverterCodec").
+                        getConstructor().newInstance();
+            }
+        } catch (Exception e) {
+            return null;
         }
     }
 
