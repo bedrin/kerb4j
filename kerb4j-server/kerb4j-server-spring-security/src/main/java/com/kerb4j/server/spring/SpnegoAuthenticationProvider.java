@@ -15,17 +15,24 @@
  */
 package com.kerb4j.server.spring;
 
+import com.kerb4j.client.SpnegoClient;
+import com.kerb4j.client.SpnegoContext;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.ietf.jgss.GSSException;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.security.authentication.AccountStatusUserDetailsChecker;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.util.Assert;
 
+import java.net.MalformedURLException;
+import java.security.PrivilegedActionException;
 import java.util.Collections;
 
 /**
@@ -58,8 +65,25 @@ public class SpnegoAuthenticationProvider implements
             new ExtractGroupsUserDetailsService();
 	private UserDetailsChecker userDetailsChecker = new AccountStatusUserDetailsChecker();
 
+	private String serverSpn;
+
 	@Override
 	public SpnegoAuthenticationToken authenticate(Authentication authentication) {
+
+	    if (authentication instanceof UsernamePasswordAuthenticationToken) {
+            SpnegoClient spnegoClient = SpnegoClient.
+                    loginWithUsernamePassword(authentication.getName(), authentication.getCredentials().toString());
+            try {
+                SpnegoContext context = spnegoClient.createContextForSPN(serverSpn);
+                authentication = new SpnegoRequestToken(context.createToken());
+            } catch (PrivilegedActionException e) {
+                throw new AuthenticationServiceException(e.getMessage(), e);
+            } catch (GSSException e) {
+                throw new AuthenticationServiceException(e.getMessage(), e);
+            } catch (MalformedURLException e) {
+                throw new AuthenticationServiceException(e.getMessage(), e);
+            }
+        }
 
 	    SpnegoRequestToken auth = (SpnegoRequestToken) authentication;
 		byte[] token = auth.getToken();
@@ -89,7 +113,8 @@ public class SpnegoAuthenticationProvider implements
 
 	@Override
 	public boolean supports(Class<?> auth) {
-		return SpnegoRequestToken.class.isAssignableFrom(auth);
+		return SpnegoRequestToken.class.isAssignableFrom(auth) ||
+                (null != serverSpn && UsernamePasswordAuthenticationToken.class.isAssignableFrom(auth));
 	}
 
 	@Override
@@ -133,5 +158,20 @@ public class SpnegoAuthenticationProvider implements
 	protected void additionalAuthenticationChecks(UserDetails userDetails, SpnegoRequestToken authentication)
 			throws AuthenticationException {
 	}
+
+	// TODO: add javadoc
+    public void setUserDetailsChecker(UserDetailsChecker userDetailsChecker) {
+        this.userDetailsChecker = userDetailsChecker;
+    }
+
+    /**
+     * Set this parameter if you want to authenticate user with their Kerberos name and password,
+     * make an additional request to TGS and parse the authorization data from it. Not required for SPNEGO
+     *
+     * @param serverSpn the SPN of the current server
+     */
+    public void setServerSpn(String serverSpn) {
+        this.serverSpn = serverSpn;
+    }
 
 }

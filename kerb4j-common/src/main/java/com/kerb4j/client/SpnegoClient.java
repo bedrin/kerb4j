@@ -194,7 +194,7 @@ public final class SpnegoClient {
      * @param password password
      * @throws LoginException LoginException
      */
-    public static SpnegoClient loginWithUsernamePassword(final String username, final String password) throws LoginException {
+    public static SpnegoClient loginWithUsernamePassword(final String username, final String password) {
         return new SpnegoClient(new Callable<LoginContext>() {
             @Override
             public LoginContext call() throws Exception {

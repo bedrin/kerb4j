@@ -37,7 +37,7 @@ import static org.mockito.Mockito.*;
  * @author Jeremy Stone
  * @since 1.0
  */
-public class SpnegoAuthenticationProviderTest {
+public class SpnegoAuthenticationProviderMockTest {
 
     private SpnegoAuthenticationProvider provider;
     private com.kerb4j.server.spring.KerberosTicketValidator ticketValidator;
