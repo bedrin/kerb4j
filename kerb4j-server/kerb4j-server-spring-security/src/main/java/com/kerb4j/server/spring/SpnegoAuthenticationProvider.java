@@ -101,6 +101,7 @@ public class SpnegoAuthenticationProvider implements
 
 		additionalAuthenticationChecks(userDetails, auth);
 
+		// TODO: make name "normalization" optional; probably take from UsernamePasswordAuthenticationToken if available
 		SpnegoAuthenticationToken responseAuth = new SpnegoAuthenticationToken(
 				userDetails.getAuthorities(), ticketValidation.getToken(),
 				userDetails.getUsername(), ticketValidation.responseToken(),

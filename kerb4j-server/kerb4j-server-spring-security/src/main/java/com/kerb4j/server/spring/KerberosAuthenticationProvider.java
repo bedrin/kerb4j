@@ -41,12 +41,11 @@ public class KerberosAuthenticationProvider implements AuthenticationProvider {
 		UsernamePasswordAuthenticationToken auth = (UsernamePasswordAuthenticationToken) authentication;
         String validatedUsername;
 
-        try {
-            SpnegoClient.loginWithUsernamePassword(auth.getName(), auth.getCredentials().toString());
-            validatedUsername = auth.getName(); // TODO: take frmo spnegoClient instead ?
-        } catch (LoginException e) {
-            throw new BadCredentialsException("Kerberos validation not successful", e);
-        }
+        SpnegoClient spnegoClient = SpnegoClient.
+                loginWithUsernamePassword(auth.getName(), auth.getCredentials().toString());
+        spnegoClient.getSubject();
+        validatedUsername = auth.getName(); // TODO: take from spnegoClient instead ?
+
         UserDetails userDetails = this.userDetailsService.loadUserByUsername(validatedUsername);
 		UsernamePasswordAuthenticationToken output = new UsernamePasswordAuthenticationToken(userDetails,
 				auth.getCredentials(), userDetails.getAuthorities());

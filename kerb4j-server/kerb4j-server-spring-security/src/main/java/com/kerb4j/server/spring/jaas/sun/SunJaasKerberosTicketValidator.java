@@ -55,6 +55,8 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
 
     private boolean holdOnToGSSContext;
 
+
+
     @Override
     public SpnegoAuthenticationToken validateTicket(byte[] token) {
 

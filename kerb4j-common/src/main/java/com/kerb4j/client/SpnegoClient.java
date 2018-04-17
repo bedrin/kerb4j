@@ -210,7 +210,7 @@ public final class SpnegoClient {
      * @param keyTabLocation keyTabLocation
      * @throws LoginException LoginException
      */
-    public static SpnegoClient loginWithKeyTab(final String principal, final String keyTabLocation) throws LoginException {
+    public static SpnegoClient loginWithKeyTab(final String principal, final String keyTabLocation) {
         return new SpnegoClient(new Callable<LoginContext>() {
             @Override
             public LoginContext call() throws Exception {
@@ -225,7 +225,7 @@ public final class SpnegoClient {
      * @param principal principal
      * @throws LoginException LoginException
      */
-    public static SpnegoClient loginWithTicketCache(final String principal) throws LoginException {
+    public static SpnegoClient loginWithTicketCache(final String principal) {
         return new SpnegoClient(new Callable<LoginContext>() {
             @Override
             public LoginContext call() throws Exception {

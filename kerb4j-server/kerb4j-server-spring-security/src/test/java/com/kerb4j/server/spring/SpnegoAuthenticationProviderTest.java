@@ -17,10 +17,12 @@ package com.kerb4j.server.spring;
 
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.MiniKdc;
+import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.rules.TemporaryFolder;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -30,6 +32,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
 import javax.security.auth.login.LoginException;
+import java.io.File;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -38,17 +41,18 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Test class for {@link com.kerb4j.server.spring.KerberosAuthenticationProvider}
+ * Test class for {@link KerberosAuthenticationProvider}
  *
  * @author Mike Wiesner
  * @since 1.0
  */
-public class KerberosAuthenticationProviderTest extends KerberosSecurityTestcase {
+public class SpnegoAuthenticationProviderTest extends KerberosSecurityTestcase {
 
     @Rule
-    public ExpectedException thrown = ExpectedException.none();
+    public TemporaryFolder folder = new TemporaryFolder();
 
-    private com.kerb4j.server.spring.KerberosAuthenticationProvider provider;
+    public static final String SERVER_SPN = "HTTP/server.springsource.org";
+    private SpnegoAuthenticationProvider provider;
     private UserDetailsService userDetailsService;
 
     private static final String TEST_USER = "Testuser";
@@ -58,43 +62,38 @@ public class KerberosAuthenticationProviderTest extends KerberosSecurityTestcase
     private static final UserDetails USER_DETAILS = new User(TEST_USER, TEST_PASSWORD, true, true, true, true, AUTHORITY_LIST);
 
     @Before
-    public void before() throws LoginException {
+    public void before() throws Exception {
         // mocking
+        MiniKdc kdc = getKdc();
+        kdc.createPrincipal(TEST_USER, TEST_PASSWORD);
+
+        File keytabFile = folder.newFile("serverKeyTab.keytab");
+
+        kdc.createPrincipal(keytabFile, SERVER_SPN);
 
         this.userDetailsService = mock(UserDetailsService.class);
-        this.provider = new KerberosAuthenticationProvider();
+
+        this.provider = new SpnegoAuthenticationProvider();
+        this.provider.setServerSpn(SERVER_SPN);
+
+        SunJaasKerberosTicketValidator ticketValidator = new SunJaasKerberosTicketValidator();
+        ticketValidator.setServicePrincipal(SERVER_SPN);
+        ticketValidator.setKeyTabLocation(new FileSystemResource(keytabFile));
+        ticketValidator.afterPropertiesSet();
+        this.provider.setTicketValidator(ticketValidator);
         this.provider.setUserDetailsService(userDetailsService);
+        // this.provider.setExtractGroupsUserDetailsService(new ExtractGroupsUserDetailsService()); // TODO: uncomment
     }
 
     @Test
     public void testLoginOk() throws Exception {
-
-        MiniKdc kdc = getKdc();
-        kdc.createPrincipal(TEST_USER, TEST_PASSWORD);
 
         when(userDetailsService.loadUserByUsername(TEST_USER)).thenReturn(USER_DETAILS);
 
         Authentication authenticate = provider.authenticate(INPUT_TOKEN);
 
         assertNotNull(authenticate);
-        assertEquals(TEST_USER, authenticate.getName());
-        assertEquals(USER_DETAILS, authenticate.getPrincipal());
-        assertEquals(TEST_PASSWORD, authenticate.getCredentials());
-        assertEquals(AUTHORITY_LIST, authenticate.getAuthorities());
-
-    }
-
-    @Test
-    public void testLoginFailed() throws Exception {
-
-        MiniKdc kdc = getKdc();
-        kdc.createPrincipal(TEST_USER, TEST_PASSWORD + "nonce");
-
-        when(userDetailsService.loadUserByUsername(TEST_USER)).thenReturn(USER_DETAILS);
-
-        thrown.expect(Exception.class);
-
-        provider.authenticate(INPUT_TOKEN);
+        assertEquals(TEST_USER + "@" + getKdc().getRealm(), authenticate.getName());
 
     }
 }
