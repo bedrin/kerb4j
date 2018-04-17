@@ -24,6 +24,7 @@ public class Krb5LoginContext extends LoginContext {
             krb5LoginContext.login();
             return krb5LoginContext;
         } catch (LoginException e) {
+            // TODO: here and in other places consider throwing LoginException instead of RuntimeException(LoginException)
             throw new RuntimeException(e);
         }
     }
