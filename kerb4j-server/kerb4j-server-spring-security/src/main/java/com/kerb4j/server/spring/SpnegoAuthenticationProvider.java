@@ -70,7 +70,10 @@ public class SpnegoAuthenticationProvider implements
 	@Override
 	public SpnegoAuthenticationToken authenticate(Authentication authentication) {
 
+		String canonicalName = null;
+
 	    if (authentication instanceof UsernamePasswordAuthenticationToken) {
+			canonicalName = authentication.getName();
             SpnegoClient spnegoClient = SpnegoClient.
                     loginWithUsernamePassword(authentication.getName(), authentication.getCredentials().toString());
             try {
@@ -101,10 +104,14 @@ public class SpnegoAuthenticationProvider implements
 
 		additionalAuthenticationChecks(userDetails, auth);
 
+		if (null == canonicalName) {
+			canonicalName = userDetails.getUsername();
+		}
+
 		// TODO: make name "normalization" optional; probably take from UsernamePasswordAuthenticationToken if available
 		SpnegoAuthenticationToken responseAuth = new SpnegoAuthenticationToken(
 				userDetails.getAuthorities(), ticketValidation.getToken(),
-				userDetails.getUsername(), ticketValidation.responseToken(),
+				canonicalName, ticketValidation.responseToken(),
 				ticketValidation.getSubject(), ticketValidation.getKerberosKeys()
 		);
 		responseAuth.setDetails(authentication.getDetails());

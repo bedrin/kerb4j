@@ -82,18 +82,18 @@ public class SpnegoAuthenticationProviderTest extends KerberosSecurityTestcase {
         ticketValidator.afterPropertiesSet();
         this.provider.setTicketValidator(ticketValidator);
         this.provider.setUserDetailsService(userDetailsService);
-        // this.provider.setExtractGroupsUserDetailsService(new ExtractGroupsUserDetailsService()); // TODO: uncomment
+        this.provider.setExtractGroupsUserDetailsService(new ExtractGroupsUserDetailsService());
     }
 
     @Test
-    public void testLoginOk() throws Exception {
+    public void testLoginWithUserNameAndPasswordOk() throws Exception {
 
         when(userDetailsService.loadUserByUsername(TEST_USER)).thenReturn(USER_DETAILS);
 
         Authentication authenticate = provider.authenticate(INPUT_TOKEN);
 
         assertNotNull(authenticate);
-        assertEquals(TEST_USER + "@" + getKdc().getRealm(), authenticate.getName());
+        assertEquals(TEST_USER, authenticate.getName());
 
     }
 }
