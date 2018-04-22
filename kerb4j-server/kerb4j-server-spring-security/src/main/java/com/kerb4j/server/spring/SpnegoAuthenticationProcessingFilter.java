@@ -183,6 +183,8 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
                 authenticationSuccessHandler.onAuthenticationSuccess(request, response, authentication);
             }
 
+            filterChain.doFilter(request, response);
+
         } else {
             filterChain.doFilter(request, response);
         }

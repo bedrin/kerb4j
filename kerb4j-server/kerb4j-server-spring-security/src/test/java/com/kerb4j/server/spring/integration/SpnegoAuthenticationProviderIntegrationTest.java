@@ -22,6 +22,8 @@ import com.kerb4j.client.spring.KerberosRestTemplate;
 import com.kerb4j.client.spring.SpnegoRestTemplate;
 import com.kerb4j.server.spring.*;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
+import io.sniffy.boot.EnableSniffy;
+import io.sniffy.servlet.SniffyFilter;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -33,6 +35,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -54,10 +58,12 @@ import javax.annotation.Resource;
 import java.io.File;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @SpringBootApplication
+@EnableSniffy
 public class SpnegoAuthenticationProviderIntegrationTest extends KerberosSecurityTestcase {
 
     private static final String USER_NAME = "username";
@@ -115,9 +121,25 @@ public class SpnegoAuthenticationProviderIntegrationTest extends KerberosSecurit
 
         KerberosRestTemplate restTemplate = new KerberosRestTemplate(USER_NAME, USER_PASSWORD);
 
-        String response = restTemplate.getForObject("http://localhost:" + port + "/hello", String.class);
+        SpnegoClient.resetCache();
 
-        assertEquals("hello", response);
+        {
+            ResponseEntity<String> response = restTemplate.getForEntity("http://localhost:" + port + "/hello", String.class);
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+            assertEquals("hello", response.getBody());
+        }
+
+        {
+            ResponseEntity<String> response = restTemplate.getForEntity("http://localhost:" + port + "/hello", String.class);
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+            assertEquals("hello", response.getBody());
+
+            String requestDetailsURL = response.getHeaders().get(SniffyFilter.HEADER_REQUEST_DETAILS).get(0);
+            ResponseEntity<String> requestDetailsEntity = restTemplate.getForEntity("http://localhost:" + port + "/" + requestDetailsURL, String.class);
+
+            assertEquals(HttpStatus.OK, requestDetailsEntity.getStatusCode());
+            assertNull(requestDetailsEntity.getBody());
+        }
 
     }
 
@@ -134,8 +156,6 @@ public class SpnegoAuthenticationProviderIntegrationTest extends KerberosSecurit
                     .antMatchers("/hello").access("hasRole('ROLE_USER')")
                     .anyRequest().authenticated()
                     .and()
-
-                    .httpBasic().and()
 
                     .addFilterBefore(spnegoAuthenticationProcessingFilter(authenticationManagerBean()), BasicAuthenticationFilter.class);
         }

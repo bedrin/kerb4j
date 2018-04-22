@@ -16,7 +16,6 @@
 package com.kerb4j.client.spring;
 
 import com.kerb4j.client.SpnegoClient;
-import com.kerb4j.client.SpnegoContext;
 import com.kerb4j.common.util.Constants;
 import org.ietf.jgss.GSSException;
 import org.springframework.http.HttpMethod;
@@ -83,9 +82,8 @@ public class SpnegoRestTemplate extends RestTemplate {
 
 				// TODO: process response if required
 				try {
-					SpnegoContext spnegoContext = spnegoClient.createContext(uri.toURL());
-					request.getHeaders().add(Constants.AUTHZ_HEADER, spnegoContext.createTokenAsAuthroizationHeader());
-				} catch (PrivilegedActionException | GSSException e) {
+					request.getHeaders().add(Constants.AUTHZ_HEADER, spnegoClient.createAuthroizationHeader(uri.toURL()));
+				} catch (PrivilegedActionException | GSSException | IOException e) {
 					throw new IOException(e);
 				}
 

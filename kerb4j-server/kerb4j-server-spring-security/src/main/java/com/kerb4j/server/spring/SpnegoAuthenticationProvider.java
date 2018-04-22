@@ -31,6 +31,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.util.Assert;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.security.PrivilegedActionException;
 import java.util.Collections;
@@ -75,17 +76,27 @@ public class SpnegoAuthenticationProvider implements
 	    if (authentication instanceof UsernamePasswordAuthenticationToken) {
 			canonicalName = authentication.getName();
             SpnegoClient spnegoClient = SpnegoClient.
-                    loginWithUsernamePassword(authentication.getName(), authentication.getCredentials().toString());
-            try {
-                SpnegoContext context = spnegoClient.createContextForSPN(serverSpn);
+                    loginWithUsernamePassword(authentication.getName(), authentication.getCredentials().toString(), true);
+			SpnegoContext context = null;
+			try {
+                context = spnegoClient.createContextForSPN(serverSpn);
                 authentication = new SpnegoRequestToken(context.createToken());
+				// context.close(); // TODO: implement
             } catch (PrivilegedActionException e) {
                 throw new AuthenticationServiceException(e.getMessage(), e);
             } catch (GSSException e) {
                 throw new AuthenticationServiceException(e.getMessage(), e);
             } catch (MalformedURLException e) {
                 throw new AuthenticationServiceException(e.getMessage(), e);
-            }
+            } finally {
+				try {
+					if (null != context) {
+						context.close();
+					}
+				} catch (IOException e) {
+					LOG.error(e.getMessage(), e);
+				}
+			}
         }
 
 	    SpnegoRequestToken auth = (SpnegoRequestToken) authentication;

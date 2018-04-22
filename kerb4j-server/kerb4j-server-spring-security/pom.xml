@@ -50,6 +50,13 @@
             <version>4.3.14.RELEASE</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>io.sniffy</groupId>
+            <artifactId>sniffy-web</artifactId>
+            <version>3.1.5</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>
