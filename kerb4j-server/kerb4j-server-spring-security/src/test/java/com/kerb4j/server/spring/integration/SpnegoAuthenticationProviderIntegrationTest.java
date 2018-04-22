@@ -58,6 +58,7 @@ import javax.annotation.Resource;
 import java.io.File;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 @RunWith(SpringRunner.class)
@@ -127,6 +128,12 @@ public class SpnegoAuthenticationProviderIntegrationTest extends KerberosSecurit
             ResponseEntity<String> response = restTemplate.getForEntity("http://localhost:" + port + "/hello", String.class);
             assertEquals(HttpStatus.OK, response.getStatusCode());
             assertEquals("hello", response.getBody());
+
+            String requestDetailsURL = response.getHeaders().get(SniffyFilter.HEADER_REQUEST_DETAILS).get(0);
+            ResponseEntity<String> requestDetailsEntity = restTemplate.getForEntity("http://localhost:" + port + "/" + requestDetailsURL, String.class);
+
+            assertEquals(HttpStatus.OK, requestDetailsEntity.getStatusCode());
+            assertNotNull(requestDetailsEntity.getBody());
         }
 
         {
