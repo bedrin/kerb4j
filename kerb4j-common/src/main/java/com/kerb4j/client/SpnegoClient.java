@@ -20,6 +20,7 @@ package com.kerb4j.client;
 
 import com.kerb4j.common.jaas.sun.Krb5LoginContext;
 import com.kerb4j.common.util.JreVendor;
+import com.kerb4j.common.util.LRUCache;
 import com.kerb4j.common.util.SpnegoProvider;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
@@ -40,6 +41,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Set;
@@ -78,6 +80,14 @@ public final class SpnegoClient {
     private final Callable<Subject> subjectSupplier;
 
     private final Lock authenticateLock = new ReentrantLock();
+
+    private final static LRUCache<AbstractMap.SimpleEntry<String,String>, SpnegoClient> SPNEGO_CLIENT_CACHE = new LRUCache<>(1024);
+
+    public static void resetCache() {
+        synchronized (SPNEGO_CLIENT_CACHE) {
+            SPNEGO_CLIENT_CACHE.clear();
+        }
+    }
 
     /**
      * Creates an instance with provided LoginContext
@@ -194,7 +204,37 @@ public final class SpnegoClient {
      * @param password password
      * @throws LoginException LoginException
      */
-    public static SpnegoClient loginWithUsernamePassword(final String username, final String password) throws LoginException {
+    public static SpnegoClient loginWithUsernamePassword(final String username, final String password) {
+        return loginWithUsernamePassword(username, password, false);
+    }
+
+    /**
+     * Creates an instance where authentication is done using username and password
+     *
+     * @param username username
+     * @param password password
+     * @throws LoginException LoginException
+     */
+    public static SpnegoClient loginWithUsernamePassword(final String username, final String password, final boolean useCache) {
+
+        if (!useCache) return loginWithUsernamePasswordImpl(username, password);
+
+        AbstractMap.SimpleEntry<String, String> entry = new AbstractMap.SimpleEntry<>(username, password);
+
+        SpnegoClient spnegoClient;
+
+        synchronized (SPNEGO_CLIENT_CACHE) {
+            spnegoClient = SPNEGO_CLIENT_CACHE.get(entry);
+            if (null == spnegoClient) {
+                spnegoClient = loginWithUsernamePasswordImpl(username, password);
+                SPNEGO_CLIENT_CACHE.put(entry, spnegoClient);
+            }
+        }
+
+        return spnegoClient;
+    }
+
+    private static SpnegoClient loginWithUsernamePasswordImpl(final String username, final String password) {
         return new SpnegoClient(new Callable<LoginContext>() {
             @Override
             public LoginContext call() throws Exception {
@@ -210,7 +250,7 @@ public final class SpnegoClient {
      * @param keyTabLocation keyTabLocation
      * @throws LoginException LoginException
      */
-    public static SpnegoClient loginWithKeyTab(final String principal, final String keyTabLocation) throws LoginException {
+    public static SpnegoClient loginWithKeyTab(final String principal, final String keyTabLocation) {
         return new SpnegoClient(new Callable<LoginContext>() {
             @Override
             public LoginContext call() throws Exception {
@@ -225,7 +265,7 @@ public final class SpnegoClient {
      * @param principal principal
      * @throws LoginException LoginException
      */
-    public static SpnegoClient loginWithTicketCache(final String principal) throws LoginException {
+    public static SpnegoClient loginWithTicketCache(final String principal) {
         return new SpnegoClient(new Callable<LoginContext>() {
             @Override
             public LoginContext call() throws Exception {

@@ -15,134 +15,85 @@
  */
 package com.kerb4j.server.spring;
 
+import com.kerb4j.KerberosSecurityTestcase;
+import com.kerb4j.MiniKdc;
+import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
-import org.springframework.security.authentication.*;
+import org.junit.rules.TemporaryFolder;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
-import org.springframework.security.core.userdetails.*;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 
-import javax.security.auth.Subject;
-import javax.security.auth.kerberos.KerberosKey;
+import javax.security.auth.login.LoginException;
+import java.io.File;
 import java.util.List;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
- * Test class for {@link SpnegoAuthenticationProvider}
+ * Test class for {@link KerberosAuthenticationProvider}
  *
  * @author Mike Wiesner
- * @author Jeremy Stone
  * @since 1.0
  */
-public class SpnegoAuthenticationProviderTest {
+public class SpnegoAuthenticationProviderTest extends KerberosSecurityTestcase {
 
+    @Rule
+    public TemporaryFolder folder = new TemporaryFolder();
+
+    public static final String SERVER_SPN = "HTTP/server.springsource.org";
     private SpnegoAuthenticationProvider provider;
-    private com.kerb4j.server.spring.KerberosTicketValidator ticketValidator;
-    private AuthenticationUserDetailsService<SpnegoAuthenticationToken> extractGroupsUserDetailsService;
     private UserDetailsService userDetailsService;
 
-    // data
-    private static final byte[] TEST_TOKEN = "TestToken".getBytes();
-    private static final byte[] RESPONSE_TOKEN = "ResponseToken".getBytes();
-    private static final String TEST_USER = "Testuser@SPRINGSOURCE.ORG";
-
-    private static final Subject subject = new Subject();
-    private static final KerberosKey[] kerberosKeys = new KerberosKey[0];
-
-    private static final SpnegoAuthenticationToken TICKET_VALIDATION = new SpnegoAuthenticationToken(TEST_TOKEN, TEST_USER, RESPONSE_TOKEN, subject, kerberosKeys);
-
+    private static final String TEST_USER = "Testuser";
+    private static final String TEST_PASSWORD = "password";
+    private static final UsernamePasswordAuthenticationToken INPUT_TOKEN = new UsernamePasswordAuthenticationToken(TEST_USER, TEST_PASSWORD);
     private static final List<GrantedAuthority> AUTHORITY_LIST = AuthorityUtils.createAuthorityList("ROLE_ADMIN");
-    private static final UserDetails USER_DETAILS = new User(TEST_USER, "empty", true, true, true,true, AUTHORITY_LIST);
-    private static final SpnegoRequestToken INPUT_TOKEN = new SpnegoRequestToken(TEST_TOKEN);
+    private static final UserDetails USER_DETAILS = new User(TEST_USER, TEST_PASSWORD, true, true, true, true, AUTHORITY_LIST);
 
     @Before
-    public void before() {
+    public void before() throws Exception {
         // mocking
-        this.ticketValidator = mock(KerberosTicketValidator.class);
+        MiniKdc kdc = getKdc();
+        kdc.createPrincipal(TEST_USER, TEST_PASSWORD);
+
+        File keytabFile = folder.newFile("serverKeyTab.keytab");
+
+        kdc.createPrincipal(keytabFile, SERVER_SPN);
+
         this.userDetailsService = mock(UserDetailsService.class);
-        this.extractGroupsUserDetailsService = mock(AuthenticationUserDetailsService.class);
 
         this.provider = new SpnegoAuthenticationProvider();
-        this.provider.setTicketValidator(this.ticketValidator);
-        this.provider.setUserDetailsService(this.userDetailsService);
-        this.provider.setExtractGroupsUserDetailsService(this.extractGroupsUserDetailsService);
+        this.provider.setServerSpn(SERVER_SPN);
+
+        SunJaasKerberosTicketValidator ticketValidator = new SunJaasKerberosTicketValidator();
+        ticketValidator.setServicePrincipal(SERVER_SPN);
+        ticketValidator.setKeyTabLocation(new FileSystemResource(keytabFile));
+        ticketValidator.afterPropertiesSet();
+        this.provider.setTicketValidator(ticketValidator);
+        this.provider.setUserDetailsService(userDetailsService);
+        this.provider.setExtractGroupsUserDetailsService(new ExtractGroupsUserDetailsService());
     }
 
     @Test
-    public void testEverythingWorks() throws Exception {
-        Authentication output = callProviderAndReturnUser(USER_DETAILS, INPUT_TOKEN);
-        assertNotNull(output);
-        assertEquals(TEST_USER, output.getName());
-        assertEquals(AUTHORITY_LIST, output.getAuthorities());
-        assertTrue(output.isAuthenticated());
-        // assertEquals(USER_DETAILS, output.getPrincipal()); // TODO: principal should contain UserDetails object
+    public void testLoginWithUserNameAndPasswordOk() throws Exception {
+
+        when(userDetailsService.loadUserByUsername(TEST_USER)).thenReturn(USER_DETAILS);
+
+        Authentication authenticate = provider.authenticate(INPUT_TOKEN);
+
+        assertNotNull(authenticate);
+        assertEquals(TEST_USER, authenticate.getName());
+
     }
-
-    @Test
-    public void testAuthenticationDetailsPropagation() throws Exception {
-    	SpnegoRequestToken requestToken = new SpnegoRequestToken(TEST_TOKEN);
-    	requestToken.setDetails("TestDetails");
-        Authentication output = callProviderAndReturnUser(USER_DETAILS, requestToken);
-        assertNotNull(output);
-        assertEquals(requestToken.getDetails(), output.getDetails());
-        assertTrue(output.isAuthenticated());
-    }
-
-    @Test(expected=DisabledException.class)
-    public void testUserIsDisabled() throws Exception {
-        User disabledUser = new User(TEST_USER, "empty", false, true, true,true, AUTHORITY_LIST);
-        callProviderAndReturnUser(disabledUser, INPUT_TOKEN);
-    }
-
-    @Test(expected=AccountExpiredException.class)
-    public void testUserAccountIsExpired() throws Exception {
-        User expiredUser = new User(TEST_USER, "empty", true, false, true,true, AUTHORITY_LIST);
-        callProviderAndReturnUser(expiredUser, INPUT_TOKEN);
-    }
-
-    @Test(expected=CredentialsExpiredException.class)
-    public void testUserCredentialsExpired() throws Exception {
-        User credExpiredUser = new User(TEST_USER, "empty", true, true, false ,true, AUTHORITY_LIST);
-        callProviderAndReturnUser(credExpiredUser, INPUT_TOKEN);
-    }
-
-    @Test(expected=LockedException.class)
-    public void testUserAccountLockedCredentialsExpired() throws Exception {
-        User lockedUser = new User(TEST_USER, "empty", true, true, true ,false, AUTHORITY_LIST);
-        callProviderAndReturnUser(lockedUser, INPUT_TOKEN);
-    }
-
-    @Test(expected=UsernameNotFoundException.class)
-    public void testUsernameNotFound() throws Exception {
-        // stubbing
-        when(ticketValidator.validateTicket(TEST_TOKEN)).thenReturn(TICKET_VALIDATION);
-        when(userDetailsService.loadUserByUsername(TEST_USER)).thenThrow(new UsernameNotFoundException(""));
-
-        // testing
-        provider.authenticate(INPUT_TOKEN);
-    }
-
-
-    @Test(expected=BadCredentialsException.class)
-    public void testTicketValidationWrong() throws Exception {
-        // stubbing
-        when(ticketValidator.validateTicket(TEST_TOKEN)).thenThrow(new BadCredentialsException(""));
-
-        // testing
-        provider.authenticate(INPUT_TOKEN);
-    }
-
-    private Authentication callProviderAndReturnUser(UserDetails userDetails, Authentication inputToken) {
-        // stubbing
-        when(ticketValidator.validateTicket(TEST_TOKEN)).thenReturn(TICKET_VALIDATION);
-        when(userDetailsService.loadUserByUsername(TEST_USER)).thenReturn(userDetails);
-        when(extractGroupsUserDetailsService.loadUserDetails(any(SpnegoAuthenticationToken.class))).thenReturn(userDetails);
-
-        // testing
-        return provider.authenticate(inputToken);
-    }
-
 }

@@ -16,9 +16,8 @@
 package com.kerb4j.server.spring;
 
 import com.kerb4j.common.util.Constants;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.authentication.AuthenticationDetailsSource;
-import org.springframework.security.authentication.AuthenticationManager;
+import com.kerb4j.common.util.base64.Base64Codec;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -95,21 +94,30 @@ import java.io.IOException;
  * HKEY_LOCAL_MACHINE\System
  * \CurrentControlSet\Control\LSA\SuppressExtendedProtection to 0x02
  *
- *
  * @author Mike Wiesner
  * @author Jeremy Stone
- * @since 1.0
  * @see SpnegoAuthenticationProvider
  * @see SpnegoEntryPoint
+ * @since 1.0
  */
 public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
 
-	private AuthenticationDetailsSource<HttpServletRequest,?> authenticationDetailsSource = new WebAuthenticationDetailsSource();
+    private AuthenticationDetailsSource<HttpServletRequest, ?> authenticationDetailsSource = new WebAuthenticationDetailsSource();
     private AuthenticationManager authenticationManager;
     private AuthenticationSuccessHandler authenticationSuccessHandler;
     private AuthenticationFailureHandler authenticationFailureHandler;
     private SessionAuthenticationStrategy sessionAuthenticationStrategy = new NullAuthenticatedSessionStrategy();
     private boolean skipIfAlreadyAuthenticated = true;
+
+    private boolean supportBasicAuthentication;
+
+    public SpnegoAuthenticationProcessingFilter() {
+        this(true);
+    }
+
+    public SpnegoAuthenticationProcessingFilter(boolean supportBasicAuthentication) {
+        this.supportBasicAuthentication = supportBasicAuthentication;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
@@ -126,13 +134,31 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
         String header = request.getHeader(Constants.AUTHZ_HEADER);
 
         // TODO: spring-security-kerberos used to support "Kerberos" scheme. Is it a valid use case?
-        if (header != null && (header.startsWith(Constants.NEGOTIATE_HEADER))) {
-            if (logger.isDebugEnabled()) {
-                logger.debug("Received Negotiate Header for request " + request.getRequestURL() + ": " + header);
+        if (header != null) {
+
+            AbstractAuthenticationToken authenticationRequest;
+
+            if (header.startsWith(Constants.NEGOTIATE_HEADER)) {
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Received Negotiate Header for request " + request.getRequestURL() + ": " + header);
+                }
+                byte[] base64Token = header.substring(header.indexOf(" ") + 1).getBytes("UTF-8");
+                byte[] kerberosTicket = Base64.decode(base64Token);
+                authenticationRequest = new SpnegoRequestToken(kerberosTicket);
+
+            } else if (supportBasicAuthentication && header.startsWith(Constants.BASIC_HEADER)) {
+
+                String[] strings = extractAndDecodeHeader(header);
+                authenticationRequest = new UsernamePasswordAuthenticationToken(strings[0], strings[1]);
+
+            } else {
+
+                filterChain.doFilter(request, response);
+                return;
+
             }
-            byte[] base64Token = header.substring(header.indexOf(" ") + 1).getBytes("UTF-8");
-            byte[] kerberosTicket = Base64.decode(base64Token);
-            SpnegoRequestToken authenticationRequest = new SpnegoRequestToken(kerberosTicket);
+
             authenticationRequest.setDetails(authenticationDetailsSource.buildDetails(request));
             Authentication authentication;
             try {
@@ -152,14 +178,40 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
             }
             sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
             SecurityContextHolder.getContext().setAuthentication(authentication);
+            // this.rememberMeServices.loginSuccess(request, response, authResult); ??
             if (authenticationSuccessHandler != null) {
                 authenticationSuccessHandler.onAuthenticationSuccess(request, response, authentication);
             }
 
+            filterChain.doFilter(request, response);
+
+        } else {
+            filterChain.doFilter(request, response);
         }
 
-        filterChain.doFilter(request, response);
+    }
 
+
+    private String[] extractAndDecodeHeader(String header)
+            throws IOException {
+
+        String base64Token = header.substring(6);
+        byte[] decoded;
+        try {
+            decoded = Base64Codec.decode(base64Token);
+        } catch (IllegalArgumentException e) {
+            throw new BadCredentialsException(
+                    "Failed to decode basic authentication token");
+        }
+
+        String token = new String(decoded, "UTF-8");
+
+        int delim = token.indexOf(":");
+
+        if (delim == -1) {
+            throw new BadCredentialsException("Invalid basic authentication token");
+        }
+        return new String[]{token.substring(0, delim), token.substring(delim + 1)};
     }
 
     @Override
@@ -214,14 +266,14 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
     }
 
     /**
-	 * The session handling strategy which will be invoked immediately after an
-	 * authentication request is successfully processed by the
-	 * <tt>AuthenticationManager</tt>. Used, for example, to handle changing of
-	 * the session identifier to prevent session fixation attacks.
-	 *
-	 * @param sessionStrategy the implementation to use. If not set a null
-	 *                        implementation is used.
-	 */
+     * The session handling strategy which will be invoked immediately after an
+     * authentication request is successfully processed by the
+     * <tt>AuthenticationManager</tt>. Used, for example, to handle changing of
+     * the session identifier to prevent session fixation attacks.
+     *
+     * @param sessionStrategy the implementation to use. If not set a null
+     *                        implementation is used.
+     */
     public void setSessionAuthenticationStrategy(SessionAuthenticationStrategy sessionStrategy) {
         this.sessionAuthenticationStrategy = sessionStrategy;
     }
@@ -232,10 +284,14 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
      *
      * @param authenticationDetailsSource the authentication details source
      */
-	public void setAuthenticationDetailsSource(
-			AuthenticationDetailsSource<HttpServletRequest, ?> authenticationDetailsSource) {
+    public void setAuthenticationDetailsSource(
+            AuthenticationDetailsSource<HttpServletRequest, ?> authenticationDetailsSource) {
         Assert.notNull(authenticationDetailsSource, "AuthenticationDetailsSource required");
         this.authenticationDetailsSource = authenticationDetailsSource;
+    }
+
+    public void setSupportBasicAuthentication(boolean supportBasicAuthentication) {
+        this.supportBasicAuthentication = supportBasicAuthentication;
     }
 
 }

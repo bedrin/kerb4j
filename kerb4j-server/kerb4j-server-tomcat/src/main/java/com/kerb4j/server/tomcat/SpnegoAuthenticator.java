@@ -101,7 +101,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
 
         try {
             spnegoClient = SpnegoClient.loginWithKeyTab(principalName, keyTab);
-        } catch (LoginException e) {
+        } catch (Exception e) {
             throw new LifecycleException(e);
         }
 

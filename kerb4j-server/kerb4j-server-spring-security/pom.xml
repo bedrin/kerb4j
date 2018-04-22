@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.kerb4j</groupId>
         <artifactId>kerb4j-server</artifactId>
-        <version>0.0.6</version>
+        <version>0.0.7</version>
     </parent>
 
     <artifactId>kerb4j-server-spring-security</artifactId>
@@ -19,7 +19,7 @@
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-server-common</artifactId>
-            <version>0.0.6</version>
+            <version>0.0.7</version>
         </dependency>
 
         <dependency>
@@ -48,6 +48,13 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-test</artifactId>
             <version>4.3.14.RELEASE</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.sniffy</groupId>
+            <artifactId>sniffy-web</artifactId>
+            <version>3.1.5</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

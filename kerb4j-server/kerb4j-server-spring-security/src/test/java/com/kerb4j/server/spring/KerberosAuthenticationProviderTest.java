@@ -20,6 +20,7 @@ import com.kerb4j.MiniKdc;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -44,10 +45,13 @@ import static org.mockito.Mockito.when;
  */
 public class KerberosAuthenticationProviderTest extends KerberosSecurityTestcase {
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
     private com.kerb4j.server.spring.KerberosAuthenticationProvider provider;
     private UserDetailsService userDetailsService;
 
-    private static final String TEST_USER = "Testuser@SPRINGSOURCE.ORG";
+    private static final String TEST_USER = "Testuser";
     private static final String TEST_PASSWORD = "password";
     private static final UsernamePasswordAuthenticationToken INPUT_TOKEN = new UsernamePasswordAuthenticationToken(TEST_USER, TEST_PASSWORD);
     private static final List<GrantedAuthority> AUTHORITY_LIST = AuthorityUtils.createAuthorityList("ROLE_ADMIN");
@@ -77,6 +81,20 @@ public class KerberosAuthenticationProviderTest extends KerberosSecurityTestcase
         assertEquals(USER_DETAILS, authenticate.getPrincipal());
         assertEquals(TEST_PASSWORD, authenticate.getCredentials());
         assertEquals(AUTHORITY_LIST, authenticate.getAuthorities());
+
+    }
+
+    @Test
+    public void testLoginFailed() throws Exception {
+
+        MiniKdc kdc = getKdc();
+        kdc.createPrincipal(TEST_USER, TEST_PASSWORD + "nonce");
+
+        when(userDetailsService.loadUserByUsername(TEST_USER)).thenReturn(USER_DETAILS);
+
+        thrown.expect(Exception.class);
+
+        provider.authenticate(INPUT_TOKEN);
 
     }
 }

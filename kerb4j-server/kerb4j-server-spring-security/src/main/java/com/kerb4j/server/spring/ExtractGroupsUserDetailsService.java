@@ -15,6 +15,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class ExtractGroupsUserDetailsService implements AuthenticationUserDetailsService<SpnegoAuthenticationToken> {
@@ -38,12 +39,18 @@ public class ExtractGroupsUserDetailsService implements AuthenticationUserDetail
 
             Pac pac = spnegoKerberosMechToken.getPac(token.getKerberosKeys());
 
-            PacLogonInfo logonInfo = pac.getLogonInfo();
+            List<SimpleGrantedAuthority> roles;
 
-            PacSid[] groupSids = logonInfo.getGroupSids();
-            List<SimpleGrantedAuthority> roles = new ArrayList<>(groupSids.length);
-            for (PacSid pacSid : groupSids) {
-                roles.add(new SimpleGrantedAuthority(pacSid.toHumanReadableString()));
+            if (null == pac) {
+                roles = Collections.emptyList();
+            } else {
+                PacLogonInfo logonInfo = pac.getLogonInfo();
+
+                PacSid[] groupSids = logonInfo.getGroupSids();
+                roles = new ArrayList<>(groupSids.length);
+                for (PacSid pacSid : groupSids) {
+                    roles.add(new SimpleGrantedAuthority(pacSid.toHumanReadableString()));
+                }
             }
 
             return new User(token.username(), "N/A", roles);
