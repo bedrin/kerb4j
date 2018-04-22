@@ -18,6 +18,7 @@ package com.kerb4j.server.spring.integration;
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.MiniKdc;
 import com.kerb4j.client.SpnegoClient;
+import com.kerb4j.client.spring.KerberosRestTemplate;
 import com.kerb4j.client.spring.SpnegoRestTemplate;
 import com.kerb4j.server.spring.*;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
@@ -98,10 +99,21 @@ public class SpnegoAuthenticationProviderIntegrationTest extends KerberosSecurit
     }
 
     @Test
-    public void testAuthentication() {
+    public void testSpnegoAuthentication() {
 
         SpnegoClient spnegoClient = SpnegoClient.loginWithUsernamePassword(USER_NAME, USER_PASSWORD);
         SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(spnegoClient);
+
+        String response = restTemplate.getForObject("http://localhost:" + port + "/hello", String.class);
+
+        assertEquals("hello", response);
+
+    }
+
+    @Test
+    public void testKerberosAuthentication() {
+
+        KerberosRestTemplate restTemplate = new KerberosRestTemplate(USER_NAME, USER_PASSWORD);
 
         String response = restTemplate.getForObject("http://localhost:" + port + "/hello", String.class);
 
@@ -122,6 +134,8 @@ public class SpnegoAuthenticationProviderIntegrationTest extends KerberosSecurit
                     .antMatchers("/hello").access("hasRole('ROLE_USER')")
                     .anyRequest().authenticated()
                     .and()
+
+                    .httpBasic().and()
 
                     .addFilterBefore(spnegoAuthenticationProcessingFilter(authenticationManagerBean()), BasicAuthenticationFilter.class);
         }
@@ -153,6 +167,7 @@ public class SpnegoAuthenticationProviderIntegrationTest extends KerberosSecurit
             SpnegoAuthenticationProvider provider = new SpnegoAuthenticationProvider();
             provider.setTicketValidator(sunJaasKerberosTicketValidator());
             provider.setExtractGroupsUserDetailsService(dummyUserDetailsService());
+            provider.setServerSpn(SERVER_SPN);
             return provider;
         }
 
