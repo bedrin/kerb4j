@@ -54,6 +54,8 @@ public class SpnegoRestTemplate extends RestTemplate {
 
 	private final SpnegoClient spnegoClient;
 
+	// TODO: add URL to SPN mapper function, or cache
+
 	/**
 	 * Instantiates a new kerberos rest template.
 	 */
