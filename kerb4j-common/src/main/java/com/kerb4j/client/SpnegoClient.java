@@ -212,7 +212,6 @@ public final class SpnegoClient {
      *
      * @param username username
      * @param password password
-     * @throws LoginException LoginException
      */
     public static SpnegoClient loginWithUsernamePassword(final String username, final String password, final boolean useCache) {
 
