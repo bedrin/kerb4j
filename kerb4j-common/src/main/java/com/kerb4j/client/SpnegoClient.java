@@ -247,7 +247,6 @@ public final class SpnegoClient {
      *
      * @param principal principal
      * @param keyTabLocation keyTabLocation
-     * @throws LoginException LoginException
      */
     public static SpnegoClient loginWithKeyTab(final String principal, final String keyTabLocation) {
         return new SpnegoClient(new Callable<LoginContext>() {
@@ -262,7 +261,6 @@ public final class SpnegoClient {
      * Creates an instance where authentication is done using ticket cache
      *
      * @param principal principal
-     * @throws LoginException LoginException
      */
     public static SpnegoClient loginWithTicketCache(final String principal) {
         return new SpnegoClient(new Callable<LoginContext>() {
