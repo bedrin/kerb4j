@@ -20,7 +20,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-client</artifactId>
-    <version>0.0.7</version>
+    <version>0.0.8</version>
 </dependency>
 ```
 
@@ -29,7 +29,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-server-spring-security</artifactId>
-    <version>0.0.7</version>
+    <version>0.0.8</version>
 </dependency>
 ```
 
@@ -38,7 +38,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-server-tomcat</artifactId>
-    <version>0.0.7</version>
+    <version>0.0.8</version>
 </dependency>
 ```
 
