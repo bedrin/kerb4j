@@ -190,7 +190,14 @@ public final class SpnegoClient {
         }
 
         private boolean isExpired() {
-            return tgt.getEndTime().before(new Date());
+            try {
+                synchronized (tgt) {
+                    return tgt.getEndTime().before(new Date());
+                }
+            } catch (Exception e) {
+                LOGGER.error("Failed to get Kerberos ticket end time", e);
+                return true;
+            }
         }
 
     }
