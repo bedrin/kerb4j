@@ -50,7 +50,7 @@ import java.util.concurrent.TimeUnit;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
-public class SpnegoRestTemplateTests extends KerberosSecurityTestcase {
+public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
 	private ConfigurableApplicationContext context;
 
@@ -67,7 +67,7 @@ public class SpnegoRestTemplateTests extends KerberosSecurityTestcase {
 
 		SimpleKdcServer kdc = getKdc();
 		File workDir = getWorkDir();
-		String host = InetAddress.getLocalHost().getCanonicalHostName();
+		String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
 
 		String serverPrincipal = "HTTP/" + host;
 		File serverKeytab = new File(workDir, "server.keytab");
@@ -98,7 +98,7 @@ public class SpnegoRestTemplateTests extends KerberosSecurityTestcase {
 
 		SimpleKdcServer kdc = getKdc();
 		File workDir = getWorkDir();
-		String host = InetAddress.getLocalHost().getCanonicalHostName();
+		String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
 
 		String serverPrincipal = "HTTP/" + host;
 		File serverKeytab = new File(workDir, "server.keytab");
@@ -118,7 +118,7 @@ public class SpnegoRestTemplateTests extends KerberosSecurityTestcase {
 
 		// just checking that we get 401 which we skip and
 		// get login page content
-		RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
+		RestTemplate restTemplate = new RestTemplate();
 		restTemplate.setErrorHandler(new DefaultResponseErrorHandler() {
 			@Override
 			public void handleError(ClientHttpResponse response) throws IOException {
@@ -134,7 +134,7 @@ public class SpnegoRestTemplateTests extends KerberosSecurityTestcase {
 
 		SimpleKdcServer kdc = getKdc();
 		File workDir = getWorkDir();
-		String host = InetAddress.getLocalHost().getCanonicalHostName();
+		String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
 
 		String serverPrincipal = "HTTP/" + host;
 		File serverKeytab = new File(workDir, "server.keytab");

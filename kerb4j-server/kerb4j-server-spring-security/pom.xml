@@ -12,7 +12,7 @@
     <name>kerb4j-server-spring-security</name>
 
     <properties>
-        <spring.security.version>4.2.4.RELEASE</spring.security.version>
+        <spring.security.version>4.2.18.RELEASE</spring.security.version>
     </properties>
 
     <dependencies>
@@ -47,7 +47,7 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-test</artifactId>
-            <version>4.3.14.RELEASE</version>
+            <version>4.3.28.RELEASE</version>
             <scope>test</scope>
         </dependency>
 

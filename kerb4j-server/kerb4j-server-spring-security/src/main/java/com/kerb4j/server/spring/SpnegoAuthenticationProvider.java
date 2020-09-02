@@ -35,6 +35,8 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.security.PrivilegedActionException;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * <p>Authentication Provider which validates Kerberos Service Tickets
@@ -106,10 +108,32 @@ public class SpnegoAuthenticationProvider implements
 		SpnegoAuthenticationToken ticketValidation = this.ticketValidator.validateTicket(token);
 		LOG.debug("Successfully validated " + ticketValidation.username());
 
-        // Extract roles from PAC
-        UserDetails userDetails = null != extractGroupsUserDetailsService ? extractGroupsUserDetailsService.loadUserDetails(ticketValidation) : null;
-		userDetails = null == userDetails && null != userDetailsService ? userDetailsService.loadUserByUsername(ticketValidation.username()) : userDetails;
+		// Get UserDetails
+		UserDetails userDetails = null != userDetailsService ? userDetailsService.loadUserByUsername(ticketValidation.username()) : null;
 		userDetails = null == userDetails ? new User(ticketValidation.username(), "", Collections.<GrantedAuthority>emptySet()) : userDetails;
+
+		// Extract roles from PAC
+		UserDetails userGroupsDetails = null != extractGroupsUserDetailsService ? extractGroupsUserDetailsService.loadUserDetails(ticketValidation) : null;
+		if (null != userGroupsDetails) {
+			// TODO: add a test for combining authorities
+			Set<GrantedAuthority> mergedAuthorities = new HashSet<GrantedAuthority>();
+			if (null != userDetails.getAuthorities()) {
+				mergedAuthorities.addAll(userDetails.getAuthorities());
+			}
+			if (null != userGroupsDetails.getAuthorities()) {
+				mergedAuthorities.addAll(userGroupsDetails.getAuthorities());
+			}
+
+			userDetails = new User(
+					userDetails.getUsername(),
+					userDetails.getPassword(),
+					userDetails.isEnabled(),
+					userDetails.isAccountNonExpired(),
+					userDetails.isCredentialsNonExpired(),
+					userDetails.isAccountNonLocked(),
+					mergedAuthorities
+			);
+		}
 
 		userDetailsChecker.check(userDetails);
 
