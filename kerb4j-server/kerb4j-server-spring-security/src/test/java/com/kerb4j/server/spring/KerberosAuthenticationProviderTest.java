@@ -16,7 +16,7 @@
 package com.kerb4j.server.spring;
 
 import com.kerb4j.KerberosSecurityTestcase;
-import com.kerb4j.MiniKdc;
+import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -69,7 +69,7 @@ public class KerberosAuthenticationProviderTest extends KerberosSecurityTestcase
     @Test
     public void testLoginOk() throws Exception {
 
-        MiniKdc kdc = getKdc();
+        SimpleKdcServer kdc = getKdc();
         kdc.createPrincipal(TEST_USER, TEST_PASSWORD);
 
         when(userDetailsService.loadUserByUsername(TEST_USER)).thenReturn(USER_DETAILS);
@@ -87,7 +87,7 @@ public class KerberosAuthenticationProviderTest extends KerberosSecurityTestcase
     @Test
     public void testLoginFailed() throws Exception {
 
-        MiniKdc kdc = getKdc();
+        SimpleKdcServer kdc = getKdc();
         kdc.createPrincipal(TEST_USER, TEST_PASSWORD + "nonce");
 
         when(userDetailsService.loadUserByUsername(TEST_USER)).thenReturn(USER_DETAILS);

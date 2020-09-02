@@ -15,6 +15,7 @@
  */
 package com.kerb4j.client;
 
+import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.boot.SpringApplication;
@@ -29,7 +30,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import com.kerb4j.KerberosSecurityTestcase;
-import com.kerb4j.MiniKdc;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -64,14 +64,14 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
     @Test
     public void testSpnegoWithForward() throws Exception {
 
-		MiniKdc kdc = getKdc();
+		SimpleKdcServer kdc = getKdc();
 		File workDir = getWorkDir();
 		String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase(); // doesn't work without toLowerCse
 
 
 		String serverPrincipal = "HTTP/" + host;
 		File serverKeytab = new File(workDir, "src/test/resources/server.keytab");
-		kdc.createPrincipal(serverKeytab, serverPrincipal);
+		kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
 
 		context = SpringApplication.run(new Object[] { WebSecurityConfigSpnegoForward.class, VanillaWebConfiguration.class,
 				WebConfiguration.class }, new String[] { "--security.basic.enabled=true",
@@ -98,17 +98,17 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
     @Test
     public void testSpnegoWithSuccessHandler() throws Exception {
 
-		MiniKdc kdc = getKdc();
+		SimpleKdcServer kdc = getKdc();
 		File workDir = getWorkDir();
 		String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase(); // doesn't work without toLowerCse
 
 		String serverPrincipal = "HTTP/" + host;
 		File serverKeytab = new File(workDir, "server.keytab");
-		kdc.createPrincipal(serverKeytab, serverPrincipal);
+		kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
 
 		String clientPrincipal = "client/" + host;
 		File clientKeytab = new File(workDir, "client.keytab");
-		kdc.createPrincipal(clientKeytab, clientPrincipal);
+		kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
 
 
 		context = SpringApplication.run(new Object[] { WebSecurityConfigSuccessHandler.class, VanillaWebConfiguration.class,

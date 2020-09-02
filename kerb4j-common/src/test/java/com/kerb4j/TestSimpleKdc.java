@@ -17,6 +17,7 @@ package com.kerb4j;
 
 import org.apache.directory.server.kerberos.shared.keytab.Keytab;
 import org.apache.directory.server.kerberos.shared.keytab.KeytabEntry;
+import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -28,30 +29,29 @@ import javax.security.auth.login.LoginContext;
 
 import java.io.File;
 import java.security.Principal;
-import java.util.Set;
-import java.util.Map;
-import java.util.HashSet;
-import java.util.HashMap;
-import java.util.Arrays;
+import java.util.*;
 
-public class TestMiniKdc extends KerberosSecurityTestcase {
+public class TestSimpleKdc extends KerberosSecurityTestcase {
 
 	@Test
-	public void testMiniKdcStart() {
-		MiniKdc kdc = getKdc();
-		Assert.assertNotSame(0, kdc.getPort());
+	public void testSimpleKdcStart() {
+		SimpleKdcServer kdc = getKdc();
+		Assert.assertNotSame(0, kdc.getKdcPort());
 	}
 
 	@Test
 	public void testKeytabGen() throws Exception {
-		MiniKdc kdc = getKdc();
+		SimpleKdcServer kdc = getKdc();
 		File workDir = getWorkDir();
 
-		kdc.createPrincipal(new File(workDir, "keytab"), "foo/bar", "bar/foo");
+		kdc.createAndExportPrincipals(new File(workDir, "keytab"), "foo/bar", "bar/foo");
 		Keytab kt = Keytab.read(new File(workDir, "keytab"));
 		Set<String> principals = new HashSet<String>();
 		for (KeytabEntry entry : kt.getEntries()) {
-			principals.add(entry.getPrincipalName());
+			String principalName = entry.getPrincipalName();
+			if (!principalName.startsWith("krbtgt") && !principalName.startsWith("kadmin")) {
+				principals.add(principalName);
+			}
 		}
 		// here principals used to use \ instead of /
 		// because
@@ -59,7 +59,7 @@ public class TestMiniKdc extends KerberosSecurityTestcase {
 		// .getPrincipalName(IoBuffer buffer) use \\ when generates principal
 		// with updadte of apache ds it is / again
 		Assert.assertEquals(
-				new HashSet<>(Arrays.asList("foo/bar@" + kdc.getRealm(), "bar/foo@" + kdc.getRealm())),
+				new HashSet<>(Arrays.asList("foo/bar@" + kdc.getKdcConfig().getKdcRealm(), "bar/foo@" + kdc.getKdcConfig().getKdcRealm())),
 				principals);
 	}
 
@@ -112,13 +112,13 @@ public class TestMiniKdc extends KerberosSecurityTestcase {
 
 	@Test
 	public void testKerberosLogin() throws Exception {
-		MiniKdc kdc = getKdc();
+		SimpleKdcServer kdc = getKdc();
 		File workDir = getWorkDir();
 		LoginContext loginContext = null;
 		try {
 			String principal = "foo";
 			File keytab = new File(workDir, "foo.keytab");
-			kdc.createPrincipal(keytab, principal);
+			kdc.createAndExportPrincipals(keytab, principal);
 
 			Set<Principal> principals = new HashSet<Principal>();
 			principals.add(new KerberosPrincipal(principal));
@@ -131,7 +131,7 @@ public class TestMiniKdc extends KerberosSecurityTestcase {
 			subject = loginContext.getSubject();
 			Assert.assertEquals(1, subject.getPrincipals().size());
 			Assert.assertEquals(KerberosPrincipal.class, subject.getPrincipals().iterator().next().getClass());
-			Assert.assertEquals(principal + "@" + kdc.getRealm(), subject.getPrincipals().iterator().next().getName());
+			Assert.assertEquals(principal + "@" + kdc.getKdcConfig().getKdcRealm(), subject.getPrincipals().iterator().next().getName());
 			loginContext.logout();
 			loginContext = null;
 
@@ -143,7 +143,7 @@ public class TestMiniKdc extends KerberosSecurityTestcase {
 			subject = loginContext.getSubject();
 			Assert.assertEquals(1, subject.getPrincipals().size());
 			Assert.assertEquals(KerberosPrincipal.class, subject.getPrincipals().iterator().next().getClass());
-			Assert.assertEquals(principal + "@" + kdc.getRealm(), subject.getPrincipals().iterator().next().getName());
+			Assert.assertEquals(principal + "@" + kdc.getKdcConfig().getKdcRealm(), subject.getPrincipals().iterator().next().getName());
 			loginContext.logout();
 			loginContext = null;
 

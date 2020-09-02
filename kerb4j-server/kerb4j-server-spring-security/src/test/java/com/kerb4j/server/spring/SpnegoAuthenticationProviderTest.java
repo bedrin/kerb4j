@@ -16,8 +16,8 @@
 package com.kerb4j.server.spring;
 
 import com.kerb4j.KerberosSecurityTestcase;
-import com.kerb4j.MiniKdc;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
+import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -31,7 +31,6 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
-import javax.security.auth.login.LoginException;
 import java.io.File;
 import java.util.List;
 
@@ -64,12 +63,13 @@ public class SpnegoAuthenticationProviderTest extends KerberosSecurityTestcase {
     @Before
     public void before() throws Exception {
         // mocking
-        MiniKdc kdc = getKdc();
+        SimpleKdcServer kdc = getKdc();
         kdc.createPrincipal(TEST_USER, TEST_PASSWORD);
 
         File keytabFile = folder.newFile("serverKeyTab.keytab");
+        keytabFile.delete();
 
-        kdc.createPrincipal(keytabFile, SERVER_SPN);
+        kdc.createAndExportPrincipals(keytabFile, SERVER_SPN);
 
         this.userDetailsService = mock(UserDetailsService.class);
 

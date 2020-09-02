@@ -15,8 +15,6 @@
  */
 package com.kerb4j.common.jaas.sun;
 
-import javax.annotation.PostConstruct;
-
 /**
  * Config for global jaas.
  *
@@ -25,28 +23,15 @@ import javax.annotation.PostConstruct;
  */
 public class GlobalSunJaasKerberosConfig {
 
-    private boolean debug = false;
-
-    private String krbConfLocation;
-
-    @PostConstruct
-    public void afterPropertiesSet() throws Exception {
-        if (debug) {
-            System.setProperty("sun.security.krb5.debug", "true");
-        }
-        if (krbConfLocation != null) {
-            System.setProperty("java.security.krb5.conf", krbConfLocation);
-        }
-
-    }
-
     /**
      * Enable debug logs from the Sun Kerberos Implementation. Default is false.
      *
      * @param debug true if debug should be enabled
      */
     public void setDebug(boolean debug) {
-        this.debug = debug;
+        if (debug) {
+            System.setProperty("sun.security.krb5.debug", "true");
+        }
     }
 
     /**
@@ -55,7 +40,9 @@ public class GlobalSunJaasKerberosConfig {
      * @param krbConfLocation the path to krb config file
      */
     public void setKrbConfLocation(String krbConfLocation) {
-        this.krbConfLocation = krbConfLocation;
+        if (krbConfLocation != null) {
+            System.setProperty("java.security.krb5.conf", krbConfLocation);
+        }
     }
 
 }

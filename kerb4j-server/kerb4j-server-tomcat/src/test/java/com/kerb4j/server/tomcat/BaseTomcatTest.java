@@ -1,7 +1,6 @@
 package com.kerb4j.server.tomcat;
 
 import com.kerb4j.KerberosSecurityTestcase;
-import com.kerb4j.MiniKdc;
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoHttpURLConnection;
 import org.apache.catalina.LifecycleException;
@@ -10,6 +9,7 @@ import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.webresources.DirResourceSet;
 import org.apache.catalina.webresources.StandardRoot;
+import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,17 +35,17 @@ public class BaseTomcatTest extends KerberosSecurityTestcase {
     @Before
     public void startTomcat() throws Exception {
 
-        MiniKdc kdc = getKdc();
+        SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
         host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase(); // doesn't work without toLowerCse
 
         String serverPrincipal = "HTTP/" + host;
         File serverKeytab = new File(workDir, "server.keytab");
-        kdc.createPrincipal(serverKeytab, serverPrincipal);
+        kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
 
         clientPrincipal = "client/" + host;
         clientKeytab = new File(workDir, "client.keytab");
-        kdc.createPrincipal(clientKeytab, clientPrincipal);
+        kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
 
         tomcat = new Tomcat();
         tomcat.setPort(8080);

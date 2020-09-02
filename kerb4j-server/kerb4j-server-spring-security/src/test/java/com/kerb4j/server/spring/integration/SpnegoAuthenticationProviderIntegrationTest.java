@@ -16,7 +16,6 @@
 package com.kerb4j.server.spring.integration;
 
 import com.kerb4j.KerberosSecurityTestcase;
-import com.kerb4j.MiniKdc;
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.spring.KerberosRestTemplate;
 import com.kerb4j.client.spring.SpnegoRestTemplate;
@@ -24,6 +23,7 @@ import com.kerb4j.server.spring.*;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 import io.sniffy.boot.EnableSniffy;
 import io.sniffy.servlet.SniffyFilter;
+import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -86,11 +86,12 @@ public class SpnegoAuthenticationProviderIntegrationTest extends KerberosSecurit
     @Before
     public void setupKDC() throws Exception {
         // mocking
-        MiniKdc kdc = getKdc();
+        SimpleKdcServer kdc = getKdc();
 
         File keytabFile = folder.newFile("serverKeyTab.keytab");
+        keytabFile.delete();
 
-        kdc.createPrincipal(keytabFile, SERVER_SPN);
+        kdc.createAndExportPrincipals(keytabFile, SERVER_SPN);
 
         sunJaasKerberosTicketValidator.setServicePrincipal(SERVER_SPN);
         sunJaasKerberosTicketValidator.setKeyTabLocation(new FileSystemResource(keytabFile));

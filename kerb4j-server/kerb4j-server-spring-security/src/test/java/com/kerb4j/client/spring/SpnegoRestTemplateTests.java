@@ -16,8 +16,8 @@
 package com.kerb4j.client.spring;
 
 import com.kerb4j.KerberosSecurityTestcase;
-import com.kerb4j.MiniKdc;
 import com.kerb4j.client.SpnegoClient;
+import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.boot.SpringApplication;
@@ -65,17 +65,17 @@ public class SpnegoRestTemplateTests extends KerberosSecurityTestcase {
     @Test
     public void testSpnego() throws Exception {
 
-		MiniKdc kdc = getKdc();
+		SimpleKdcServer kdc = getKdc();
 		File workDir = getWorkDir();
 		String host = InetAddress.getLocalHost().getCanonicalHostName();
 
 		String serverPrincipal = "HTTP/" + host;
 		File serverKeytab = new File(workDir, "server.keytab");
-		kdc.createPrincipal(serverKeytab, serverPrincipal);
+		kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
 
 		String clientPrincipal = "client/" + host;
 		File clientKeytab = new File(workDir, "client.keytab");
-		kdc.createPrincipal(clientKeytab, clientPrincipal);
+		kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
 
 
 		context = SpringApplication.run(new Object[] { WebSecurityConfig.class, VanillaWebConfiguration.class,
@@ -96,13 +96,13 @@ public class SpnegoRestTemplateTests extends KerberosSecurityTestcase {
     @Test
     public void testSpnegoWithForward() throws Exception {
 
-		MiniKdc kdc = getKdc();
+		SimpleKdcServer kdc = getKdc();
 		File workDir = getWorkDir();
 		String host = InetAddress.getLocalHost().getCanonicalHostName();
 
 		String serverPrincipal = "HTTP/" + host;
 		File serverKeytab = new File(workDir, "server.keytab");
-		kdc.createPrincipal(serverKeytab, serverPrincipal);
+		kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
 
 		context = SpringApplication.run(new Object[] { WebSecurityConfigSpnegoForward.class, VanillaWebConfiguration.class,
 				WebConfiguration.class }, new String[] { "--security.basic.enabled=true",
@@ -132,17 +132,17 @@ public class SpnegoRestTemplateTests extends KerberosSecurityTestcase {
     @Test
     public void testSpnegoWithSuccessHandler() throws Exception {
 
-		MiniKdc kdc = getKdc();
+		SimpleKdcServer kdc = getKdc();
 		File workDir = getWorkDir();
 		String host = InetAddress.getLocalHost().getCanonicalHostName();
 
 		String serverPrincipal = "HTTP/" + host;
 		File serverKeytab = new File(workDir, "server.keytab");
-		kdc.createPrincipal(serverKeytab, serverPrincipal);
+		kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
 
 		String clientPrincipal = "client/" + host;
 		File clientKeytab = new File(workDir, "client.keytab");
-		kdc.createPrincipal(clientKeytab, clientPrincipal);
+		kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
 
 
 		context = SpringApplication.run(new Object[] { WebSecurityConfigSuccessHandler.class, VanillaWebConfiguration.class,

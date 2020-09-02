@@ -15,6 +15,10 @@
  */
 package com.kerb4j;
 
+import org.apache.kerby.kerberos.kerb.KrbException;
+import org.apache.kerby.kerberos.kerb.client.KrbConfig;
+import org.apache.kerby.kerberos.kerb.server.KdcConfigKey;
+import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -33,9 +37,9 @@ import java.util.Properties;
  *
  */
 public class KerberosSecurityTestcase {
-	private MiniKdc kdc;
+	private SimpleKdcServer kdc;
 	private File workDir;
-	private Properties conf;
+	private KrbConfig conf;
 
 	@BeforeClass
 	public static void debugKerberos() {
@@ -47,7 +51,10 @@ public class KerberosSecurityTestcase {
 		createTestDir();
 		createMiniKdcConf();
 
-		kdc = new MiniKdc(conf, workDir);
+		kdc = new SimpleKdcServer(workDir, conf);
+		kdc.setKdcPort(1088);
+		kdc.setAllowUdp(false);
+		kdc.init();
 		kdc.start();
 	}
 
@@ -64,17 +71,17 @@ public class KerberosSecurityTestcase {
 	 * Create a Kdc configuration
 	 */
 	public void createMiniKdcConf() {
-		conf = MiniKdc.createConf();
+		conf = new KrbConfig();
 	}
 
 	@After
-	public void stopMiniKdc() {
+	public void stopMiniKdc() throws KrbException {
 		if (kdc != null) {
 			kdc.stop();
 		}
 	}
 
-	public MiniKdc getKdc() {
+	public SimpleKdcServer getKdc() {
 		return kdc;
 	}
 
@@ -82,7 +89,7 @@ public class KerberosSecurityTestcase {
 		return workDir;
 	}
 
-	public Properties getConf() {
+	public KrbConfig getConf() {
 		return conf;
 	}
 
