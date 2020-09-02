@@ -22,6 +22,7 @@ import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.springframework.util.SocketUtils;
 
 import java.io.File;
 import java.util.Properties;
@@ -52,7 +53,7 @@ public class KerberosSecurityTestcase {
 		createMiniKdcConf();
 
 		kdc = new SimpleKdcServer(workDir, conf);
-		kdc.setKdcPort(1088);
+		kdc.setKdcPort(SocketUtils.findAvailableTcpPort());
 		kdc.setAllowUdp(false);
 		kdc.init();
 		kdc.start();
