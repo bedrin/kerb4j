@@ -20,11 +20,14 @@ import org.apache.kerby.kerberos.kerb.client.KrbConfig;
 import org.apache.kerby.kerberos.kerb.server.KdcConfigKey;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.springframework.util.SocketUtils;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.Properties;
 
 /**
@@ -42,11 +45,28 @@ public class KerberosSecurityTestcase {
 	private File workDir;
 	private KrbConfig conf;
 
-	private static final int kdcPort = SocketUtils.findAvailableTcpPort();
+	private static int kdcPort;
+	private static ServerSocket ss;
 
 	@BeforeClass
 	public static void debugKerberos() {
 		System.setProperty("sun.security.krb5.debug", "true");
+
+		for (int i = 10000; i < 11000; i += 2) {
+			try {
+				ss = new ServerSocket(i);
+				break;
+			} catch (IOException e) {
+				continue;
+			}
+		}
+
+		kdcPort = ss.getLocalPort() + 1;
+	}
+
+	@AfterClass
+	public static void stopServerSocketLock() throws Exception {
+		ss.close();
 	}
 
 	@Before
