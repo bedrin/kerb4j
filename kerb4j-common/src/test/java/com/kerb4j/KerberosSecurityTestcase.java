@@ -42,6 +42,8 @@ public class KerberosSecurityTestcase {
 	private File workDir;
 	private KrbConfig conf;
 
+	private static final int kdcPort = SocketUtils.findAvailableTcpPort();
+
 	@BeforeClass
 	public static void debugKerberos() {
 		System.setProperty("sun.security.krb5.debug", "true");
@@ -53,7 +55,7 @@ public class KerberosSecurityTestcase {
 		createMiniKdcConf();
 
 		kdc = new SimpleKdcServer(workDir, conf);
-		kdc.setKdcPort(SocketUtils.findAvailableTcpPort());
+		kdc.setKdcPort(kdcPort);
 		kdc.setAllowUdp(false);
 		kdc.init();
 		kdc.start();
