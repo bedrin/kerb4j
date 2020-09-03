@@ -268,7 +268,7 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
     /**
      * The session handling strategy which will be invoked immediately after an
      * authentication request is successfully processed by the
-     * <tt>AuthenticationManager</tt>. Used, for example, to handle changing of
+     * {@link AuthenticationManager}. Used, for example, to handle changing of
      * the session identifier to prevent session fixation attacks.
      *
      * @param sessionStrategy the implementation to use. If not set a null
