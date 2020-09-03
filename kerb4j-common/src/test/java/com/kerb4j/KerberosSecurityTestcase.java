@@ -42,31 +42,19 @@ public class KerberosSecurityTestcase {
 	private File workDir;
 	private KrbConfig conf;
 
-	private static int kdcPort;
+	private static final int kdcPort = SocketUtils.findAvailableTcpPort();
 
 	@BeforeClass
 	public static void debugKerberos() {
 		System.setProperty("sun.security.krb5.debug", "true");
-		int kdcPort = SocketUtils.findAvailableTcpPort(50000);
-		kdcPort = kdcPort - kdcPort % 100;
-		kdcPort += getVersion();
-		KerberosSecurityTestcase.kdcPort = kdcPort;
-	}
-
-	private static int getVersion() {
-		String version = System.getProperty("java.version");
-		if(version.startsWith("1.")) {
-			version = version.substring(2, 3);
-		} else {
-			int dot = version.indexOf(".");
-			if(dot != -1) { version = version.substring(0, dot); }
-		} return Integer.parseInt(version);
 	}
 
 	@Before
 	public void startMiniKdc() throws Exception {
 		createTestDir();
 		createMiniKdcConf();
+
+		System.out.println("Starting Simple KDC server on port " + kdcPort);
 
 		kdc = new SimpleKdcServer(workDir, conf);
 		kdc.setKdcPort(kdcPort);
