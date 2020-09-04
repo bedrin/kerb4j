@@ -1,4 +1,4 @@
-package org.jaaslounge.ldap;
+package com.kerb4j.server.ldap;
 
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
