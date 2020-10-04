@@ -15,6 +15,8 @@
  */
 package com.kerb4j;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.kerby.kerberos.kerb.client.KrbConfig;
 import org.apache.kerby.kerberos.kerb.server.KdcConfigKey;
@@ -41,6 +43,9 @@ import java.util.Properties;
  *
  */
 public class KerberosSecurityTestcase {
+
+	private static final Log log = LogFactory.getLog(KerberosSecurityTestcase.class);
+
 	private SimpleKdcServer kdc;
 	private File workDir;
 	private KrbConfig conf;
@@ -74,7 +79,7 @@ public class KerberosSecurityTestcase {
 		createTestDir();
 		createMiniKdcConf();
 
-		System.out.println("Starting Simple KDC server on port " + kdcPort);
+		log.info("Starting Simple KDC server on port " + kdcPort);
 
 		kdc = new SimpleKdcServer(workDir, conf);
 		kdc.setKdcPort(kdcPort);
@@ -103,6 +108,7 @@ public class KerberosSecurityTestcase {
 	public void stopMiniKdc() throws KrbException {
 		if (kdc != null) {
 			kdc.stop();
+			log.info("Stopped Simple KDC server on port " + kdcPort);
 		}
 	}
 
