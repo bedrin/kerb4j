@@ -16,6 +16,7 @@
         <module>kerb4j-server-common</module>
         <module>kerb4j-server-tomcat</module>
         <module>kerb4j-server-spring-security</module>
+        <module>kerb4j-server-spring-security-ldap</module>
     </modules>
 
     <dependencies>
