@@ -94,6 +94,37 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
     }
 
     @Test
+    public void testSpnegoWithPasswordOnServer() throws Exception {
+
+		SimpleKdcServer kdc = getKdc();
+		File workDir = getWorkDir();
+		String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
+
+		String serverPrincipal = "HTTP/" + host;
+		String serverPassword = "TestPassword";
+		kdc.createPrincipal(serverPrincipal, serverPassword);
+
+		String clientPrincipal = "client/" + host;
+		File clientKeytab = new File(workDir, "client.keytab");
+		kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
+
+
+		context = SpringApplication.run(new Object[] { WebSecurityConfigServerPassword.class, VanillaWebConfiguration.class,
+				WebConfiguration.class }, new String[] { "--security.basic.enabled=true",
+				"--security.user.name=username", "--security.user.password=password",
+				"--serverPrincipal=" + serverPrincipal, "--serverPassword=" + serverPassword });
+
+		PortInitListener portInitListener = context.getBean(PortInitListener.class);
+		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
+		int port = portInitListener.port;
+
+		SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
+
+		String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
+		assertThat(response, is("home"));
+    }
+
+    @Test
     public void testSpnegoWithForward() throws Exception {
 
 		SimpleKdcServer kdc = getKdc();

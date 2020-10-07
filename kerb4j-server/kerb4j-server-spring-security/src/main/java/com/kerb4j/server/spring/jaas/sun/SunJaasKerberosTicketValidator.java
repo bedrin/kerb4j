@@ -49,6 +49,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
     private static final Log LOG = LogFactory.getLog(SunJaasKerberosTicketValidator.class);
 
     private String servicePrincipal;
+    private String servicePassword;
     private Resource keyTabLocation;
 
     private SpnegoClient spnegoClient;
@@ -87,19 +88,22 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
     @Override
     public void afterPropertiesSet() throws Exception {
         Assert.notNull(this.servicePrincipal, "servicePrincipal must be specified");
-        Assert.notNull(this.keyTabLocation, "keyTab must be specified");
-        if (keyTabLocation instanceof ClassPathResource) {
-            LOG.warn("Your keytab is in the classpath. This file needs special protection and shouldn't be in the classpath. JAAS may also not be able to load this file from classpath.");
-        }
-        String keyTabLocationAsString = this.keyTabLocation.getURL().toExternalForm();
-        // We need to remove the file prefix (if there is one), as it is not supported in Java 7 anymore.
-        // As Java 6 accepts it with and without the prefix, we don't need to check for Java 7
-        if (keyTabLocationAsString.startsWith("file:"))
-        {
-            keyTabLocationAsString = keyTabLocationAsString.substring(5);
-        }
+        Assert.state(null != this.keyTabLocation || null != this.servicePassword, "Either password or keyTab must be specified");
+        if (null != this.keyTabLocation) {
+            if (keyTabLocation instanceof ClassPathResource) {
+                LOG.warn("Your keytab is in the classpath. This file needs special protection and shouldn't be in the classpath. JAAS may also not be able to load this file from classpath.");
+            }
+            String keyTabLocationAsString = this.keyTabLocation.getURL().toExternalForm();
+            // We need to remove the file prefix (if there is one), as it is not supported in Java 7 anymore.
+            // As Java 6 accepts it with and without the prefix, we don't need to check for Java 7
+            if (keyTabLocationAsString.startsWith("file:")) {
+                keyTabLocationAsString = keyTabLocationAsString.substring(5);
+            }
 
-        spnegoClient = SpnegoClient.loginWithKeyTab(servicePrincipal, keyTabLocationAsString);
+            spnegoClient = SpnegoClient.loginWithKeyTab(servicePrincipal, keyTabLocationAsString);
+        } else {
+          spnegoClient = SpnegoClient.loginWithUsernamePassword(servicePrincipal, servicePassword);
+        }
     }
 
     /**
@@ -130,6 +134,10 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
      */
     public void setKeyTabLocation(Resource keyTabLocation) {
         this.keyTabLocation = keyTabLocation;
+    }
+
+    public void setServicePassword(String servicePassword) {
+        this.servicePassword = servicePassword;
     }
 
     /**
