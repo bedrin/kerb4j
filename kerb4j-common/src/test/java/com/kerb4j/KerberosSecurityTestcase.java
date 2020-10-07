@@ -53,11 +53,17 @@ public class KerberosSecurityTestcase {
 	private static int kdcPort;
 	private static ServerSocket ss;
 
+	private static int i = 10000;
+
 	@BeforeClass
 	public static void debugKerberos() {
 		System.setProperty("sun.security.krb5.debug", "true");
+	}
 
-		for (int i = 10000; i < 11000; i += 2) {
+	@Before
+	public void startMiniKdc() throws Exception {
+
+		for (; i < 11000; i += 2) {
 			try {
 				ss = new ServerSocket(i);
 				break;
@@ -67,15 +73,7 @@ public class KerberosSecurityTestcase {
 		}
 
 		kdcPort = ss.getLocalPort() + 1;
-	}
 
-	@AfterClass
-	public static void stopServerSocketLock() throws Exception {
-		ss.close();
-	}
-
-	@Before
-	public void startMiniKdc() throws Exception {
 		createTestDir();
 		createMiniKdcConf();
 
@@ -86,6 +84,17 @@ public class KerberosSecurityTestcase {
 		kdc.setAllowUdp(false);
 		kdc.init();
 		kdc.start();
+	}
+
+	@After
+	public void stopMiniKdc() throws Exception {
+		log.info("Stopping Simple KDC server on port " + kdcPort);
+		if (kdc != null) {
+			kdc.stop();
+			log.info("Stopped Simple KDC server on port " + kdcPort);
+		}
+
+		ss.close();
 	}
 
 	/**
@@ -102,15 +111,6 @@ public class KerberosSecurityTestcase {
 	 */
 	public void createMiniKdcConf() {
 		conf = new KrbConfig();
-	}
-
-	@After
-	public void stopMiniKdc() throws KrbException {
-		log.info("Stopping Simple KDC server on port " + kdcPort);
-		if (kdc != null) {
-			kdc.stop();
-			log.info("Stopped Simple KDC server on port " + kdcPort);
-		}
 	}
 
 	public SimpleKdcServer getKdc() {
