@@ -9,6 +9,8 @@ import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.webresources.DirResourceSet;
 import org.apache.catalina.webresources.StandardRoot;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.After;
 import org.junit.Before;
@@ -24,6 +26,10 @@ import java.net.URL;
 import static org.junit.Assert.assertEquals;
 
 public class BaseTomcatTest extends KerberosSecurityTestcase {
+
+    private static final Log log = LogFactory.getLog(BaseTomcatTest.class);
+
+    public static final int TOMCAT_PORT = 8080;
 
     private Tomcat tomcat;
 
@@ -48,7 +54,7 @@ public class BaseTomcatTest extends KerberosSecurityTestcase {
         kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
 
         tomcat = new Tomcat();
-        tomcat.setPort(8080);
+        tomcat.setPort(TOMCAT_PORT);
 
         StandardContext ctx = (StandardContext) tomcat.addWebapp("/", new File(".").getAbsolutePath());
         SpnegoAuthenticator valve = new SpnegoAuthenticator();
@@ -74,8 +80,12 @@ public class BaseTomcatTest extends KerberosSecurityTestcase {
     @After
     public void stopTomcat() throws LifecycleException {
 
+        log.info("Stopping Tomcat server on port " + TOMCAT_PORT);
+
         tomcat.stop();
         tomcat.getServer().await();
+
+        log.info("Stopped Tomcat server on port " + TOMCAT_PORT);
 
     }
 

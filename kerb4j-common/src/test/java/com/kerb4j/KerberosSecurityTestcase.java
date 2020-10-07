@@ -106,6 +106,7 @@ public class KerberosSecurityTestcase {
 
 	@After
 	public void stopMiniKdc() throws KrbException {
+		log.info("Stopping Simple KDC server on port " + kdcPort);
 		if (kdc != null) {
 			kdc.stop();
 			log.info("Stopped Simple KDC server on port " + kdcPort);
