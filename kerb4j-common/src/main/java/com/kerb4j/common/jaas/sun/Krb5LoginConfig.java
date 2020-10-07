@@ -64,7 +64,6 @@ public class Krb5LoginConfig extends Configuration {
 		options.put("principal", principal);
 
 		options.put("useTicketCache", "true");
-		options.put("renewTGT", "true");
 
 		options.put("doNotPrompt", "true");
 
@@ -86,6 +85,8 @@ public class Krb5LoginConfig extends Configuration {
 			options.put("debug", "true");
 		}
 
+		// Since Kerb4J caches the tickets properly and doesn't do authentication on each request it's safe to refresh
+		// configuration on each login attempt
 		options.put("refreshKrb5Config", "true");
 
 		options.putAll(additionalOptions);
