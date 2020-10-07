@@ -86,6 +86,8 @@ public class Krb5LoginConfig extends Configuration {
 			options.put("debug", "true");
 		}
 
+		options.put("refreshKrb5Config", "true");
+
 		options.putAll(additionalOptions);
 
 		this.appConfigurationEntries = new AppConfigurationEntry[] {

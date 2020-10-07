@@ -50,8 +50,7 @@ public class KerberosSecurityTestcase {
 	private File workDir;
 	private KrbConfig conf;
 
-	private static int kdcPort;
-	private static ServerSocket ss;
+	private int kdcPort;
 
 	private static int i = 10000;
 
@@ -63,16 +62,7 @@ public class KerberosSecurityTestcase {
 	@Before
 	public void startMiniKdc() throws Exception {
 
-		for (; i < 11000; i += 2) {
-			try {
-				ss = new ServerSocket(i);
-				break;
-			} catch (IOException e) {
-				continue;
-			}
-		}
-
-		kdcPort = ss.getLocalPort() + 1;
+		kdcPort = i++; // Since SimpleKdcServer doesn't have reuse socket address option we need to increment the port
 
 		createTestDir();
 		createMiniKdcConf();
@@ -93,8 +83,6 @@ public class KerberosSecurityTestcase {
 			kdc.stop();
 			log.info("Stopped Simple KDC server on port " + kdcPort);
 		}
-
-		ss.close();
 	}
 
 	/**
