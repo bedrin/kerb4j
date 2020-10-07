@@ -1,6 +1,6 @@
 Kerb4J
 ========
-[![Build Status](https://travis-ci.org/bedrin/kerb4j.svg?branch=master)](https://travis-ci.org/bedrin/kerb4j)
+![Java CI](https://github.com/bedrin/kerb4j/workflows/Java%20CI/badge.svg?branch=develop)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.kerb4j/kerb4j/badge.svg?style=flat)](https://maven-badges.herokuapp.com/maven-central/com.kerb4j/kerb4j)
 
 Industry standard library for working with Kerberos/SPNEGO authentication in Java in 2018.
