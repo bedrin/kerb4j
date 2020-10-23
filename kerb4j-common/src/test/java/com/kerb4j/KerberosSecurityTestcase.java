@@ -50,7 +50,7 @@ public class KerberosSecurityTestcase {
 	private File workDir;
 	private KrbConfig conf;
 
-	private int kdcPort;
+	protected int kdcPort;
 
 	private static int i = 10000;
 

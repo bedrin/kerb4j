@@ -1,13 +1,13 @@
 Kerb4J
 ========
-[![Build Status](https://travis-ci.org/bedrin/kerb4j.svg?branch=master)](https://travis-ci.org/bedrin/kerb4j)
+![Java CI](https://github.com/bedrin/kerb4j/workflows/Java%20CI/badge.svg?branch=develop)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.kerb4j/kerb4j/badge.svg?style=flat)](https://maven-badges.herokuapp.com/maven-central/com.kerb4j/kerb4j)
 
-Industry standard library for working with Kerberos/SPNEGO authentication in Java in 2018.
+Industry standard library for working with Kerberos/SPNEGO authentication in Java in 2020+.
 
 Main features:
  - Getting group membership information from Kerberos token - no need to query LDAP
- - Proper caching of tickets - make just one request to domain controller and cache the ticket
+ - Proper caching of tickets - make just one request to domain controller and cache the ticket on both client and server sides
  - Flexible SPN resolution - you own the code and do not have to rely on magic SPN calculation algorithms
  
 Installation
@@ -20,7 +20,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-client</artifactId>
-    <version>0.0.9</version>
+    <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -29,7 +29,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-server-spring-security</artifactId>
-    <version>0.0.9</version>
+    <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -38,7 +38,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-server-tomcat</artifactId>
-    <version>0.0.9</version>
+    <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
 
