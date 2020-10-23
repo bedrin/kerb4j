@@ -17,6 +17,8 @@ package com.kerb4j.client.spring;
 
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.client.SpnegoClient;
+import io.sniffy.boot.EnableSniffy;
+import io.sniffy.registry.ConnectionsRegistry;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.After;
 import org.junit.Test;
@@ -91,6 +93,50 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
 		String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
 		assertThat(response, is("home"));
+    }
+
+    @Test
+    public void testServerRequests() throws Exception {
+
+		SimpleKdcServer kdc = getKdc();
+		File workDir = getWorkDir();
+		String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
+
+		String serverPrincipal = "HTTP/" + host;
+		File serverKeytab = new File(workDir, "server.keytab");
+		kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
+
+		String clientPrincipal = "client/" + host;
+		File clientKeytab = new File(workDir, "client.keytab");
+		kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
+
+
+		context = SpringApplication.run(new Object[] { WebSecurityConfig.class, VanillaWebConfiguration.class,
+				WebConfiguration.class }, new String[] { "--security.basic.enabled=true",
+				"--security.user.name=username", "--security.user.password=password",
+				"--serverPrincipal=" + serverPrincipal, "--serverKeytab=" + serverKeytab.getAbsolutePath() });
+
+		PortInitListener portInitListener = context.getBean(PortInitListener.class);
+		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
+		int port = portInitListener.port;
+
+		SpnegoRestTemplate spnegoRestTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
+		RestTemplate restTemplate = new RestTemplate();
+
+		{
+			String response = spnegoRestTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
+			assertThat(response, is("home"));
+		}
+
+		System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.6/connectionregistry/", String.class));
+		restTemplate.postForEntity("http://" + host + ":" + port + "/sniffy/3.1.6/connectionregistry/socket/localhost/" + kdcPort, "-1", Object.class);
+		System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.6/connectionregistry/", String.class));
+
+		ConnectionsRegistry.INSTANCE.setSocketAddressStatus("localhost", kdcPort, -1);
+		{
+			String response = spnegoRestTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
+			assertThat(response, is("home"));
+		}
     }
 
     @Test
@@ -222,6 +268,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
     @MinimalWebConfiguration
     @Import(SecurityAutoConfiguration.class)
+	@EnableSniffy
     @Controller
 	protected static class WebConfiguration {
 
