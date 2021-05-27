@@ -16,10 +16,12 @@
 package com.kerb4j.client;
 
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
-import org.junit.After;
-import org.junit.Test;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.PropertyPlaceholderAutoConfiguration;
+import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.SecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.*;
 import org.springframework.boot.context.embedded.EmbeddedServletContainerInitializedEvent;
@@ -46,14 +48,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
 
 	private ConfigurableApplicationContext context;
 
-	@After
+	@AfterEach
 	public void close() {
 		if (context != null) {
 			context.close();
@@ -79,7 +79,7 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
 				"--serverPrincipal=" + serverPrincipal, "--serverKeytab=" + serverKeytab.getAbsolutePath() });
 
 		PortInitListener portInitListener = context.getBean(PortInitListener.class);
-		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
+		MatcherAssert.assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
 		int port = portInitListener.port;
 
 		// TODO: should tweak minikdc so that we can use kerberos principals
@@ -88,10 +88,10 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
 		HttpURLConnection huc = (HttpURLConnection)
 				new URL("http://" + host + ":" + port + "/hello").openConnection();
 
-		assertEquals(401, huc.getResponseCode());
+		Assertions.assertEquals(401, huc.getResponseCode());
 
 		BufferedReader br = new BufferedReader(new InputStreamReader(huc.getErrorStream()));
-		assertEquals("login", br.readLine());
+		Assertions.assertEquals("login", br.readLine());
 
     }
 
@@ -117,7 +117,7 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
 				"--serverPrincipal=" + serverPrincipal, "--serverKeytab=" + serverKeytab.getAbsolutePath() });
 
 		PortInitListener portInitListener = context.getBean(PortInitListener.class);
-		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
+		MatcherAssert.assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
 		int port = portInitListener.port;
 
 		SpnegoClient spnegoClient = SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath());
@@ -126,8 +126,8 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
 			HttpURLConnection huc = new SpnegoHttpURLConnection(spnegoClient).connect(new URL("http://" + host + ":" + port + "/hello"));
 			BufferedReader br = new BufferedReader(new InputStreamReader(huc.getInputStream()));
 
-			assertEquals(200, huc.getResponseCode());
-			assertEquals("home", br.readLine());
+			Assertions.assertEquals(200, huc.getResponseCode());
+			Assertions.assertEquals("home", br.readLine());
 		}
 
 		{
@@ -139,8 +139,8 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
 			HttpURLConnection huc = new SpnegoHttpURLConnection(spnegoClient).connect(new URL("http://" + host + ":" + port + "/hello"));
 			BufferedReader br = new BufferedReader(new InputStreamReader(huc.getInputStream()));
 
-			assertEquals(200, huc.getResponseCode());
-			assertEquals("home", br.readLine());
+			Assertions.assertEquals(200, huc.getResponseCode());
+			Assertions.assertEquals("home", br.readLine());
 		}
 
 		// TODO: uncomment
@@ -152,8 +152,8 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
 			HttpURLConnection huc = new SpnegoHttpURLConnection(spnegoClient).connect(new URL("http://" + host + ":" + port + "/hello"));
 			BufferedReader br = new BufferedReader(new InputStreamReader(huc.getInputStream()));
 
-			assertEquals(200, huc.getResponseCode());
-			assertEquals("home", br.readLine());
+			Assertions.assertEquals(200, huc.getResponseCode());
+			Assertions.assertEquals("home", br.readLine());
 		}
     }
 

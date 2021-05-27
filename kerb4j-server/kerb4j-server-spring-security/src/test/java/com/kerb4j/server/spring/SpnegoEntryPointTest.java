@@ -15,14 +15,12 @@
  */
 package com.kerb4j.server.spring;
 
-import org.junit.Test;
-import com.kerb4j.server.spring.SpnegoEntryPoint;
-
 import javax.servlet.RequestDispatcher;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import static org.mockito.Matchers.anyString;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import static org.mockito.Mockito.*;
 
 /**
@@ -35,7 +33,7 @@ import static org.mockito.Mockito.*;
  */
 public class SpnegoEntryPointTest {
 
-	private SpnegoEntryPoint entryPoint = new SpnegoEntryPoint();
+	private final SpnegoEntryPoint entryPoint = new SpnegoEntryPoint();
 
 	@Test
 	public void testEntryPointOk() throws Exception {
@@ -75,9 +73,12 @@ public class SpnegoEntryPointTest {
 		verify(requestDispatcher).forward(request, response);
 	}
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testEntryPointForwardAbsolute() throws Exception {
-		new SpnegoEntryPoint("http://test/login");
+	@Test()
+	public void testEntryPointForwardAbsolute() {
+		IllegalArgumentException exception = Assertions.assertThrows(
+				IllegalArgumentException.class, () -> new SpnegoEntryPoint("http://test/login")
+		);
+		Assertions.assertNotNull(exception);
 	}
 
 }

@@ -18,8 +18,6 @@ package com.kerb4j;
 import org.apache.directory.server.kerberos.shared.keytab.Keytab;
 import org.apache.directory.server.kerberos.shared.keytab.KeytabEntry;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
-import org.junit.Assert;
-import org.junit.Test;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosPrincipal;
@@ -30,13 +28,15 @@ import javax.security.auth.login.LoginContext;
 import java.io.File;
 import java.security.Principal;
 import java.util.*;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class TestSimpleKdc extends KerberosSecurityTestcase {
 
 	@Test
 	public void testSimpleKdcStart() {
 		SimpleKdcServer kdc = getKdc();
-		Assert.assertNotSame(0, kdc.getKdcPort());
+		Assertions.assertNotSame(0, kdc.getKdcPort());
 	}
 
 	@Test
@@ -58,7 +58,7 @@ public class TestSimpleKdc extends KerberosSecurityTestcase {
 		// org.apache.directory.server.kerberos.shared.keytab.KeytabDecoder
 		// .getPrincipalName(IoBuffer buffer) use \\ when generates principal
 		// with updadte of apache ds it is / again
-		Assert.assertEquals(
+		Assertions.assertEquals(
 				new HashSet<>(Arrays.asList("foo/bar@" + kdc.getKdcConfig().getKdcRealm(), "bar/foo@" + kdc.getKdcConfig().getKdcRealm())),
 				principals);
 	}
@@ -129,9 +129,9 @@ public class TestSimpleKdc extends KerberosSecurityTestcase {
 					keytab));
 			loginContext.login();
 			subject = loginContext.getSubject();
-			Assert.assertEquals(1, subject.getPrincipals().size());
-			Assert.assertEquals(KerberosPrincipal.class, subject.getPrincipals().iterator().next().getClass());
-			Assert.assertEquals(principal + "@" + kdc.getKdcConfig().getKdcRealm(), subject.getPrincipals().iterator().next().getName());
+			Assertions.assertEquals(1, subject.getPrincipals().size());
+			Assertions.assertEquals(KerberosPrincipal.class, subject.getPrincipals().iterator().next().getClass());
+			Assertions.assertEquals(principal + "@" + kdc.getKdcConfig().getKdcRealm(), subject.getPrincipals().iterator().next().getName());
 			loginContext.logout();
 			loginContext = null;
 
@@ -141,9 +141,9 @@ public class TestSimpleKdc extends KerberosSecurityTestcase {
 					keytab));
 			loginContext.login();
 			subject = loginContext.getSubject();
-			Assert.assertEquals(1, subject.getPrincipals().size());
-			Assert.assertEquals(KerberosPrincipal.class, subject.getPrincipals().iterator().next().getClass());
-			Assert.assertEquals(principal + "@" + kdc.getKdcConfig().getKdcRealm(), subject.getPrincipals().iterator().next().getName());
+			Assertions.assertEquals(1, subject.getPrincipals().size());
+			Assertions.assertEquals(KerberosPrincipal.class, subject.getPrincipals().iterator().next().getClass());
+			Assertions.assertEquals(principal + "@" + kdc.getKdcConfig().getKdcRealm(), subject.getPrincipals().iterator().next().getName());
 			loginContext.logout();
 			loginContext = null;
 

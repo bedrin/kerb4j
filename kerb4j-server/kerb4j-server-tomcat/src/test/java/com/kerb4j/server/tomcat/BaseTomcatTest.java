@@ -3,6 +3,8 @@ package com.kerb4j.server.tomcat;
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoHttpURLConnection;
+import java.io.IOException;
+import java.security.PrivilegedActionException;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.WebResourceRoot;
 import org.apache.catalina.core.StandardContext;
@@ -12,9 +14,6 @@ import org.apache.catalina.webresources.StandardRoot;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -23,7 +22,12 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
 
+import org.ietf.jgss.GSSException;
 import static org.junit.Assert.assertEquals;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class BaseTomcatTest extends KerberosSecurityTestcase {
 
@@ -38,7 +42,7 @@ public class BaseTomcatTest extends KerberosSecurityTestcase {
     private String clientPrincipal;
     private File clientKeytab;
 
-    @Before
+    @BeforeEach
     public void startTomcat() throws Exception {
 
         SimpleKdcServer kdc = getKdc();
@@ -77,7 +81,7 @@ public class BaseTomcatTest extends KerberosSecurityTestcase {
         tomcat.start();
     }
 
-    @After
+    @AfterEach
     public void stopTomcat() throws LifecycleException {
 
         log.info("Stopping Tomcat server on port " + TOMCAT_PORT);
@@ -89,22 +93,24 @@ public class BaseTomcatTest extends KerberosSecurityTestcase {
 
     }
 
+    @Test
+    public void testNoAuthResponse() throws IOException {
+        HttpURLConnection urlConnection = (HttpURLConnection) new URL("http://localhost:8080/dummy")
+                .openConnection();
+        Assertions.assertEquals(401, urlConnection.getResponseCode());
+    }
 
     @Test
-    public void test1() throws Exception {
+    public void test1() throws IOException, GSSException, PrivilegedActionException {
 
-        {
-            HttpURLConnection urlConnection = (HttpURLConnection) new URL("http://localhost:8080/dummy").openConnection();
-            assertEquals(401, urlConnection.getResponseCode());
-        }
+        SpnegoClient spnegoClient = SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath());
+        HttpURLConnection huc = new SpnegoHttpURLConnection(spnegoClient)
+                .connect(new URL("http://" + host + ":" + 8080 + "/dummy"));
 
-        {
-            SpnegoClient spnegoClient = SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath());
-            HttpURLConnection huc = new SpnegoHttpURLConnection(spnegoClient).connect(new URL("http://" + host + ":" + 8080 + "/dummy"));
-
-            assertEquals(200, huc.getResponseCode());
-            assertEquals("Hello, world!", new BufferedReader(new InputStreamReader(huc.getInputStream())).readLine());
-        }
+        Assertions.assertEquals(200, huc.getResponseCode());
+        Assertions.assertEquals("Hello, world!",
+                new BufferedReader(new InputStreamReader(huc.getInputStream())).readLine()
+        );
 
     }
 

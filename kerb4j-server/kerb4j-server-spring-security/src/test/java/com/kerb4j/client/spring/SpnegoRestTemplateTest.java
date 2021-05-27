@@ -20,10 +20,12 @@ import com.kerb4j.client.SpnegoClient;
 import io.sniffy.boot.EnableSniffy;
 import io.sniffy.registry.ConnectionsRegistry;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
-import org.junit.After;
-import org.junit.Test;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.PropertyPlaceholderAutoConfiguration;
+import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.SecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.*;
 import org.springframework.boot.context.embedded.EmbeddedServletContainerInitializedEvent;
@@ -34,7 +36,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.client.ClientHttpResponse;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -49,14 +50,11 @@ import java.net.InetAddress;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-
 public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
 	private ConfigurableApplicationContext context;
 
-	@After
+	@AfterEach
 	public void close() {
 		if (context != null) {
 			context.close();
@@ -128,9 +126,9 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 			assertThat(response, is("home"));
 		}
 
-		System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.6/connectionregistry/", String.class));
-		restTemplate.postForEntity("http://" + host + ":" + port + "/sniffy/3.1.6/connectionregistry/socket/localhost/" + kdcPort, "-1", Object.class);
-		System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.6/connectionregistry/", String.class));
+		System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.12/connectionregistry/", String.class));
+		restTemplate.postForEntity("http://" + host + ":" + port + "/sniffy/3.1.12/connectionregistry/socket/localhost/" + kdcPort, "-1", Object.class);
+		System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.12/connectionregistry/", String.class));
 
 		ConnectionsRegistry.INSTANCE.setSocketAddressStatus("localhost", kdcPort, -1);
 		{
