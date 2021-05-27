@@ -17,11 +17,14 @@ package com.kerb4j.server.spring;
 
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -34,8 +37,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import java.io.File;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -47,8 +48,8 @@ import static org.mockito.Mockito.when;
  */
 public class SpnegoAuthenticationProviderTest extends KerberosSecurityTestcase {
 
-    @Rule
-    public TemporaryFolder folder = new TemporaryFolder();
+    @TempDir
+    Path tempDir;
 
     public static final String SERVER_SPN = "HTTP/server.springsource.org";
     private SpnegoAuthenticationProvider provider;
@@ -60,15 +61,15 @@ public class SpnegoAuthenticationProviderTest extends KerberosSecurityTestcase {
     private static final List<GrantedAuthority> AUTHORITY_LIST = AuthorityUtils.createAuthorityList("ROLE_ADMIN");
     private static final UserDetails USER_DETAILS = new User(TEST_USER, TEST_PASSWORD, true, true, true, true, AUTHORITY_LIST);
 
-    @Before
+    @BeforeEach
     public void before() throws Exception {
         // mocking
         SimpleKdcServer kdc = getKdc();
         kdc.createPrincipal(TEST_USER, TEST_PASSWORD);
-
-        File keytabFile = folder.newFile("serverKeyTab.keytab");
-        keytabFile.delete();
-
+        Assertions.assertTrue(Files.isDirectory(tempDir));
+        Path keytabFilePath = Paths.get(tempDir.toFile().getAbsolutePath(),"serverKeyTab.keytab");
+        Files.deleteIfExists(keytabFilePath);
+        File keytabFile = keytabFilePath.toFile();
         kdc.createAndExportPrincipals(keytabFile, SERVER_SPN);
 
         this.userDetailsService = mock(UserDetailsService.class);
@@ -86,14 +87,14 @@ public class SpnegoAuthenticationProviderTest extends KerberosSecurityTestcase {
     }
 
     @Test
-    public void testLoginWithUserNameAndPasswordOk() throws Exception {
+    public void testLoginWithUserNameAndPasswordOk() {
 
         when(userDetailsService.loadUserByUsername(TEST_USER)).thenReturn(USER_DETAILS);
 
         Authentication authenticate = provider.authenticate(INPUT_TOKEN);
 
-        assertNotNull(authenticate);
-        assertEquals(TEST_USER, authenticate.getName());
+        Assertions.assertNotNull(authenticate);
+        Assertions.assertEquals(TEST_USER, authenticate.getName());
 
     }
 }

@@ -15,8 +15,9 @@
  */
 package com.kerb4j.server.spring;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -27,7 +28,6 @@ import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosKey;
 import java.util.List;
 
-import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -58,7 +58,7 @@ public class SpnegoAuthenticationProviderMockTest {
     private static final UserDetails USER_DETAILS = new User(TEST_USER, "empty", true, true, true,true, AUTHORITY_LIST);
     private static final SpnegoRequestToken INPUT_TOKEN = new SpnegoRequestToken(TEST_TOKEN);
 
-    @Before
+    @BeforeEach
     public void before() {
         // mocking
         this.ticketValidator = mock(KerberosTicketValidator.class);
@@ -72,67 +72,97 @@ public class SpnegoAuthenticationProviderMockTest {
     }
 
     @Test
-    public void testEverythingWorks() throws Exception {
+    public void testEverythingWorks(){
         Authentication output = callProviderAndReturnUser(USER_DETAILS, INPUT_TOKEN);
-        assertNotNull(output);
-        assertEquals(TEST_USER, output.getName());
-        assertEquals(AUTHORITY_LIST, output.getAuthorities());
-        assertTrue(output.isAuthenticated());
+        Assertions.assertNotNull(output);
+        Assertions.assertEquals(TEST_USER, output.getName());
+        Assertions.assertEquals(AUTHORITY_LIST, output.getAuthorities());
+        Assertions.assertTrue(output.isAuthenticated());
         // assertEquals(USER_DETAILS, output.getPrincipal()); // TODO: principal should contain UserDetails object
     }
 
     @Test
-    public void testAuthenticationDetailsPropagation() throws Exception {
+    public void testAuthenticationDetailsPropagation(){
     	SpnegoRequestToken requestToken = new SpnegoRequestToken(TEST_TOKEN);
     	requestToken.setDetails("TestDetails");
         Authentication output = callProviderAndReturnUser(USER_DETAILS, requestToken);
-        assertNotNull(output);
-        assertEquals(requestToken.getDetails(), output.getDetails());
-        assertTrue(output.isAuthenticated());
+        Assertions.assertNotNull(output);
+        Assertions.assertEquals(requestToken.getDetails(), output.getDetails());
+        Assertions.assertTrue(output.isAuthenticated());
     }
 
-    @Test(expected=DisabledException.class)
-    public void testUserIsDisabled() throws Exception {
-        User disabledUser = new User(TEST_USER, "empty", false, true, true,true, AUTHORITY_LIST);
-        callProviderAndReturnUser(disabledUser, INPUT_TOKEN);
+    @Test()
+    public void testUserIsDisabled() {
+        DisabledException exception = Assertions.assertThrows(DisabledException.class,
+                () ->{
+                    User disabledUser = new User(TEST_USER, "empty", false, true, true,true, AUTHORITY_LIST);
+                    callProviderAndReturnUser(disabledUser, INPUT_TOKEN);
+                });
+        Assertions.assertNotNull(exception);
     }
 
-    @Test(expected=AccountExpiredException.class)
-    public void testUserAccountIsExpired() throws Exception {
-        User expiredUser = new User(TEST_USER, "empty", true, false, true,true, AUTHORITY_LIST);
-        callProviderAndReturnUser(expiredUser, INPUT_TOKEN);
+    @Test()
+    public void testUserAccountIsExpired() {
+        AccountExpiredException exception = Assertions.assertThrows(AccountExpiredException.class, () -> {
+            User expiredUser = new User(TEST_USER, "empty", true, false, true,true, AUTHORITY_LIST);
+            callProviderAndReturnUser(expiredUser, INPUT_TOKEN);
+        });
+        Assertions.assertNotNull(exception);
     }
 
-    @Test(expected=CredentialsExpiredException.class)
-    public void testUserCredentialsExpired() throws Exception {
-        User credExpiredUser = new User(TEST_USER, "empty", true, true, false ,true, AUTHORITY_LIST);
-        callProviderAndReturnUser(credExpiredUser, INPUT_TOKEN);
+    @Test()
+    public void testUserCredentialsExpired() {
+        CredentialsExpiredException exception = Assertions.assertThrows(
+                CredentialsExpiredException.class,
+                () -> {
+                    User credExpiredUser = new User(TEST_USER, "empty", true, true, false ,true, AUTHORITY_LIST);
+                    callProviderAndReturnUser(credExpiredUser, INPUT_TOKEN);
+                }
+        );
+        Assertions.assertNotNull(exception);
     }
 
-    @Test(expected=LockedException.class)
-    public void testUserAccountLockedCredentialsExpired() throws Exception {
-        User lockedUser = new User(TEST_USER, "empty", true, true, true ,false, AUTHORITY_LIST);
-        callProviderAndReturnUser(lockedUser, INPUT_TOKEN);
+    @Test()
+    public void testUserAccountLockedCredentialsExpired() {
+        LockedException exception = Assertions.assertThrows(
+                LockedException.class,
+                () -> {
+                    User lockedUser = new User(TEST_USER, "empty", true, true, true ,false, AUTHORITY_LIST);
+                    callProviderAndReturnUser(lockedUser, INPUT_TOKEN);
+                }
+        );
+        Assertions.assertNotNull(exception);
     }
 
-    @Test(expected=UsernameNotFoundException.class)
-    public void testUsernameNotFound() throws Exception {
-        // stubbing
-        when(ticketValidator.validateTicket(TEST_TOKEN)).thenReturn(TICKET_VALIDATION);
-        when(userDetailsService.loadUserByUsername(TEST_USER)).thenThrow(new UsernameNotFoundException(""));
+    @Test()
+    public void testUsernameNotFound() {
+        UsernameNotFoundException exception = Assertions.assertThrows(
+                UsernameNotFoundException.class,
+                () -> {
+                    // stubbing
+                    when(ticketValidator.validateTicket(TEST_TOKEN)).thenReturn(TICKET_VALIDATION);
+                    when(userDetailsService.loadUserByUsername(TEST_USER)).thenThrow(new UsernameNotFoundException(""));
 
-        // testing
-        provider.authenticate(INPUT_TOKEN);
+                    // testing
+                    provider.authenticate(INPUT_TOKEN);
+                }
+        );
+        Assertions.assertNotNull(exception);
     }
 
 
-    @Test(expected=BadCredentialsException.class)
-    public void testTicketValidationWrong() throws Exception {
-        // stubbing
-        when(ticketValidator.validateTicket(TEST_TOKEN)).thenThrow(new BadCredentialsException(""));
+    @Test()
+    public void testTicketValidationWrong(){
+        BadCredentialsException exception = Assertions.assertThrows(
+                BadCredentialsException.class, () -> {
+                    // stubbing
+                    when(ticketValidator.validateTicket(TEST_TOKEN)).thenThrow(new BadCredentialsException(""));
 
-        // testing
-        provider.authenticate(INPUT_TOKEN);
+                    // testing
+                    provider.authenticate(INPUT_TOKEN);
+                }
+        );
+        Assertions.assertNotNull(exception);
     }
 
     private Authentication callProviderAndReturnUser(UserDetails userDetails, Authentication inputToken) {

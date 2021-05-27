@@ -6,9 +6,9 @@ import java.io.InputStream;
 import javax.crypto.spec.SecretKeySpec;
 
 import com.kerb4j.server.marshall.pac.Pac;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class TestPac {
 
@@ -19,7 +19,7 @@ public class TestPac {
     private SecretKeySpec desKey;
     private SecretKeySpec corruptKey;
 
-    @Before
+    @BeforeEach
     public void setUp() throws IOException {
         InputStream file;
         byte[] keyData;
@@ -56,20 +56,20 @@ public class TestPac {
         try {
             Pac pac = new Pac(rc4Data, rc4Key);
 
-            Assert.assertNotNull(pac);
-            Assert.assertNotNull(pac.getLogonInfo());
+            Assertions.assertNotNull(pac);
+            Assertions.assertNotNull(pac.getLogonInfo());
 
-            Assert.assertEquals("user.test", pac.getLogonInfo().getUserName());
-            Assert.assertEquals("User Test", pac.getLogonInfo().getUserDisplayName());
-            Assert.assertEquals(0, pac.getLogonInfo().getBadPasswordCount());
-            Assert.assertEquals(32, pac.getLogonInfo().getUserFlags());
-            Assert.assertEquals(46, pac.getLogonInfo().getLogonCount());
-            Assert.assertEquals("DOMAIN", pac.getLogonInfo().getDomainName());
-            Assert.assertEquals("WS2008", pac.getLogonInfo().getServerName());
+            Assertions.assertEquals("user.test", pac.getLogonInfo().getUserName());
+            Assertions.assertEquals("User Test", pac.getLogonInfo().getUserDisplayName());
+            Assertions.assertEquals(0, pac.getLogonInfo().getBadPasswordCount());
+            Assertions.assertEquals(32, pac.getLogonInfo().getUserFlags());
+            Assertions.assertEquals(46, pac.getLogonInfo().getLogonCount());
+            Assertions.assertEquals("DOMAIN", pac.getLogonInfo().getDomainName());
+            Assertions.assertEquals("WS2008", pac.getLogonInfo().getServerName());
 
         } catch(Kerb4JException e) {
             e.printStackTrace();
-            Assert.fail(e.getMessage());
+            Assertions.fail(e.getMessage());
         }
     }
 
@@ -78,20 +78,20 @@ public class TestPac {
         try {
             Pac pac = new Pac(desData, desKey);
 
-            Assert.assertNotNull(pac);
-            Assert.assertNotNull(pac.getLogonInfo());
+            Assertions.assertNotNull(pac);
+            Assertions.assertNotNull(pac.getLogonInfo());
 
-            Assert.assertEquals("user.test", pac.getLogonInfo().getUserName());
-            Assert.assertEquals("User Test", pac.getLogonInfo().getUserDisplayName());
-            Assert.assertEquals(0, pac.getLogonInfo().getBadPasswordCount());
-            Assert.assertEquals(32, pac.getLogonInfo().getUserFlags());
-            Assert.assertEquals(48, pac.getLogonInfo().getLogonCount());
-            Assert.assertEquals("DOMAIN", pac.getLogonInfo().getDomainName());
-            Assert.assertEquals("WS2008", pac.getLogonInfo().getServerName());
+            Assertions.assertEquals("user.test", pac.getLogonInfo().getUserName());
+            Assertions.assertEquals("User Test", pac.getLogonInfo().getUserDisplayName());
+            Assertions.assertEquals(0, pac.getLogonInfo().getBadPasswordCount());
+            Assertions.assertEquals(32, pac.getLogonInfo().getUserFlags());
+            Assertions.assertEquals(48, pac.getLogonInfo().getLogonCount());
+            Assertions.assertEquals("DOMAIN", pac.getLogonInfo().getDomainName());
+            Assertions.assertEquals("WS2008", pac.getLogonInfo().getServerName());
 
         } catch(Kerb4JException e) {
             e.printStackTrace();
-            Assert.fail(e.getMessage());
+            Assertions.fail(e.getMessage());
         }
     }
 
@@ -100,10 +100,10 @@ public class TestPac {
         Pac pac = null;
         try {
             pac = new Pac(corruptData, rc4Key);
-            Assert.fail("Should have thrown Kerb4JException.");
+            Assertions.fail("Should have thrown Kerb4JException.");
         } catch(Kerb4JException e) {
-            Assert.assertNotNull(e);
-            Assert.assertNull(pac);
+            Assertions.assertNotNull(e);
+            Assertions.assertNull(pac);
         }
     }
 
@@ -112,10 +112,10 @@ public class TestPac {
         Pac pac = null;
         try {
             pac = new Pac(new byte[0], rc4Key);
-            Assert.fail("Should have thrown Kerb4JException.");
+            Assertions.fail("Should have thrown Kerb4JException.");
         } catch(Kerb4JException e) {
-            Assert.assertNotNull(e);
-            Assert.assertNull(pac);
+            Assertions.assertNotNull(e);
+            Assertions.assertNull(pac);
         }
     }
 
@@ -124,13 +124,13 @@ public class TestPac {
         Pac pac = null;
         try {
             pac = new Pac(null, rc4Key);
-            Assert.fail("Should have thrown NullPointerException.");
+            Assertions.fail("Should have thrown NullPointerException.");
         } catch(Kerb4JException e) {
             e.printStackTrace();
-            Assert.fail(e.getMessage());
+            Assertions.fail(e.getMessage());
         } catch(NullPointerException e) {
-            Assert.assertNotNull(e);
-            Assert.assertNull(pac);
+            Assertions.assertNotNull(e);
+            Assertions.assertNull(pac);
         }
     }
 
@@ -139,10 +139,10 @@ public class TestPac {
         Pac pac = null;
         try {
             pac = new Pac(rc4Data, corruptKey);
-            Assert.fail("Should have thrown Kerb4JException.");
+            Assertions.fail("Should have thrown Kerb4JException.");
         } catch(Kerb4JException e) {
-            Assert.assertNotNull(e);
-            Assert.assertNull(pac);
+            Assertions.assertNotNull(e);
+            Assertions.assertNull(pac);
         }
     }
 }

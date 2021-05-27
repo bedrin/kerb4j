@@ -23,8 +23,6 @@ import org.springframework.security.ldap.search.FilterBasedLdapUserSearch;
 import org.springframework.security.ldap.userdetails.LdapUserDetailsMapper;
 import org.springframework.security.ldap.userdetails.LdapUserDetailsService;
 
-import javax.security.auth.login.LoginException;
-
 public class KerberosLdapContextSourceConfig {
 
 //tag::snippetA[]
@@ -44,16 +42,16 @@ public class KerberosLdapContextSourceConfig {
 	private String ldapSearchFilter;
 
 	@Bean
-	public KerberosLdapContextSource kerberosLdapContextSource() throws LoginException {
+	public KerberosLdapContextSource kerberosLdapContextSource() {
 		KerberosLdapContextSource contextSource = new KerberosLdapContextSource(adServer);
 		contextSource.setSpnegoClient(SpnegoClient.loginWithKeyTab(servicePrincipal, keytabLocation));
 		return contextSource;
 	}
 
 	@Bean
-	public LdapUserDetailsService ldapUserDetailsService() throws LoginException {
+	public LdapUserDetailsService ldapUserDetailsService(KerberosLdapContextSource kerberosLdapContextSource) {
 		FilterBasedLdapUserSearch userSearch =
-				new FilterBasedLdapUserSearch(ldapSearchBase, ldapSearchFilter, kerberosLdapContextSource());
+				new FilterBasedLdapUserSearch(ldapSearchBase, ldapSearchFilter, kerberosLdapContextSource);
 		LdapUserDetailsService service = new LdapUserDetailsService(userSearch);
 		service.setUserDetailsMapper(new LdapUserDetailsMapper());
 		return service;

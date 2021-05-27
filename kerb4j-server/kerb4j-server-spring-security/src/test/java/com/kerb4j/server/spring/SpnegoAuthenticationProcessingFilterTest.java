@@ -15,9 +15,13 @@
  */
 package com.kerb4j.server.spring;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,10 +36,6 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -44,9 +44,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
-import com.kerb4j.server.spring.SpnegoRequestToken;
-import com.kerb4j.server.spring.SpnegoAuthenticationToken;
-import com.kerb4j.server.spring.SpnegoAuthenticationProcessingFilter;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -93,7 +90,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
 
 	private static final BadCredentialsException BCE = new BadCredentialsException("");
 
-    @Before
+    @BeforeEach
     public void before() throws Exception {
         // mocking
         authenticationManager = mock(AuthenticationManager.class);
@@ -112,7 +109,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    @Ignore("spring-security-kerberos used to support \"Kerberos\" scheme. Is it a valid use case?")
+    @Disabled("spring-security-kerberos used to support \"Kerberos\" scheme. Is it a valid use case?")
     public void testEverythingWorks_Kerberos() throws Exception {
         everythingWorks(TOKEN_PREFIX_KERB);
     }
@@ -123,7 +120,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    @Ignore("spring-security-kerberos used to support \"Kerberos\" scheme. Is it a valid use case?")
+    @Disabled("spring-security-kerberos used to support \"Kerberos\" scheme. Is it a valid use case?")
     public void testEverythingWorksWithHandlers_Kerberos() throws Exception {
         everythingWorksWithHandlers(TOKEN_PREFIX_KERB);
     }
@@ -147,7 +144,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
         // testing
 		filter.doFilter(request, response, chain);
 		verify(chain).doFilter(request, response);
-		assertEquals(AUTHENTICATION, SecurityContextHolder.getContext().getAuthentication());
+		Assertions.assertEquals(AUTHENTICATION, SecurityContextHolder.getContext().getAuthentication());
     }
 
     @Test
@@ -158,7 +155,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
 		verify(authenticationManager, never()).authenticate(any(Authentication.class));
         // chain should go on
 		verify(chain).doFilter(request, response);
-		assertEquals(null, SecurityContextHolder.getContext().getAuthentication());
+        Assertions.assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 
     @Test
@@ -252,7 +249,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
         filter.setAuthenticationFailureHandler(failureHandler);
     }
 
-    @After
+    @AfterEach
     public void after() {
         SecurityContextHolder.clearContext();
     }

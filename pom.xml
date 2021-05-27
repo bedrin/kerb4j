@@ -22,8 +22,14 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <javaTargetSource>1.7</javaTargetSource>
+        <javaDevelSource>1.8</javaDevelSource>
+        <maven.compiler.version>3.8.1</maven.compiler.version>
         <apacheDirServerVersion>2.0.0.AM26</apacheDirServerVersion>
         <apacheDirApiVersion>1.0.0</apacheDirApiVersion>
+        <junit.jupiter.version>5.7.2</junit.jupiter.version>
+        <hamcrest.version>2.2</hamcrest.version>
+        <mokito.version>2.28.2</mokito.version>
     </properties>
 
     <licenses>
@@ -66,26 +72,69 @@
         <url>https://github.com/bedrin/kerb4j</url>
     </scm>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.jupiter.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
 
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>[1.6,1.7.99)</version>
+            <version>[1.6,1.7.30)</version>
             <scope>provided</scope>
         </dependency>
 
+        <!--
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.13</version>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+        -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-library</artifactId>
+            <version>${hamcrest.version}</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>2.28.2</version>
+            <version>${mokito.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>${mokito.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -213,11 +262,32 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.6.2</version>
+                <version>${maven.compiler.version}</version>
                 <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
+                    <fork>true</fork>
+                    <source>${javaDevelSource}</source>
+                    <target>${javaDevelSource}</target>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <configuration>
+                            <compilerArguments>
+                                <source>${javaTargetSource}</source>
+                                <target>${javaTargetSource}</target>
+                            </compilerArguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>default-testCompile</id>
+                        <configuration>
+                            <compilerArguments>
+                                <source>${javaDevelSource}</source>
+                                <target>${javaDevelSource}</target>
+                            </compilerArguments>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <plugin>
