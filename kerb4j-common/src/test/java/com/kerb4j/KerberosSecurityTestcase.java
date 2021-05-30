@@ -19,11 +19,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kerby.kerberos.kerb.client.KrbConfig;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-
 import java.io.File;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 
 /**
  * KerberosSecurityTestcase provides a base class for using MiniKdc with other
@@ -47,13 +46,12 @@ public class KerberosSecurityTestcase {
 
 	private static int i = 10000;
 
-	// FIXME - Can't upgrade to Junit-Jupiter before Spring Boot is upgraded
-	@BeforeClass
+	@BeforeAll
 	public static void debugKerberos() {
 		System.setProperty("sun.security.krb5.debug", "true");
 	}
 
-	@Before
+	@BeforeEach
 	public void startMiniKdc() throws Exception {
 
 		kdcPort = i++; // Since SimpleKdcServer doesn't have reuse socket address option we need to increment the port
@@ -70,7 +68,7 @@ public class KerberosSecurityTestcase {
 		kdc.start();
 	}
 
-	@After
+	@AfterEach
 	public void stopMiniKdc() throws Exception {
 		log.info("Stopping Simple KDC server on port " + kdcPort);
 		if (kdc != null) {

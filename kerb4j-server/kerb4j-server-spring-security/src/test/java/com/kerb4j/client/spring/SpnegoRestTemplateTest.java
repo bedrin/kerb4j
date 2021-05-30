@@ -17,7 +17,6 @@ package com.kerb4j.client.spring;
 
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.client.SpnegoClient;
-import io.sniffy.boot.EnableSniffy;
 import io.sniffy.registry.ConnectionsRegistry;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import static org.hamcrest.CoreMatchers.is;
@@ -25,27 +24,19 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.SecurityAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.*;
-import org.springframework.boot.context.embedded.EmbeddedServletContainerInitializedEvent;
-import org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedServletContainerFactory;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
+import org.springframework.boot.web.servlet.context.ServletWebServerInitializedEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.client.ClientHttpResponse;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.annotation.*;
 import java.net.InetAddress;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -77,11 +68,17 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 		File clientKeytab = new File(workDir, "client.keytab");
 		kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
 
-
-		context = SpringApplication.run(new Object[] { WebSecurityConfig.class, VanillaWebConfiguration.class,
-				WebConfiguration.class }, new String[] { "--security.basic.enabled=true",
-				"--security.user.name=username", "--security.user.password=password",
-				"--serverPrincipal=" + serverPrincipal, "--serverKeytab=" + serverKeytab.getAbsolutePath() });
+		SpringApplication springApplication = new SpringApplicationBuilder(
+				WebSecurityConfig.class,
+				VanillaWebConfiguration.class,
+				TestAppConfiguration.class).application();
+		context = springApplication.run(
+				"--security.basic.enabled=true",
+				"--security.user.name=username",
+				"--security.user.password=password",
+				"--serverPrincipal=" + serverPrincipal,
+				"--serverKeytab=" + serverKeytab.getAbsolutePath()
+		);
 
 		PortInitListener portInitListener = context.getBean(PortInitListener.class);
 		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
@@ -90,7 +87,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 		SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
 
 		String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
-		assertThat(response, is("home"));
+		assertThat(response, is("hello"));
     }
 
     @Test
@@ -108,11 +105,17 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 		File clientKeytab = new File(workDir, "client.keytab");
 		kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
 
-
-		context = SpringApplication.run(new Object[] { WebSecurityConfig.class, VanillaWebConfiguration.class,
-				WebConfiguration.class }, new String[] { "--security.basic.enabled=true",
-				"--security.user.name=username", "--security.user.password=password",
-				"--serverPrincipal=" + serverPrincipal, "--serverKeytab=" + serverKeytab.getAbsolutePath() });
+		SpringApplication springApplication = new SpringApplicationBuilder(
+				WebSecurityConfig.class,
+				VanillaWebConfiguration.class,
+				TestAppConfiguration.class).application();
+		context = springApplication.run(
+				"--security.basic.enabled=true",
+				"--security.user.name=username",
+				"--security.user.password=password",
+				"--serverPrincipal=" + serverPrincipal,
+				"--serverKeytab=" + serverKeytab.getAbsolutePath()
+		);
 
 		PortInitListener portInitListener = context.getBean(PortInitListener.class);
 		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
@@ -123,7 +126,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
 		{
 			String response = spnegoRestTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
-			assertThat(response, is("home"));
+			assertThat(response, is("hello"));
 		}
 
 		System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.12/connectionregistry/", String.class));
@@ -133,7 +136,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 		ConnectionsRegistry.INSTANCE.setSocketAddressStatus("localhost", kdcPort, -1);
 		{
 			String response = spnegoRestTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
-			assertThat(response, is("home"));
+			assertThat(response, is("hello"));
 		}
     }
 
@@ -152,11 +155,17 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 		File clientKeytab = new File(workDir, "client.keytab");
 		kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
 
-
-		context = SpringApplication.run(new Object[] { WebSecurityConfigServerPassword.class, VanillaWebConfiguration.class,
-				WebConfiguration.class }, new String[] { "--security.basic.enabled=true",
-				"--security.user.name=username", "--security.user.password=password",
-				"--serverPrincipal=" + serverPrincipal, "--serverPassword=" + serverPassword });
+		SpringApplication springApplication = new SpringApplicationBuilder(
+				WebSecurityConfigServerPassword.class,
+				VanillaWebConfiguration.class,
+				TestAppConfiguration.class).application();
+		context = springApplication.run(
+				"--security.basic.enabled=true",
+				"--security.user.name=username",
+				"--security.user.password=password",
+				"--serverPrincipal=" + serverPrincipal,
+				"--serverPassword=" + serverPassword
+		);
 
 		PortInitListener portInitListener = context.getBean(PortInitListener.class);
 		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
@@ -165,7 +174,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 		SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
 
 		String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
-		assertThat(response, is("home"));
+		assertThat(response, is("hello"));
     }
 
     @Test
@@ -179,10 +188,17 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 		File serverKeytab = new File(workDir, "server.keytab");
 		kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
 
-		context = SpringApplication.run(new Object[] { WebSecurityConfigSpnegoForward.class, VanillaWebConfiguration.class,
-				WebConfiguration.class }, new String[] { "--security.basic.enabled=true",
-				"--security.user.name=username", "--security.user.password=password",
-				"--serverPrincipal=" + serverPrincipal, "--serverKeytab=" + serverKeytab.getAbsolutePath() });
+		SpringApplication springApplication = new SpringApplicationBuilder(
+				WebSecurityConfigSpnegoForward.class,
+				VanillaWebConfiguration.class,
+				TestAppConfiguration.class).application();
+		context = springApplication.run(
+				"--security.basic.enabled=true",
+				"--security.user.name=username",
+				"--security.user.password=password",
+				"--serverPrincipal=" + serverPrincipal,
+				"--serverKeytab=" + serverKeytab.getAbsolutePath()
+		);
 
 		PortInitListener portInitListener = context.getBean(PortInitListener.class);
 		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
@@ -219,11 +235,17 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 		File clientKeytab = new File(workDir, "client.keytab");
 		kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
 
-
-		context = SpringApplication.run(new Object[] { WebSecurityConfigSuccessHandler.class, VanillaWebConfiguration.class,
-				WebConfiguration.class }, new String[] { "--security.basic.enabled=true",
-				"--security.user.name=username", "--security.user.password=password",
-				"--serverPrincipal=" + serverPrincipal, "--serverKeytab=" + serverKeytab.getAbsolutePath() });
+		SpringApplication springApplication = new SpringApplicationBuilder(
+				WebSecurityConfigSuccessHandler.class,
+				VanillaWebConfiguration.class,
+				TestAppConfiguration.class).application();
+		context = springApplication.run(
+				"--security.basic.enabled=true",
+				"--security.user.name=username",
+				"--security.user.password=password",
+				"--serverPrincipal=" + serverPrincipal,
+				"--serverKeytab=" + serverKeytab.getAbsolutePath()
+		);
 
 		PortInitListener portInitListener = context.getBean(PortInitListener.class);
 		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
@@ -232,17 +254,17 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 		SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
 
 		String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
-		assertThat(response, is("home"));
+		assertThat(response, is("hello"));
     }
 
-	protected static class PortInitListener implements ApplicationListener<EmbeddedServletContainerInitializedEvent> {
+	protected static class PortInitListener implements ApplicationListener<ServletWebServerInitializedEvent> {
 
 		public int port;
 		public CountDownLatch latch = new CountDownLatch(1);
 
 		@Override
-		public void onApplicationEvent(EmbeddedServletContainerInitializedEvent event) {
-			port = event.getEmbeddedServletContainer().getPort();
+		public void onApplicationEvent(ServletWebServerInitializedEvent event) {
+			port = event.getWebServer().getPort();
 			latch.countDown();
 		}
 
@@ -257,43 +279,11 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
     	}
 
     	@Bean
-    	public TomcatEmbeddedServletContainerFactory tomcatEmbeddedServletContainerFactory() {
-    	    TomcatEmbeddedServletContainerFactory factory = new TomcatEmbeddedServletContainerFactory();
+    	public TomcatServletWebServerFactory tomcatServletWebServerFactory() {
+			TomcatServletWebServerFactory factory = new TomcatServletWebServerFactory();
     	    factory.setPort(0);
     	    return factory;
     	}
-    }
-
-    @MinimalWebConfiguration
-    @Import(SecurityAutoConfiguration.class)
-	@EnableSniffy
-    @Controller
-	protected static class WebConfiguration {
-
-    	@RequestMapping(method = RequestMethod.GET)
-    	@ResponseBody
-    	public String home() {
-    		return "home";
-    	}
-
-    	@RequestMapping(method = RequestMethod.GET, value = "/login")
-    	@ResponseBody
-    	public String login() {
-    		return "login";
-    	}
-
-	}
-
-    @Configuration
-    @Target(ElementType.TYPE)
-    @Retention(RetentionPolicy.RUNTIME)
-    @Documented
-    @Import({ EmbeddedServletContainerAutoConfiguration.class,
-                    ServerPropertiesAutoConfiguration.class,
-                    DispatcherServletAutoConfiguration.class, WebMvcAutoConfiguration.class,
-                    HttpMessageConvertersAutoConfiguration.class,
-                    ErrorMvcAutoConfiguration.class, PropertyPlaceholderAutoConfiguration.class })
-    protected @interface MinimalWebConfiguration {
     }
 
 }

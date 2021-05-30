@@ -12,7 +12,7 @@
     <name>kerb4j-server-spring-security-ldap</name>
 
     <properties>
-        <spring.security.version>4.2.18.RELEASE</spring.security.version>
+        <spring.security.version>5.0.12.RELEASE</spring.security.version>
     </properties>
 
     <dependencies>

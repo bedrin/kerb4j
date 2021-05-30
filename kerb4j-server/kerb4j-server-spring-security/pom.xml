@@ -13,7 +13,9 @@
 
     <properties>
         <io.sniffy.version>3.1.12</io.sniffy.version>
-        <spring.security.version>4.2.18.RELEASE</spring.security.version>
+        <!--<spring.security.version>4.2.18.RELEASE</spring.security.version>-->
+        <spring.security.version>5.0.12.RELEASE</spring.security.version>
+        <!--<spring.security.version>5.3.4.RELEASE</spring.security.version>-->
     </properties>
 
     <dependencies>
