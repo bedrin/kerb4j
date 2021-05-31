@@ -84,7 +84,7 @@ public final class SpnegoClient {
      *
      * @param loginContextSupplier loginContextSupplier
      */
-    protected SpnegoClient(final Callable<LoginContext> loginContextSupplier) {
+    private SpnegoClient(final Callable<LoginContext> loginContextSupplier) {
 
         subjectSupplier = new Callable<Subject>() {
             @Override
@@ -188,6 +188,19 @@ public final class SpnegoClient {
                 return Krb5LoginContext.loginWithTicketCache(principal);
             }
         });
+    }
+
+    public static SpnegoClient loginWithContext(final LoginContext loginContext) throws LoginException {
+        return loginWithContextSupplier(new Callable<LoginContext>() {
+            @Override
+            public LoginContext call() throws Exception {
+                return loginContext;
+            }
+        });
+    }
+
+    public static SpnegoClient loginWithContextSupplier(final Callable<LoginContext> loginContextSupplier) throws LoginException {
+        return new SpnegoClient(loginContextSupplier);
     }
 
     public Subject getSubject() {
