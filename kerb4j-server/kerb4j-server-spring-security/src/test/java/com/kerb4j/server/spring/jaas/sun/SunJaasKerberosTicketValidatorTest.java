@@ -16,12 +16,11 @@
 package com.kerb4j.server.spring.jaas.sun;
 
 import com.kerb4j.server.SpnegoTokenFixer;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.codec.Base64;
 
 import java.util.Arrays;
-
-import static org.junit.Assert.assertFalse;
 
 public class SunJaasKerberosTicketValidatorTest {
 
@@ -66,11 +65,11 @@ public class SunJaasKerberosTicketValidatorTest {
             + "eL2PHBfvkne/FgxC";
 
     @Test
-    public void testJdkMsKrb5OIDRegressionTweak() throws Exception {
+    public void testJdkMsKrb5OIDRegressionTweak() {
         byte[] kerberosTicket = Base64.decode(header.getBytes());
         byte[] fixedToken = Arrays.copyOf(kerberosTicket, kerberosTicket.length);
         SpnegoTokenFixer.fix(fixedToken);
-        assertFalse(Arrays.equals(kerberosTicket, fixedToken));
+        Assertions.assertFalse(Arrays.equals(kerberosTicket, fixedToken));
     }
 
 }

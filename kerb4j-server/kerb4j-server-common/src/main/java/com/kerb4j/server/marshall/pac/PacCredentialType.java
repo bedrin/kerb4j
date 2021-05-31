@@ -4,7 +4,7 @@ import com.kerb4j.server.marshall.Kerb4JException;
 
 /**
  * Structure representing the PAC_CREDENTIAL_TYPE record
- * 
+ *
  * @author jbbugeau
  */
 public class PacCredentialType {
@@ -15,7 +15,7 @@ public class PacCredentialType {
 
     public PacCredentialType(byte[] data) throws Kerb4JException {
         credentialType = data;
-        if(!isCredentialTypeCorrect()) {
+        if (!isCredentialTypeCorrect()) {
             throw new Kerb4JException("pac.credentialtype.malformed");
         }
     }

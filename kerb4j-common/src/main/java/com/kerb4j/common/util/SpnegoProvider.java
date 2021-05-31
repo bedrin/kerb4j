@@ -1,16 +1,16 @@
 /**
  * Copyright (C) 2009 "Darwin V. Felix" <darwinfelix@users.sourceforge.net>
- *
+ * <p>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
- *
+ * <p>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- *
+ * <p>
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
@@ -32,7 +32,7 @@ import java.net.URL;
 /**
  * This is a Utility Class that can be used for finer grained control 
  * over message integrity, confidentiality and mutual authentication.
- * 
+ *
  * <p>
  * This Class is exposed for developers who want to implement a custom 
  * HTTP client.
@@ -41,33 +41,32 @@ import java.net.URL;
  * <p>For more example usage, see the documentation at 
  * <a href="http://spnego.sourceforge.net" target="_blank">http://spnego.sourceforge.net</a>
  * </p>
- * 
+ *
  * @author Darwin V. Felix
- * 
+ *
  */
 public final class SpnegoProvider {
 
-    /** Default LOGGER. */
-    private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoProvider.class);
-
     /** Factory for GSS-API mechanism. */
     public static final GSSManager GSS_MANAGER = GSSManager.getInstance();
-
     public static final String SPNEGO_MECHANISM = "1.3.6.1.5.5.2";
     public static final String KERBEROS_MECHANISM = "1.2.840.113554.1.2.2";
     public static final String LEGACY_KERBEROS_MECHANISM = "1.2.840.48018.1.2.2";
 
     /** GSS-API mechanism "1.3.6.1.5.5.2". */
     public static final Oid SPNEGO_OID = SpnegoProvider.getSpnegoOid();
-	/** GSS-API mechanism "1.2.840.113554.1.2.2". */
+    /** GSS-API mechanism "1.2.840.113554.1.2.2". */
     public static final Oid KERBEROS_V5_OID = SpnegoProvider.getKerberosV5Oid();
-	/**
-	 * Note: The MIT Kerberos V5 mechanism OID is added for compatibility with
-	 *		 Chromium-based browsers on POSIX OSes. On these OSes, Chromium erroneously
-	 *		 responds to an SPNEGO request with a GSS-API MIT Kerberos V5 mechanism
-	 *		 answer (instead of a MIT Kerberos V5 token inside an SPNEGO mechanism answer).
-	 */
+
+    /**
+     * Note: The MIT Kerberos V5 mechanism OID is added for compatibility with
+     *		 Chromium-based browsers on POSIX OSes. On these OSes, Chromium erroneously
+     *		 responds to an SPNEGO request with a GSS-API MIT Kerberos V5 mechanism
+     *		 answer (instead of a MIT Kerberos V5 token inside an SPNEGO mechanism answer).
+     */
     public static final Oid[] SUPPORTED_OIDS = new Oid[]{SPNEGO_OID, KERBEROS_V5_OID};
+    /** Default LOGGER. */
+    private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoProvider.class);
 
     /*
      * This is a utility class (not a Singleton).
@@ -78,12 +77,12 @@ public final class SpnegoProvider {
 
     /**
      * Returns the {@link SpnegoAuthScheme} or null if header is missing.
-     * 
+     *
      * <p>
      * Throws UnsupportedOperationException if header is NOT Negotiate 
      * or Basic. 
      * </p>
-     * 
+     *
      * @param header ex. Negotiate or Basic
      * @return null if header missing/null else the auth scheme
      */
@@ -92,15 +91,15 @@ public final class SpnegoProvider {
         if (null == header || header.isEmpty()) {
             LOGGER.trace("authorization header was missing/null");
             return null;
-            
+
         } else if (header.startsWith(Constants.NEGOTIATE_HEADER)) {
             final String token = header.substring(Constants.NEGOTIATE_HEADER.length() + 1);
             return new SpnegoAuthScheme(Constants.NEGOTIATE_HEADER, token);
-            
+
         } else if (header.startsWith(Constants.BASIC_HEADER)) {
             final String token = header.substring(Constants.BASIC_HEADER.length() + 1);
             return new SpnegoAuthScheme(Constants.BASIC_HEADER, token);
-            
+
         } else {
             throw new UnsupportedOperationException("Negotiate or Basic Only:" + header);
         }
@@ -109,7 +108,7 @@ public final class SpnegoProvider {
     /**
      * Returns the Universal Object Identifier representation of 
      * the SPNEGO mechanism.
-     * 
+     *
      * @return Object Identifier of the GSS-API mechanism
      */
     private static Oid getSpnegoOid() {
@@ -125,7 +124,7 @@ public final class SpnegoProvider {
     /**
      * Returns the Universal Object Identifier representation of
      * the MIT Kerberos V5 mechanism.
-	 *
+     *
      * @return Object Identifier of the GSS-API mechanism
      */
     private static Oid getKerberosV5Oid() {
@@ -140,12 +139,12 @@ public final class SpnegoProvider {
 
     /**
      * Returns the {@link GSSName} constructed out of the passed-in SPN
-     * 
+     *
      * @param spn
      * @return GSSName of URL.
      */
     public static GSSName createGSSNameForSPN(String spn) throws GSSException {
-        return GSS_MANAGER.createName(spn.replaceAll("/","@"),
+        return GSS_MANAGER.createName(spn.replaceAll("/", "@"),
                 GSSName.NT_HOSTBASED_SERVICE, SpnegoProvider.SPNEGO_OID);
     }
 
@@ -158,13 +157,13 @@ public final class SpnegoProvider {
      */
     public static GSSName getServerName(final URL url) throws GSSException {
         return GSS_MANAGER.createName("HTTP@" + url.getHost(),
-            GSSName.NT_HOSTBASED_SERVICE, SpnegoProvider.SPNEGO_OID);
+                GSSName.NT_HOSTBASED_SERVICE, SpnegoProvider.SPNEGO_OID);
     }
 
     /**
      * Used by the BASIC Auth mechanism for establishing a LoginContext 
      * to authenticate a client/caller/request.
-     * 
+     *
      * @param username client username
      * @param password client password
      * @return CallbackHandler to be used for establishing a LoginContext

@@ -48,42 +48,42 @@ import java.util.Set;
  * It also needs an <code>UserDetailsService</code> to load the user properties
  * and the <code>GrantedAuthorities</code>, as we only get back the username
  * from Kerberos</p>
- *
+ * <p>
  * You can see an example configuration in <code>SpnegoAuthenticationProcessingFilter</code>.
  *
  * @author Mike Wiesner
  * @author Jeremy Stone
- * @since 1.0
  * @see KerberosTicketValidator
  * @see UserDetailsService
+ * @since 1.0
  */
 public class SpnegoAuthenticationProvider implements
-		AuthenticationProvider, InitializingBean {
+        AuthenticationProvider, InitializingBean {
 
-	private static final Log LOG = LogFactory.getLog(SpnegoAuthenticationProvider.class);
+    private static final Log LOG = LogFactory.getLog(SpnegoAuthenticationProvider.class);
 
-	private KerberosTicketValidator ticketValidator;
-	private UserDetailsService userDetailsService;
+    private KerberosTicketValidator ticketValidator;
+    private UserDetailsService userDetailsService;
     private AuthenticationUserDetailsService<SpnegoAuthenticationToken> extractGroupsUserDetailsService =
             new ExtractGroupsUserDetailsService();
-	private UserDetailsChecker userDetailsChecker = new AccountStatusUserDetailsChecker();
+    private UserDetailsChecker userDetailsChecker = new AccountStatusUserDetailsChecker();
 
-	private String serverSpn;
+    private String serverSpn;
 
-	@Override
-	public SpnegoAuthenticationToken authenticate(Authentication authentication) {
+    @Override
+    public SpnegoAuthenticationToken authenticate(Authentication authentication) {
 
-		String canonicalName = null;
+        String canonicalName = null;
 
-	    if (authentication instanceof UsernamePasswordAuthenticationToken) {
-			canonicalName = authentication.getName();
+        if (authentication instanceof UsernamePasswordAuthenticationToken) {
+            canonicalName = authentication.getName();
             SpnegoClient spnegoClient = SpnegoClient.
                     loginWithUsernamePassword(authentication.getName(), authentication.getCredentials().toString(), true);
-			SpnegoContext context = null;
-			try {
+            SpnegoContext context = null;
+            try {
                 context = spnegoClient.createContextForSPN(serverSpn);
                 authentication = new SpnegoRequestToken(context.createToken());
-				// context.close(); // TODO: implement
+                // context.close(); // TODO: implement
             } catch (PrivilegedActionException e) {
                 throw new AuthenticationServiceException(e.getMessage(), e);
             } catch (GSSException e) {
@@ -91,118 +91,118 @@ public class SpnegoAuthenticationProvider implements
             } catch (MalformedURLException e) {
                 throw new AuthenticationServiceException(e.getMessage(), e);
             } finally {
-				try {
-					if (null != context) {
-						context.close();
-					}
-				} catch (IOException e) {
-					LOG.error(e.getMessage(), e);
-				}
-			}
+                try {
+                    if (null != context) {
+                        context.close();
+                    }
+                } catch (IOException e) {
+                    LOG.error(e.getMessage(), e);
+                }
+            }
         }
 
-	    SpnegoRequestToken auth = (SpnegoRequestToken) authentication;
-		byte[] token = auth.getToken();
+        SpnegoRequestToken auth = (SpnegoRequestToken) authentication;
+        byte[] token = auth.getToken();
 
-		LOG.debug("Try to validate Kerberos Token");
-		SpnegoAuthenticationToken ticketValidation = this.ticketValidator.validateTicket(token);
-		LOG.debug("Successfully validated " + ticketValidation.username());
+        LOG.debug("Try to validate Kerberos Token");
+        SpnegoAuthenticationToken ticketValidation = this.ticketValidator.validateTicket(token);
+        LOG.debug("Successfully validated " + ticketValidation.username());
 
-		// Get UserDetails
-		UserDetails userDetails = null != userDetailsService ? userDetailsService.loadUserByUsername(ticketValidation.username()) : null;
-		userDetails = null == userDetails ? new User(ticketValidation.username(), "", Collections.<GrantedAuthority>emptySet()) : userDetails;
+        // Get UserDetails
+        UserDetails userDetails = null != userDetailsService ? userDetailsService.loadUserByUsername(ticketValidation.username()) : null;
+        userDetails = null == userDetails ? new User(ticketValidation.username(), "", Collections.<GrantedAuthority>emptySet()) : userDetails;
 
-		// Extract roles from PAC
-		UserDetails userGroupsDetails = null != extractGroupsUserDetailsService ? extractGroupsUserDetailsService.loadUserDetails(ticketValidation) : null;
-		if (null != userGroupsDetails) {
-			// TODO: add a test for combining authorities
-			Set<GrantedAuthority> mergedAuthorities = new HashSet<GrantedAuthority>();
-			if (null != userDetails.getAuthorities()) {
-				mergedAuthorities.addAll(userDetails.getAuthorities());
-			}
-			if (null != userGroupsDetails.getAuthorities()) {
-				mergedAuthorities.addAll(userGroupsDetails.getAuthorities());
-			}
+        // Extract roles from PAC
+        UserDetails userGroupsDetails = null != extractGroupsUserDetailsService ? extractGroupsUserDetailsService.loadUserDetails(ticketValidation) : null;
+        if (null != userGroupsDetails) {
+            // TODO: add a test for combining authorities
+            Set<GrantedAuthority> mergedAuthorities = new HashSet<GrantedAuthority>();
+            if (null != userDetails.getAuthorities()) {
+                mergedAuthorities.addAll(userDetails.getAuthorities());
+            }
+            if (null != userGroupsDetails.getAuthorities()) {
+                mergedAuthorities.addAll(userGroupsDetails.getAuthorities());
+            }
 
-			userDetails = new User(
-					userDetails.getUsername(),
-					userDetails.getPassword(),
-					userDetails.isEnabled(),
-					userDetails.isAccountNonExpired(),
-					userDetails.isCredentialsNonExpired(),
-					userDetails.isAccountNonLocked(),
-					mergedAuthorities
-			);
-		}
+            userDetails = new User(
+                    userDetails.getUsername(),
+                    userDetails.getPassword(),
+                    userDetails.isEnabled(),
+                    userDetails.isAccountNonExpired(),
+                    userDetails.isCredentialsNonExpired(),
+                    userDetails.isAccountNonLocked(),
+                    mergedAuthorities
+            );
+        }
 
-		userDetailsChecker.check(userDetails);
+        userDetailsChecker.check(userDetails);
 
-		additionalAuthenticationChecks(userDetails, auth);
+        additionalAuthenticationChecks(userDetails, auth);
 
-		if (null == canonicalName) {
-			canonicalName = userDetails.getUsername();
-		}
+        if (null == canonicalName) {
+            canonicalName = userDetails.getUsername();
+        }
 
-		// TODO: make name "normalization" optional; probably take from UsernamePasswordAuthenticationToken if available
-		SpnegoAuthenticationToken responseAuth = new SpnegoAuthenticationToken(
-				userDetails.getAuthorities(), ticketValidation.getToken(),
-				canonicalName, ticketValidation.responseToken(),
-				ticketValidation.getSubject(), ticketValidation.getKerberosKeys()
-		);
-		responseAuth.setDetails(authentication.getDetails());
+        // TODO: make name "normalization" optional; probably take from UsernamePasswordAuthenticationToken if available
+        SpnegoAuthenticationToken responseAuth = new SpnegoAuthenticationToken(
+                userDetails.getAuthorities(), ticketValidation.getToken(),
+                canonicalName, ticketValidation.responseToken(),
+                ticketValidation.getSubject(), ticketValidation.getKerberosKeys()
+        );
+        responseAuth.setDetails(authentication.getDetails());
 
-		return  responseAuth;
-	}
+        return responseAuth;
+    }
 
-	@Override
-	public boolean supports(Class<?> auth) {
-		return SpnegoRequestToken.class.isAssignableFrom(auth) ||
+    @Override
+    public boolean supports(Class<?> auth) {
+        return SpnegoRequestToken.class.isAssignableFrom(auth) ||
                 (null != serverSpn && UsernamePasswordAuthenticationToken.class.isAssignableFrom(auth));
-	}
+    }
 
-	@Override
-	public void afterPropertiesSet() throws Exception {
-		Assert.notNull(this.ticketValidator, "ticketValidator must be specified");
-	}
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        Assert.notNull(this.ticketValidator, "ticketValidator must be specified");
+    }
 
-	/**
-	 * The <code>UserDetailsService</code> to use, for loading the user properties
-	 * and the <code>GrantedAuthorities</code>.
-	 *
-	 * @param userDetailsService the new user details service
-	 */
-	public void setUserDetailsService(UserDetailsService userDetailsService) {
-		this.userDetailsService = userDetailsService;
-	}
+    /**
+     * The <code>UserDetailsService</code> to use, for loading the user properties
+     * and the <code>GrantedAuthorities</code>.
+     *
+     * @param userDetailsService the new user details service
+     */
+    public void setUserDetailsService(UserDetailsService userDetailsService) {
+        this.userDetailsService = userDetailsService;
+    }
 
     public void setExtractGroupsUserDetailsService(AuthenticationUserDetailsService<SpnegoAuthenticationToken> extractGroupsUserDetailsService) {
         this.extractGroupsUserDetailsService = extractGroupsUserDetailsService;
     }
 
     /**
-	 * The <code>KerberosTicketValidator</code> to use, for validating
-	 * the Kerberos/SPNEGO tickets.
-	 *
-	 * @param ticketValidator the new ticket validator
-	 */
-	public void setTicketValidator(KerberosTicketValidator ticketValidator) {
-		this.ticketValidator = ticketValidator;
-	}
+     * The <code>KerberosTicketValidator</code> to use, for validating
+     * the Kerberos/SPNEGO tickets.
+     *
+     * @param ticketValidator the new ticket validator
+     */
+    public void setTicketValidator(KerberosTicketValidator ticketValidator) {
+        this.ticketValidator = ticketValidator;
+    }
 
-	/**
-	 * Allows subclasses to perform any additional checks of a returned <code>UserDetails</code>
-	 * for a given authentication request.
-	 *
-	 * @param userDetails as retrieved from the {@link UserDetailsService}
-	 * @param authentication validated {@link SpnegoRequestToken}
-	 * @throws AuthenticationException AuthenticationException if the credentials could not be validated (generally a
-	 *         <code>BadCredentialsException</code>, an <code>AuthenticationServiceException</code>)
-	 */
-	protected void additionalAuthenticationChecks(UserDetails userDetails, SpnegoRequestToken authentication)
-			throws AuthenticationException {
-	}
+    /**
+     * Allows subclasses to perform any additional checks of a returned <code>UserDetails</code>
+     * for a given authentication request.
+     *
+     * @param userDetails    as retrieved from the {@link UserDetailsService}
+     * @param authentication validated {@link SpnegoRequestToken}
+     * @throws AuthenticationException AuthenticationException if the credentials could not be validated (generally a
+     *                                 <code>BadCredentialsException</code>, an <code>AuthenticationServiceException</code>)
+     */
+    protected void additionalAuthenticationChecks(UserDetails userDetails, SpnegoRequestToken authentication)
+            throws AuthenticationException {
+    }
 
-	// TODO: add javadoc
+    // TODO: add javadoc
     public void setUserDetailsChecker(UserDetailsChecker userDetailsChecker) {
         this.userDetailsChecker = userDetailsChecker;
     }

@@ -1,16 +1,16 @@
 /**
  * Copyright (C) 2009 "Darwin V. Felix" <darwinfelix@users.sourceforge.net>
- *
+ * <p>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
- *
+ * <p>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- *
+ * <p>
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
@@ -29,10 +29,6 @@ package com.kerb4j.common.util;
  */
 public class Constants {
 
-    private Constants() {
-        // default private
-    }
-
     /**
      * HTTP Response Header <b>WWW-Authenticate</b>.
      *
@@ -40,7 +36,6 @@ public class Constants {
      * and/or "Negotiate" (based on web.xml file).
      */
     public static final String AUTHN_HEADER = "WWW-Authenticate";
-
     /**
      * HTTP Request Header <b>Authorization</b>.
      *
@@ -48,7 +43,6 @@ public class Constants {
      * authentication token(s).
      */
     public static final String AUTHZ_HEADER = "Authorization";
-
     /**
      * HTTP Response Header <b>Basic</b>.
      *
@@ -56,7 +50,6 @@ public class Constants {
      * header if "Basic" auth is allowed (based on web.xml file).
      */
     public static final String BASIC_HEADER = "Basic";
-
     /**
      * HTTP Response Header <b>Negotiate</b>.
      *
@@ -65,5 +58,9 @@ public class Constants {
      * a value of "Basic" (if allowed by the web.xml file).
      */
     public static final String NEGOTIATE_HEADER = "Negotiate";
+
+    private Constants() {
+        // default private
+    }
 
 }

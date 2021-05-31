@@ -2,13 +2,13 @@ package com.kerb4j.server.tomcat;
 
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;
+import com.kerb4j.common.util.Constants;
 import com.kerb4j.server.marshall.Kerb4JException;
 import com.kerb4j.server.marshall.pac.Pac;
 import com.kerb4j.server.marshall.pac.PacLogonInfo;
 import com.kerb4j.server.marshall.pac.PacSid;
 import com.kerb4j.server.marshall.spnego.SpnegoInitToken;
 import com.kerb4j.server.marshall.spnego.SpnegoKerberosMechToken;
-import com.kerb4j.common.util.Constants;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.authenticator.AuthenticatorBase;
 import org.apache.catalina.connector.Request;
@@ -22,7 +22,6 @@ import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 
 import javax.security.auth.Subject;
-import javax.security.auth.login.LoginException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -42,6 +41,7 @@ import java.util.List;
  * <li>domainController : indique l'adresse (IP ou DNS) du controlleur de domaine</li>
  * <li>domainName : indique le nom de domaine</li>
  * </ul>
+ *
  * @author damien
  */
 public class SpnegoAuthenticator extends AuthenticatorBase {
@@ -58,6 +58,8 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
     // ------ proprietes - permet de configurer la valve depuis la configuration de tomcat
     private String keyTab = null;
     private String principalName = null;
+    private boolean storeDelegatedCredential = true;
+    private boolean applyJava8u40Fix = true;
 
     public String getKeyTab() {
         return keyTab;
@@ -77,20 +79,19 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
         log.info("Using principal name : " + principalName);
     }
 
-
-    private boolean storeDelegatedCredential = true;
     public boolean isStoreDelegatedCredential() {
         return storeDelegatedCredential;
     }
+
     public void setStoreDelegatedCredential(
             boolean storeDelegatedCredential) {
         this.storeDelegatedCredential = storeDelegatedCredential;
     }
 
-    private boolean applyJava8u40Fix = true;
     public boolean getApplyJava8u40Fix() {
         return applyJava8u40Fix;
     }
+
     public void setApplyJava8u40Fix(boolean applyJava8u40Fix) {
         this.applyJava8u40Fix = applyJava8u40Fix;
     }
@@ -111,23 +112,24 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
     protected String getAuthMethod() {
         return HTTP_NEGOTIATE.toUpperCase(); // TODO: what does it mean ? should it be "SPNEGO" ?
     }
-	
+
     /**
      * Action realisee en cas d'echec de l'authentification
+     *
      * @param clearSession indique s'il faut vider la session ou non
-     * @param req requete
-     * @param resp reponse
+     * @param req          requete
+     * @param resp         reponse
      * @throws ServletException
      * @throws IOException
      */
     private void fail(boolean clearSession, HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-    	if (clearSession) {
+        if (clearSession) {
             HttpSession ssn = req.getSession(false);
             if (ssn != null) ssn.removeAttribute("jcifs.http.principal");
         }
         resp.addHeader("WWW-Authenticate", "Negotiate");
         resp.addHeader("WWW-Authenticate", "NTLM");
-        
+
         resp.setHeader("Connection", "close");
         resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         resp.flushBuffer();
@@ -296,6 +298,6 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
         response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
         return false;
 
-	}
-	
+    }
+
 }

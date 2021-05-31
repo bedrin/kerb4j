@@ -1,16 +1,16 @@
-/** 
+/**
  * Copyright (C) 2009 "Darwin V. Felix" <darwinfelix@users.sourceforge.net>
- * 
+ * <p>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
- * 
+ * <p>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- * 
+ * <p>
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
@@ -60,7 +60,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * documentation for an example krb5.conf file.
  * Also, you must provide a keytab file, or a username and password, or allowtgtsessionkey.
  * </p>
- * 
+ *
  *
  * <p>
  * To see a working example and instructions on how to use a keytab, take 
@@ -69,32 +69,22 @@ import java.util.concurrent.locks.ReentrantLock;
  * </p>
  *
  * @author Darwin V. Felix
- * 
+ *
  */
 public final class SpnegoClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoClient.class);
-
+    private final static LRUCache<AbstractMap.SimpleEntry<String, String>, SpnegoClient> SPNEGO_CLIENT_CACHE = new LRUCache<>(1024);
     private final AtomicReference<SubjectTgtPair> subjectTgtPairReference = new AtomicReference<>();
-
     private final Callable<Subject> subjectSupplier;
-
     private final Lock authenticateLock = new ReentrantLock();
-
-    private final static LRUCache<AbstractMap.SimpleEntry<String,String>, SpnegoClient> SPNEGO_CLIENT_CACHE = new LRUCache<>(1024);
-
-    public static void resetCache() {
-        synchronized (SPNEGO_CLIENT_CACHE) {
-            SPNEGO_CLIENT_CACHE.clear();
-        }
-    }
 
     /**
      * Creates an instance with provided LoginContext
-     * 
+     *
      * @param loginContextSupplier loginContextSupplier
      */
-    protected SpnegoClient(final Callable<LoginContext> loginContextSupplier) {
+    private SpnegoClient(final Callable<LoginContext> loginContextSupplier) {
 
         subjectSupplier = new Callable<Subject>() {
             @Override
@@ -117,6 +107,100 @@ public final class SpnegoClient {
             }
         };
 
+    }
+
+    public static void resetCache() {
+        synchronized (SPNEGO_CLIENT_CACHE) {
+            SPNEGO_CLIENT_CACHE.clear();
+        }
+    }
+
+    /**
+     * Creates an instance where authentication is done using username and password
+     *
+     * @param username username
+     * @param password password
+     */
+    public static SpnegoClient loginWithUsernamePassword(final String username, final String password) {
+        return loginWithUsernamePassword(username, password, false);
+    }
+
+    /**
+     * Creates an instance where authentication is done using username and password
+     *
+     * @param username username
+     * @param password password
+     */
+    public static SpnegoClient loginWithUsernamePassword(final String username, final String password, final boolean useCache) {
+
+        if (!useCache) return loginWithUsernamePasswordImpl(username, password);
+
+        AbstractMap.SimpleEntry<String, String> entry = new AbstractMap.SimpleEntry<>(username, password);
+
+        SpnegoClient spnegoClient;
+
+        synchronized (SPNEGO_CLIENT_CACHE) {
+            spnegoClient = SPNEGO_CLIENT_CACHE.get(entry);
+            if (null == spnegoClient) {
+                spnegoClient = loginWithUsernamePasswordImpl(username, password);
+                SPNEGO_CLIENT_CACHE.put(entry, spnegoClient);
+            }
+        }
+
+        return spnegoClient;
+    }
+
+    private static SpnegoClient loginWithUsernamePasswordImpl(final String username, final String password) {
+        return new SpnegoClient(new Callable<LoginContext>() {
+            @Override
+            public LoginContext call() throws Exception {
+                return Krb5LoginContext.loginWithUsernameAndPassword(username, password);
+            }
+        });
+    }
+
+    // TODO: add factory methods with implicit principal name
+
+    /**
+     * Creates an instance where authentication is done using keytab file
+     *
+     * @param principal principal
+     * @param keyTabLocation keyTabLocation
+     */
+    public static SpnegoClient loginWithKeyTab(final String principal, final String keyTabLocation) {
+        return new SpnegoClient(new Callable<LoginContext>() {
+            @Override
+            public LoginContext call() throws Exception {
+                return Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation);
+            }
+        });
+    }
+
+    /**
+     * Creates an instance where authentication is done using ticket cache
+     *
+     * @param principal principal
+     */
+    public static SpnegoClient loginWithTicketCache(final String principal) {
+        return new SpnegoClient(new Callable<LoginContext>() {
+            @Override
+            public LoginContext call() throws Exception {
+                return Krb5LoginContext.loginWithTicketCache(principal);
+            }
+        });
+    }
+
+    public static SpnegoClient loginWithContext(final LoginContext loginContext) throws LoginException {
+        return loginWithContextSupplier(new Callable<LoginContext>() {
+            @Override
+            public LoginContext call() throws Exception {
+                return loginContext;
+            }
+        });
+    }
+
+    public static SpnegoClient loginWithContextSupplier(final Callable<LoginContext> loginContextSupplier) throws LoginException {
+        return new SpnegoClient(loginContextSupplier);
     }
 
     public Subject getSubject() {
@@ -179,104 +263,6 @@ public final class SpnegoClient {
 
     }
 
-    private static class SubjectTgtPair {
-
-        private final KerberosTicket tgt;
-        private final Subject subject;
-
-        private SubjectTgtPair(KerberosTicket tgt, Subject subject) {
-            this.tgt = tgt;
-            this.subject = subject;
-        }
-
-        private boolean isExpired() {
-            try {
-                synchronized (tgt) {
-                    return tgt.getEndTime().before(new Date());
-                }
-            } catch (Exception e) {
-                LOGGER.error("Failed to get Kerberos ticket end time", e);
-                return true;
-            }
-        }
-
-    }
-
-    // TODO: add factory methods with implicit principal name
-
-    /**
-     * Creates an instance where authentication is done using username and password
-     * 
-     * @param username username
-     * @param password password
-     */
-    public static SpnegoClient loginWithUsernamePassword(final String username, final String password) {
-        return loginWithUsernamePassword(username, password, false);
-    }
-
-    /**
-     * Creates an instance where authentication is done using username and password
-     *
-     * @param username username
-     * @param password password
-     */
-    public static SpnegoClient loginWithUsernamePassword(final String username, final String password, final boolean useCache) {
-
-        if (!useCache) return loginWithUsernamePasswordImpl(username, password);
-
-        AbstractMap.SimpleEntry<String, String> entry = new AbstractMap.SimpleEntry<>(username, password);
-
-        SpnegoClient spnegoClient;
-
-        synchronized (SPNEGO_CLIENT_CACHE) {
-            spnegoClient = SPNEGO_CLIENT_CACHE.get(entry);
-            if (null == spnegoClient) {
-                spnegoClient = loginWithUsernamePasswordImpl(username, password);
-                SPNEGO_CLIENT_CACHE.put(entry, spnegoClient);
-            }
-        }
-
-        return spnegoClient;
-    }
-
-    private static SpnegoClient loginWithUsernamePasswordImpl(final String username, final String password) {
-        return new SpnegoClient(new Callable<LoginContext>() {
-            @Override
-            public LoginContext call() throws Exception {
-                return Krb5LoginContext.loginWithUsernameAndPassword(username, password);
-            }
-        });
-    }
-
-    /**
-     * Creates an instance where authentication is done using keytab file
-     *
-     * @param principal principal
-     * @param keyTabLocation keyTabLocation
-     */
-    public static SpnegoClient loginWithKeyTab(final String principal, final String keyTabLocation) {
-        return new SpnegoClient(new Callable<LoginContext>() {
-            @Override
-            public LoginContext call() throws Exception {
-                return Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation);
-            }
-        });
-    }
-
-    /**
-     * Creates an instance where authentication is done using ticket cache
-     *
-     * @param principal principal
-     */
-    public static SpnegoClient loginWithTicketCache(final String principal) {
-        return new SpnegoClient(new Callable<LoginContext>() {
-            @Override
-            public LoginContext call() throws Exception {
-                return Krb5LoginContext.loginWithTicketCache(principal);
-            }
-        });
-    }
-
     public SpnegoContext createContext(URL url) throws PrivilegedActionException, GSSException {
         return new SpnegoContext(this, getGSSContext(url));
     }
@@ -332,7 +318,7 @@ public final class SpnegoClient {
 
     /**
      * Returns a GSSContext for the given SPN with a default lifetime.
-     *  
+     *
      * @param spn
      * @return GSSContext for the given url
      */
@@ -354,7 +340,11 @@ public final class SpnegoClient {
 
         // TODO: is it still a thing?
         // work-around to GSSContext/AD timestamp vs sequence field replay bug
-        try { Thread.sleep(31); } catch (InterruptedException e) { assert true; }
+        try {
+            Thread.sleep(31);
+        } catch (InterruptedException e) {
+            assert true;
+        }
 
         return Subject.doAs(getSubject(), new PrivilegedExceptionAction<GSSContext>() {
             @Override
@@ -382,6 +372,29 @@ public final class SpnegoClient {
             }
         });
 
+
+    }
+
+    private static class SubjectTgtPair {
+
+        private final KerberosTicket tgt;
+        private final Subject subject;
+
+        private SubjectTgtPair(KerberosTicket tgt, Subject subject) {
+            this.tgt = tgt;
+            this.subject = subject;
+        }
+
+        private boolean isExpired() {
+            try {
+                synchronized (tgt) {
+                    return tgt.getEndTime().before(new Date());
+                }
+            } catch (Exception e) {
+                LOGGER.error("Failed to get Kerberos ticket end time", e);
+                return true;
+            }
+        }
 
     }
 

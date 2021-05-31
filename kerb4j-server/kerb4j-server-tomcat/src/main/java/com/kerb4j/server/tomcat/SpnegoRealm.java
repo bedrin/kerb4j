@@ -17,38 +17,41 @@ import java.util.Map;
  * <li>contextFactory : indique la classe permettant de creer le contexte initial</li>
  * <li>stripGroupNames : indique si on veux obtenir les groupes active directory complets (CN=group,OU=organisation,DC=MY,DC=DOMAIN,DC=COM) ou seulement le nom court (group)</li>
  * </ul>
+ *
  * @author damien
  */
 public class SpnegoRealm extends RealmBase {
-	/** cache des associations nom d'utilisateur - principal */
-	private Map<String, Principal> realm;
+    /**
+     * cache des associations nom d'utilisateur - principal
+     */
+    private Map<String, Principal> realm;
 
-	/**
-	 * Initialise le realm
-	 */
-	public SpnegoRealm() {
-		realm = new HashMap();
-	}
-	
-	public String getInfo() {
-		return "org.com.kerb4j.server.tomcat.SpnegoRealm/1.0";
-	}
-	
-	protected String getName() {
-		return "Spnego Realm";
-	}
+    /**
+     * Initialise le realm
+     */
+    public SpnegoRealm() {
+        realm = new HashMap();
+    }
 
-	protected String getPassword(String princ) {
-		return null;
-	}
+    public String getInfo() {
+        return "org.com.kerb4j.server.tomcat.SpnegoRealm/1.0";
+    }
 
-	protected Principal getPrincipal(String princ) {
-		SpnegoPrincipal principal = (SpnegoPrincipal) realm.get(princ);
-		if (principal == null) {
-			principal = new SpnegoPrincipal(princ);
-			realm.put(princ, principal);
-		}
-		return principal;
-	}
+    protected String getName() {
+        return "Spnego Realm";
+    }
+
+    protected String getPassword(String princ) {
+        return null;
+    }
+
+    protected Principal getPrincipal(String princ) {
+        SpnegoPrincipal principal = (SpnegoPrincipal) realm.get(princ);
+        if (principal == null) {
+            principal = new SpnegoPrincipal(princ);
+            realm.put(princ, principal);
+        }
+        return principal;
+    }
 
 }

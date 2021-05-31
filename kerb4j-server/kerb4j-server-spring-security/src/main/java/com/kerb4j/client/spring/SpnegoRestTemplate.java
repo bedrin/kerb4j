@@ -36,7 +36,7 @@ import java.util.List;
  * {@code RestTemplate} that is able to make kerberos SPNEGO authenticated REST
  * requests. Under a hood this {@code SpnegoRestTemplate} is using {@link SpnegoClient} to
  * support Kerberos.
- *
+ * <p>
  * TODO update documentations
  * <p>Generally this template can be configured in few different ways.
  * <ul>
@@ -47,45 +47,44 @@ import java.util.List;
  * </ul>
  *
  * @author Janne Valkealahti
- *
  */
 public class SpnegoRestTemplate extends RestTemplate {
 
-	private final SpnegoClient spnegoClient;
+    private final SpnegoClient spnegoClient;
 
-	// TODO: add URL to SPN mapper function, or cache
+    // TODO: add URL to SPN mapper function, or cache
 
-	public SpnegoRestTemplate(SpnegoClient spnegoClient) {
-		this.spnegoClient = spnegoClient;
-	}
+    public SpnegoRestTemplate(SpnegoClient spnegoClient) {
+        this.spnegoClient = spnegoClient;
+    }
 
-	public SpnegoRestTemplate(ClientHttpRequestFactory requestFactory, SpnegoClient spnegoClient) {
-		super(requestFactory);
-		this.spnegoClient = spnegoClient;
-	}
+    public SpnegoRestTemplate(ClientHttpRequestFactory requestFactory, SpnegoClient spnegoClient) {
+        super(requestFactory);
+        this.spnegoClient = spnegoClient;
+    }
 
-	public SpnegoRestTemplate(List<HttpMessageConverter<?>> messageConverters, SpnegoClient spnegoClient) {
-		super(messageConverters);
-		this.spnegoClient = spnegoClient;
-	}
+    public SpnegoRestTemplate(List<HttpMessageConverter<?>> messageConverters, SpnegoClient spnegoClient) {
+        super(messageConverters);
+        this.spnegoClient = spnegoClient;
+    }
 
-	@Override
-	protected <T> T doExecute(final URI uri, final HttpMethod method, final RequestCallback requestCallback, final ResponseExtractor<T> responseExtractor) throws RestClientException {
-		return super.doExecute(uri, method, new RequestCallback() {
-			@Override
-			public void doWithRequest(ClientHttpRequest request) throws IOException {
+    @Override
+    protected <T> T doExecute(final URI uri, final HttpMethod method, final RequestCallback requestCallback, final ResponseExtractor<T> responseExtractor) throws RestClientException {
+        return super.doExecute(uri, method, new RequestCallback() {
+            @Override
+            public void doWithRequest(ClientHttpRequest request) throws IOException {
 
-				requestCallback.doWithRequest(request);
+                requestCallback.doWithRequest(request);
 
-				// TODO: process response if required
-				try {
-					request.getHeaders().add(Constants.AUTHZ_HEADER, spnegoClient.createAuthroizationHeader(uri.toURL()));
-				} catch (PrivilegedActionException | GSSException | IOException e) {
-					throw new IOException(e);
-				}
+                // TODO: process response if required
+                try {
+                    request.getHeaders().add(Constants.AUTHZ_HEADER, spnegoClient.createAuthroizationHeader(uri.toURL()));
+                } catch (PrivilegedActionException | GSSException | IOException e) {
+                    throw new IOException(e);
+                }
 
-			}
-		}, responseExtractor);
-	}
+            }
+        }, responseExtractor);
+    }
 
 }

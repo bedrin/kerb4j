@@ -15,14 +15,13 @@
  */
 package com.kerb4j.server.spring;
 
-import java.io.IOException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import org.springframework.security.core.Authentication;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import java.io.IOException;
 
 /**
  * Adds a WWW-Authenticate (or other) header to the response following
@@ -60,12 +59,12 @@ public class SpnegoMutualAuthenticationHandler implements AuthenticationSuccessH
     }
 
     @Override
-	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
-			Authentication authentication) throws IOException, ServletException {
+    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
+                                        Authentication authentication) throws IOException, ServletException {
         SpnegoAuthenticationToken auth = (SpnegoAuthenticationToken) authentication;
-		if (auth.hasResponseToken()) {
-			response.addHeader(headerName, headerPrefix + auth.getEncodedResponseToken());
-		}
-	}
+        if (auth.hasResponseToken()) {
+            response.addHeader(headerName, headerPrefix + auth.getEncodedResponseToken());
+        }
+    }
 
 }

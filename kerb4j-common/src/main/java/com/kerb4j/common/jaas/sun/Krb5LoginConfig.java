@@ -30,79 +30,78 @@ import java.util.Map;
  *
  * @author Nelson Rodrigues
  * @author Janne Valkealahti
- *
  */
 public class Krb5LoginConfig extends Configuration {
 
-	private static final Logger LOG = LoggerFactory.getLogger(Krb5LoginConfig.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Krb5LoginConfig.class);
 
-	private static final String SUN_KRB5_LOGIN_MODULE_CLASS_NAME = Krb5LoginModule.class.getCanonicalName();
-	private static final boolean SUN_KRB5_DEBUG = Boolean.getBoolean("sun.security.krb5.debug");
+    private static final String SUN_KRB5_LOGIN_MODULE_CLASS_NAME = Krb5LoginModule.class.getCanonicalName();
+    private static final boolean SUN_KRB5_DEBUG = Boolean.getBoolean("sun.security.krb5.debug");
 
-	private final AppConfigurationEntry[] appConfigurationEntries;
+    private final AppConfigurationEntry[] appConfigurationEntries;
 
-	public static Krb5LoginConfig createKeyTabClientConfig(String principal, String keyTabLocation) {
-		Map<String, String> options = new HashMap<>();
+    protected Krb5LoginConfig(Map<String, String> additionalOptions) {
+        Map<String, String> options = new HashMap<>();
 
-		options.put("principal", principal);
+        if (SUN_KRB5_DEBUG) {
+            options.put("debug", "true");
+        }
 
-		options.put("useKeyTab", "true");
-		options.put("keyTab", keyTabLocation);
-		options.put("storeKey", "true");
+        // Since Kerb4J caches the tickets properly and doesn't do authentication on each request it's safe to refresh
+        // configuration on each login attempt
+        options.put("refreshKrb5Config", "true");
 
-		options.put("doNotPrompt", "true");
-		// TODO: add isInitiator true
+        options.putAll(additionalOptions);
 
-		return new Krb5LoginConfig(options);
-	}
+        this.appConfigurationEntries = new AppConfigurationEntry[]{
+                new AppConfigurationEntry(
+                        SUN_KRB5_LOGIN_MODULE_CLASS_NAME,
+                        AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
+                        options
+                )
+        };
+    }
 
-	public static Krb5LoginConfig createTicketCacheClientConfig(String principal) {
-		Map<String, String> options = new HashMap<>();
+    public static Krb5LoginConfig createKeyTabClientConfig(String principal, String keyTabLocation) {
+        Map<String, String> options = new HashMap<>();
 
-		options.put("renewTGT", "true");
+        options.put("principal", principal);
 
-		options.put("principal", principal);
+        options.put("useKeyTab", "true");
+        options.put("keyTab", keyTabLocation);
+        options.put("storeKey", "true");
 
-		options.put("useTicketCache", "true");
+        options.put("doNotPrompt", "true");
+        // TODO: add isInitiator true
 
-		options.put("doNotPrompt", "true");
+        return new Krb5LoginConfig(options);
+    }
 
-		return new Krb5LoginConfig(options);
-	}
+    public static Krb5LoginConfig createTicketCacheClientConfig(String principal) {
+        Map<String, String> options = new HashMap<>();
 
-	public static Krb5LoginConfig createUsernameAndPasswordClientConfig() {
-		Map<String, String> options = new HashMap<>();
+        options.put("renewTGT", "true");
 
-		options.put("storeKey", "true");
+        options.put("principal", principal);
 
-		return new Krb5LoginConfig(options);
-	}
+        options.put("useTicketCache", "true");
 
-	protected Krb5LoginConfig(Map<String,String> additionalOptions) {
-		Map<String, String> options = new HashMap<>();
+        options.put("doNotPrompt", "true");
 
-		if (SUN_KRB5_DEBUG) {
-			options.put("debug", "true");
-		}
+        return new Krb5LoginConfig(options);
+    }
 
-		// Since Kerb4J caches the tickets properly and doesn't do authentication on each request it's safe to refresh
-		// configuration on each login attempt
-		options.put("refreshKrb5Config", "true");
+    public static Krb5LoginConfig createUsernameAndPasswordClientConfig() {
+        Map<String, String> options = new HashMap<>();
 
-		options.putAll(additionalOptions);
+        options.put("storeKey", "true");
 
-		this.appConfigurationEntries = new AppConfigurationEntry[] {
-				new AppConfigurationEntry(
-						SUN_KRB5_LOGIN_MODULE_CLASS_NAME,
-						AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
-						options
-				)
-		};
-	}
+        return new Krb5LoginConfig(options);
+    }
 
-	@Override
-	public AppConfigurationEntry[] getAppConfigurationEntry(String name) {
-		return appConfigurationEntries;
-	}
+    @Override
+    public AppConfigurationEntry[] getAppConfigurationEntry(String name) {
+        return appConfigurationEntries;
+    }
 
 }
