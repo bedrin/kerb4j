@@ -52,6 +52,12 @@ public final class SpnegoProvider {
     public static final String SPNEGO_MECHANISM = "1.3.6.1.5.5.2";
     public static final String KERBEROS_MECHANISM = "1.2.840.113554.1.2.2";
     public static final String LEGACY_KERBEROS_MECHANISM = "1.2.840.48018.1.2.2";
+
+    /** GSS-API mechanism "1.3.6.1.5.5.2". */
+    public static final Oid SPNEGO_OID = SpnegoProvider.getSpnegoOid();
+    /** GSS-API mechanism "1.2.840.113554.1.2.2". */
+    public static final Oid KERBEROS_V5_OID = SpnegoProvider.getKerberosV5Oid();
+
     /**
      * Note: The MIT Kerberos V5 mechanism OID is added for compatibility with
      *		 Chromium-based browsers on POSIX OSes. On these OSes, Chromium erroneously
@@ -61,10 +67,6 @@ public final class SpnegoProvider {
     public static final Oid[] SUPPORTED_OIDS = new Oid[]{SPNEGO_OID, KERBEROS_V5_OID};
     /** Default LOGGER. */
     private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoProvider.class);
-    /** GSS-API mechanism "1.3.6.1.5.5.2". */
-    public static final Oid SPNEGO_OID = SpnegoProvider.getSpnegoOid();
-    /** GSS-API mechanism "1.2.840.113554.1.2.2". */
-    public static final Oid KERBEROS_V5_OID = SpnegoProvider.getKerberosV5Oid();
 
     /*
      * This is a utility class (not a Singleton).
