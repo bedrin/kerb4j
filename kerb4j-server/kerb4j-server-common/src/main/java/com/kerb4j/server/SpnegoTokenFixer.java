@@ -33,29 +33,25 @@ import java.util.LinkedHashMap;
  */
 public class SpnegoTokenFixer {
 
+    private final byte[] token;
+    private int pos = 0;
+    private SpnegoTokenFixer(byte[] token) {
+        this.token = token;
+    }
+
     public static void fix(byte[] token) {
         SpnegoTokenFixer fixer = new SpnegoTokenFixer(token);
         fixer.fix();
     }
 
-
-    private final byte[] token;
-    private int pos = 0;
-
-
-    private SpnegoTokenFixer(byte[] token) {
-        this.token = token;
-    }
-
-
     // Fixes the token in-place
     private void fix() {
-            /*
-             * Useful references:
-             * http://tools.ietf.org/html/rfc4121#page-5
-             * http://tools.ietf.org/html/rfc2743#page-81
-             * https://msdn.microsoft.com/en-us/library/ms995330.aspx
-             */
+        /*
+         * Useful references:
+         * http://tools.ietf.org/html/rfc4121#page-5
+         * http://tools.ietf.org/html/rfc2743#page-81
+         * https://msdn.microsoft.com/en-us/library/ms995330.aspx
+         */
 
         // Scan until we find the mech types list. If we find anything
         // unexpected, abort the fix process.

@@ -38,30 +38,30 @@ public class SpnegoConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
-            .exceptionHandling()
+                .exceptionHandling()
                 .authenticationEntryPoint(spnegoEntryPoint())
                 .and()
-            .authorizeRequests()
+                .authorizeRequests()
                 .antMatchers("/", "/home").permitAll()
                 .anyRequest().authenticated()
                 .and()
-            .formLogin()
+                .formLogin()
                 .loginPage("/login").permitAll()
                 .and()
-            .logout()
+                .logout()
                 .permitAll()
                 .and()
-            .addFilterBefore(
-                    spnegoAuthenticationProcessingFilter(authenticationManagerBean()),
-                    BasicAuthenticationFilter.class);
+                .addFilterBefore(
+                        spnegoAuthenticationProcessingFilter(authenticationManagerBean()),
+                        BasicAuthenticationFilter.class);
     }
 
     @Override
     protected void configure(AuthenticationManagerBuilder auth)
-    		throws Exception {
+            throws Exception {
         auth
-            .authenticationProvider(kerberosAuthenticationProvider())
-            .authenticationProvider(kerberosServiceAuthenticationProvider());
+                .authenticationProvider(kerberosAuthenticationProvider())
+                .authenticationProvider(kerberosServiceAuthenticationProvider());
     }
 
     @Bean
@@ -80,7 +80,7 @@ public class SpnegoConfig extends WebSecurityConfigurerAdapter {
     public SpnegoAuthenticationProcessingFilter spnegoAuthenticationProcessingFilter(
             AuthenticationManager authenticationManager) {
         SpnegoAuthenticationProcessingFilter filter =
-        		new SpnegoAuthenticationProcessingFilter();
+                new SpnegoAuthenticationProcessingFilter();
         filter.setAuthenticationManager(authenticationManager);
         return filter;
     }
@@ -88,7 +88,7 @@ public class SpnegoConfig extends WebSecurityConfigurerAdapter {
     @Bean
     public SpnegoAuthenticationProvider kerberosServiceAuthenticationProvider() {
         SpnegoAuthenticationProvider provider =
-        		new SpnegoAuthenticationProvider();
+                new SpnegoAuthenticationProvider();
         provider.setTicketValidator(sunJaasKerberosTicketValidator());
         provider.setUserDetailsService(dummyUserDetailsService());
         return provider;
@@ -97,7 +97,7 @@ public class SpnegoConfig extends WebSecurityConfigurerAdapter {
     @Bean
     public SunJaasKerberosTicketValidator sunJaasKerberosTicketValidator() {
         SunJaasKerberosTicketValidator ticketValidator =
-        		new SunJaasKerberosTicketValidator();
+                new SunJaasKerberosTicketValidator();
         ticketValidator.setServicePrincipal("HTTP/servicehost.example.org@EXAMPLE.ORG");
         ticketValidator.setKeyTabLocation(new FileSystemResource("/tmp/service.keytab"));
         //ticketValidator.setDebug(true);

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -12,6 +13,11 @@
     <name>kerb4j-server</name>
     <packaging>pom</packaging>
 
+    <properties>
+        <servlet.api.version>4.0.1</servlet.api.version>
+    </properties>
+
+
     <modules>
         <module>kerb4j-server-common</module>
         <module>kerb4j-server-tomcat</module>
@@ -23,26 +29,25 @@
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-common</artifactId>
-            <version>0.1.1-SNAPSHOT</version>
+            <version>${project.parent.version}</version>
         </dependency>
 
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
-            <version>3.1.0</version>
+            <version>${servlet.api.version}</version>
             <scope>provided</scope>
         </dependency>
-
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-client</artifactId>
-            <version>0.1.1-SNAPSHOT</version>
+            <version>${project.parent.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-common</artifactId>
-            <version>0.1.1-SNAPSHOT</version>
+            <version>${project.parent.version}</version>
             <classifier>tests</classifier>
             <scope>test</scope>
         </dependency>

@@ -24,8 +24,8 @@ import org.springframework.security.authentication.BadCredentialsException;
  *
  * @author Mike Wiesner
  * @author Jeremy Stone
- * @since 1.0
  * @see SpnegoAuthenticationProvider
+ * @since 1.0
  */
 public interface KerberosTicketValidator {
 

@@ -115,7 +115,7 @@ public class Pac {
         return kdcSignature;
     }
 
-    public List<PacDelegationInfo> getDelegationInfos(){
-    	return delegationInfosReadOnly;
+    public List<PacDelegationInfo> getDelegationInfos() {
+        return delegationInfosReadOnly;
     }
 }

@@ -17,285 +17,274 @@ package com.kerb4j.client.spring;
 
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.client.SpnegoClient;
-import io.sniffy.boot.EnableSniffy;
 import io.sniffy.registry.ConnectionsRegistry;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.PropertyPlaceholderAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.SecurityAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.*;
-import org.springframework.boot.context.embedded.EmbeddedServletContainerInitializedEvent;
-import org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedServletContainerFactory;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
+import org.springframework.boot.web.servlet.context.ServletWebServerInitializedEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.client.ClientHttpResponse;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.annotation.*;
 import java.net.InetAddress;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
-	private ConfigurableApplicationContext context;
+    private ConfigurableApplicationContext context;
 
-	@After
-	public void close() {
-		if (context != null) {
-			context.close();
-		}
-		context = null;
-	}
+    @AfterEach
+    public void close() {
+        if (context != null) {
+            context.close();
+        }
+        context = null;
+    }
 
     @Test
     public void testSpnego() throws Exception {
 
-		SimpleKdcServer kdc = getKdc();
-		File workDir = getWorkDir();
-		String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
+        SimpleKdcServer kdc = getKdc();
+        File workDir = getWorkDir();
+        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
 
-		String serverPrincipal = "HTTP/" + host;
-		File serverKeytab = new File(workDir, "server.keytab");
-		kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
+        String serverPrincipal = "HTTP/" + host;
+        File serverKeytab = new File(workDir, "server.keytab");
+        kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
 
-		String clientPrincipal = "client/" + host;
-		File clientKeytab = new File(workDir, "client.keytab");
-		kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
+        String clientPrincipal = "client/" + host;
+        File clientKeytab = new File(workDir, "client.keytab");
+        kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
 
+        SpringApplication springApplication = new SpringApplicationBuilder(
+                WebSecurityConfig.class,
+                VanillaWebConfiguration.class,
+                TestAppConfiguration.class).application();
+        context = springApplication.run(
+                "--security.basic.enabled=true",
+                "--security.user.name=username",
+                "--security.user.password=password",
+                "--serverPrincipal=" + serverPrincipal,
+                "--serverKeytab=" + serverKeytab.getAbsolutePath()
+        );
 
-		context = SpringApplication.run(new Object[] { WebSecurityConfig.class, VanillaWebConfiguration.class,
-				WebConfiguration.class }, new String[] { "--security.basic.enabled=true",
-				"--security.user.name=username", "--security.user.password=password",
-				"--serverPrincipal=" + serverPrincipal, "--serverKeytab=" + serverKeytab.getAbsolutePath() });
+        PortInitListener portInitListener = context.getBean(PortInitListener.class);
+        assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
+        int port = portInitListener.port;
 
-		PortInitListener portInitListener = context.getBean(PortInitListener.class);
-		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
-		int port = portInitListener.port;
+        SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
 
-		SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
-
-		String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
-		assertThat(response, is("home"));
+        String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
+        assertThat(response, is("hello"));
     }
 
     @Test
     public void testServerRequests() throws Exception {
 
-		SimpleKdcServer kdc = getKdc();
-		File workDir = getWorkDir();
-		String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
+        SimpleKdcServer kdc = getKdc();
+        File workDir = getWorkDir();
+        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
 
-		String serverPrincipal = "HTTP/" + host;
-		File serverKeytab = new File(workDir, "server.keytab");
-		kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
+        String serverPrincipal = "HTTP/" + host;
+        File serverKeytab = new File(workDir, "server.keytab");
+        kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
 
-		String clientPrincipal = "client/" + host;
-		File clientKeytab = new File(workDir, "client.keytab");
-		kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
+        String clientPrincipal = "client/" + host;
+        File clientKeytab = new File(workDir, "client.keytab");
+        kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
 
+        SpringApplication springApplication = new SpringApplicationBuilder(
+                WebSecurityConfig.class,
+                VanillaWebConfiguration.class,
+                TestAppConfiguration.class).application();
+        context = springApplication.run(
+                "--security.basic.enabled=true",
+                "--security.user.name=username",
+                "--security.user.password=password",
+                "--serverPrincipal=" + serverPrincipal,
+                "--serverKeytab=" + serverKeytab.getAbsolutePath()
+        );
 
-		context = SpringApplication.run(new Object[] { WebSecurityConfig.class, VanillaWebConfiguration.class,
-				WebConfiguration.class }, new String[] { "--security.basic.enabled=true",
-				"--security.user.name=username", "--security.user.password=password",
-				"--serverPrincipal=" + serverPrincipal, "--serverKeytab=" + serverKeytab.getAbsolutePath() });
+        PortInitListener portInitListener = context.getBean(PortInitListener.class);
+        assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
+        int port = portInitListener.port;
 
-		PortInitListener portInitListener = context.getBean(PortInitListener.class);
-		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
-		int port = portInitListener.port;
+        SpnegoRestTemplate spnegoRestTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
+        RestTemplate restTemplate = new RestTemplate();
 
-		SpnegoRestTemplate spnegoRestTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
-		RestTemplate restTemplate = new RestTemplate();
+        {
+            String response = spnegoRestTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
+            assertThat(response, is("hello"));
+        }
 
-		{
-			String response = spnegoRestTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
-			assertThat(response, is("home"));
-		}
+        System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.12/connectionregistry/", String.class));
+        restTemplate.postForEntity("http://" + host + ":" + port + "/sniffy/3.1.12/connectionregistry/socket/localhost/" + kdcPort, "-1", Object.class);
+        System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.12/connectionregistry/", String.class));
 
-		System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.6/connectionregistry/", String.class));
-		restTemplate.postForEntity("http://" + host + ":" + port + "/sniffy/3.1.6/connectionregistry/socket/localhost/" + kdcPort, "-1", Object.class);
-		System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.6/connectionregistry/", String.class));
-
-		ConnectionsRegistry.INSTANCE.setSocketAddressStatus("localhost", kdcPort, -1);
-		{
-			String response = spnegoRestTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
-			assertThat(response, is("home"));
-		}
+        ConnectionsRegistry.INSTANCE.setSocketAddressStatus("localhost", kdcPort, -1);
+        {
+            String response = spnegoRestTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
+            assertThat(response, is("hello"));
+        }
     }
 
     @Test
     public void testSpnegoWithPasswordOnServer() throws Exception {
 
-		SimpleKdcServer kdc = getKdc();
-		File workDir = getWorkDir();
-		String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
+        SimpleKdcServer kdc = getKdc();
+        File workDir = getWorkDir();
+        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
 
-		String serverPrincipal = "HTTP/" + host;
-		String serverPassword = "TestPassword";
-		kdc.createPrincipal(serverPrincipal, serverPassword);
+        String serverPrincipal = "HTTP/" + host;
+        String serverPassword = "TestPassword";
+        kdc.createPrincipal(serverPrincipal, serverPassword);
 
-		String clientPrincipal = "client/" + host;
-		File clientKeytab = new File(workDir, "client.keytab");
-		kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
+        String clientPrincipal = "client/" + host;
+        File clientKeytab = new File(workDir, "client.keytab");
+        kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
 
+        SpringApplication springApplication = new SpringApplicationBuilder(
+                WebSecurityConfigServerPassword.class,
+                VanillaWebConfiguration.class,
+                TestAppConfiguration.class).application();
+        context = springApplication.run(
+                "--security.basic.enabled=true",
+                "--security.user.name=username",
+                "--security.user.password=password",
+                "--serverPrincipal=" + serverPrincipal,
+                "--serverPassword=" + serverPassword
+        );
 
-		context = SpringApplication.run(new Object[] { WebSecurityConfigServerPassword.class, VanillaWebConfiguration.class,
-				WebConfiguration.class }, new String[] { "--security.basic.enabled=true",
-				"--security.user.name=username", "--security.user.password=password",
-				"--serverPrincipal=" + serverPrincipal, "--serverPassword=" + serverPassword });
+        PortInitListener portInitListener = context.getBean(PortInitListener.class);
+        assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
+        int port = portInitListener.port;
 
-		PortInitListener portInitListener = context.getBean(PortInitListener.class);
-		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
-		int port = portInitListener.port;
+        SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
 
-		SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
-
-		String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
-		assertThat(response, is("home"));
+        String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
+        assertThat(response, is("hello"));
     }
 
     @Test
     public void testSpnegoWithForward() throws Exception {
 
-		SimpleKdcServer kdc = getKdc();
-		File workDir = getWorkDir();
-		String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
+        SimpleKdcServer kdc = getKdc();
+        File workDir = getWorkDir();
+        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
 
-		String serverPrincipal = "HTTP/" + host;
-		File serverKeytab = new File(workDir, "server.keytab");
-		kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
+        String serverPrincipal = "HTTP/" + host;
+        File serverKeytab = new File(workDir, "server.keytab");
+        kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
 
-		context = SpringApplication.run(new Object[] { WebSecurityConfigSpnegoForward.class, VanillaWebConfiguration.class,
-				WebConfiguration.class }, new String[] { "--security.basic.enabled=true",
-				"--security.user.name=username", "--security.user.password=password",
-				"--serverPrincipal=" + serverPrincipal, "--serverKeytab=" + serverKeytab.getAbsolutePath() });
+        SpringApplication springApplication = new SpringApplicationBuilder(
+                WebSecurityConfigSpnegoForward.class,
+                VanillaWebConfiguration.class,
+                TestAppConfiguration.class).application();
+        context = springApplication.run(
+                "--security.basic.enabled=true",
+                "--security.user.name=username",
+                "--security.user.password=password",
+                "--serverPrincipal=" + serverPrincipal,
+                "--serverKeytab=" + serverKeytab.getAbsolutePath()
+        );
 
-		PortInitListener portInitListener = context.getBean(PortInitListener.class);
-		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
-		int port = portInitListener.port;
+        PortInitListener portInitListener = context.getBean(PortInitListener.class);
+        assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
+        int port = portInitListener.port;
 
-		// TODO: should tweak minikdc so that we can use kerberos principals
-		//       which are not valid, for now just use plain RestTemplate
+        // TODO: should tweak minikdc so that we can use kerberos principals
+        //       which are not valid, for now just use plain RestTemplate
 
-		// just checking that we get 401 which we skip and
-		// get login page content
-		RestTemplate restTemplate = new RestTemplate();
-		restTemplate.setErrorHandler(new DefaultResponseErrorHandler() {
-			@Override
-			public void handleError(ClientHttpResponse response) throws IOException {
-			}
-		});
+        // just checking that we get 401 which we skip and
+        // get login page content
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.setErrorHandler(new DefaultResponseErrorHandler() {
+            @Override
+            public void handleError(ClientHttpResponse response) throws IOException {
+            }
+        });
 
-		String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
-		assertThat(response, is("login"));
+        String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
+        assertThat(response, is("login"));
     }
 
     @Test
     public void testSpnegoWithSuccessHandler() throws Exception {
 
-		SimpleKdcServer kdc = getKdc();
-		File workDir = getWorkDir();
-		String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
+        SimpleKdcServer kdc = getKdc();
+        File workDir = getWorkDir();
+        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
 
-		String serverPrincipal = "HTTP/" + host;
-		File serverKeytab = new File(workDir, "server.keytab");
-		kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
+        String serverPrincipal = "HTTP/" + host;
+        File serverKeytab = new File(workDir, "server.keytab");
+        kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
 
-		String clientPrincipal = "client/" + host;
-		File clientKeytab = new File(workDir, "client.keytab");
-		kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
+        String clientPrincipal = "client/" + host;
+        File clientKeytab = new File(workDir, "client.keytab");
+        kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
 
+        SpringApplication springApplication = new SpringApplicationBuilder(
+                WebSecurityConfigSuccessHandler.class,
+                VanillaWebConfiguration.class,
+                TestAppConfiguration.class).application();
+        context = springApplication.run(
+                "--security.basic.enabled=true",
+                "--security.user.name=username",
+                "--security.user.password=password",
+                "--serverPrincipal=" + serverPrincipal,
+                "--serverKeytab=" + serverKeytab.getAbsolutePath()
+        );
 
-		context = SpringApplication.run(new Object[] { WebSecurityConfigSuccessHandler.class, VanillaWebConfiguration.class,
-				WebConfiguration.class }, new String[] { "--security.basic.enabled=true",
-				"--security.user.name=username", "--security.user.password=password",
-				"--serverPrincipal=" + serverPrincipal, "--serverKeytab=" + serverKeytab.getAbsolutePath() });
+        PortInitListener portInitListener = context.getBean(PortInitListener.class);
+        assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
+        int port = portInitListener.port;
 
-		PortInitListener portInitListener = context.getBean(PortInitListener.class);
-		assertThat(portInitListener.latch.await(10, TimeUnit.SECONDS), is(true));
-		int port = portInitListener.port;
+        SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
 
-		SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath()));
-
-		String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
-		assertThat(response, is("home"));
+        String response = restTemplate.getForObject("http://" + host + ":" + port + "/hello", String.class);
+        assertThat(response, is("hello"));
     }
 
-	protected static class PortInitListener implements ApplicationListener<EmbeddedServletContainerInitializedEvent> {
+    protected static class PortInitListener implements ApplicationListener<ServletWebServerInitializedEvent> {
 
-		public int port;
-		public CountDownLatch latch = new CountDownLatch(1);
+        public int port;
+        public CountDownLatch latch = new CountDownLatch(1);
 
-		@Override
-		public void onApplicationEvent(EmbeddedServletContainerInitializedEvent event) {
-			port = event.getEmbeddedServletContainer().getPort();
-			latch.countDown();
-		}
+        @Override
+        public void onApplicationEvent(ServletWebServerInitializedEvent event) {
+            port = event.getWebServer().getPort();
+            latch.countDown();
+        }
 
-	}
+    }
 
     @Configuration
     protected static class VanillaWebConfiguration {
 
-    	@Bean
-    	public PortInitListener portListener() {
-    		return new PortInitListener();
-    	}
+        @Bean
+        public PortInitListener portListener() {
+            return new PortInitListener();
+        }
 
-    	@Bean
-    	public TomcatEmbeddedServletContainerFactory tomcatEmbeddedServletContainerFactory() {
-    	    TomcatEmbeddedServletContainerFactory factory = new TomcatEmbeddedServletContainerFactory();
-    	    factory.setPort(0);
-    	    return factory;
-    	}
-    }
-
-    @MinimalWebConfiguration
-    @Import(SecurityAutoConfiguration.class)
-	@EnableSniffy
-    @Controller
-	protected static class WebConfiguration {
-
-    	@RequestMapping(method = RequestMethod.GET)
-    	@ResponseBody
-    	public String home() {
-    		return "home";
-    	}
-
-    	@RequestMapping(method = RequestMethod.GET, value = "/login")
-    	@ResponseBody
-    	public String login() {
-    		return "login";
-    	}
-
-	}
-
-    @Configuration
-    @Target(ElementType.TYPE)
-    @Retention(RetentionPolicy.RUNTIME)
-    @Documented
-    @Import({ EmbeddedServletContainerAutoConfiguration.class,
-                    ServerPropertiesAutoConfiguration.class,
-                    DispatcherServletAutoConfiguration.class, WebMvcAutoConfiguration.class,
-                    HttpMessageConvertersAutoConfiguration.class,
-                    ErrorMvcAutoConfiguration.class, PropertyPlaceholderAutoConfiguration.class })
-    protected @interface MinimalWebConfiguration {
+        @Bean
+        public TomcatServletWebServerFactory tomcatServletWebServerFactory() {
+            TomcatServletWebServerFactory factory = new TomcatServletWebServerFactory();
+            factory.setPort(0);
+            return factory;
+        }
     }
 
 }
