@@ -1,20 +1,18 @@
 package com.kerb4j.server.marshall;
 
+import com.kerb4j.common.util.SpnegoProvider;
 import com.kerb4j.server.marshall.pac.Pac;
 import com.kerb4j.server.marshall.pac.PacLogonInfo;
 import com.kerb4j.server.marshall.pac.PacSid;
 import com.kerb4j.server.marshall.spnego.SpnegoInitToken;
 import com.kerb4j.server.marshall.spnego.SpnegoKerberosMechToken;
-import com.kerb4j.common.util.SpnegoProvider;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import javax.security.auth.kerberos.KerberosKey;
 import java.io.IOException;
 import java.io.InputStream;
-
-import static org.junit.Assert.*;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 
 public class TestSpnego {
 
@@ -72,7 +70,7 @@ public class TestSpnego {
             Assertions.assertTrue(spnegoToken.getMechToken().length < rc4Token.length);
             Assertions.assertNotNull(spnegoToken.getMechanism());
             Assertions.assertEquals(SpnegoProvider.LEGACY_KERBEROS_MECHANISM, spnegoToken.getMechanism());
-        } catch(Kerb4JException e) {
+        } catch (Kerb4JException e) {
             e.printStackTrace();
             Assertions.fail(e.getMessage());
         }
@@ -89,7 +87,7 @@ public class TestSpnego {
             Assertions.assertTrue(spnegoToken.getMechToken().length < desToken.length);
             Assertions.assertNotNull(spnegoToken.getMechanism());
             Assertions.assertEquals(SpnegoProvider.LEGACY_KERBEROS_MECHANISM, spnegoToken.getMechanism());
-        } catch(Kerb4JException e) {
+        } catch (Kerb4JException e) {
             e.printStackTrace();
             Assertions.fail(e.getMessage());
         }
@@ -106,7 +104,7 @@ public class TestSpnego {
             Assertions.assertTrue(spnegoToken.getMechToken().length < aes128Token.length);
             Assertions.assertNotNull(spnegoToken.getMechanism());
             Assertions.assertEquals(SpnegoProvider.LEGACY_KERBEROS_MECHANISM, spnegoToken.getMechanism());
-        } catch(Kerb4JException e) {
+        } catch (Kerb4JException e) {
             e.printStackTrace();
             Assertions.fail(e.getMessage());
         }
@@ -157,7 +155,7 @@ public class TestSpnego {
         try {
             spnegoToken = new SpnegoInitToken(new byte[0]);
             Assertions.fail("Should have thrown Kerb4JException.");
-        } catch(Kerb4JException e) {
+        } catch (Kerb4JException e) {
             Assertions.assertNotNull(e);
             Assertions.assertNull(spnegoToken);
         }
@@ -169,7 +167,7 @@ public class TestSpnego {
         try {
             spnegoToken = new SpnegoInitToken(corruptToken);
             Assertions.fail("Should have thrown Kerb4JException.");
-        } catch(Kerb4JException e) {
+        } catch (Kerb4JException e) {
             Assertions.assertNotNull(e);
             Assertions.assertNull(spnegoToken);
         }
@@ -181,10 +179,10 @@ public class TestSpnego {
         try {
             spnegoToken = new SpnegoInitToken(null);
             Assertions.fail("Should have thrown NullPointerException.");
-        } catch(Kerb4JException e) {
+        } catch (Kerb4JException e) {
             e.printStackTrace();
             Assertions.fail(e.getMessage());
-        } catch(NullPointerException e) {
+        } catch (NullPointerException e) {
             Assertions.assertNotNull(e);
             Assertions.assertNull(spnegoToken);
         }

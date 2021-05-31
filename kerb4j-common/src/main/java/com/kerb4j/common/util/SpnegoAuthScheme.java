@@ -21,23 +21,28 @@ package com.kerb4j.common.util;
 import com.kerb4j.common.util.base64.Base64Codec;
 
 /**
- * Example schemes are "Negotiate" and "Basic". 
+ * Example schemes are "Negotiate" and "Basic".
  *
- * <p>See examples and tutorials at 
+ * <p>See examples and tutorials at
  * <a href="http://spnego.sourceforge.net" target="_blank">http://spnego.sourceforge.net</a>
  *
  * @author Darwin V. Felix
- *
  */
 public class SpnegoAuthScheme {
 
-    /** Zero length byte array. */
+    /**
+     * Zero length byte array.
+     */
     private static final transient byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
-    /** HTTP (Request) "Authorization" Header scheme. */
+    /**
+     * HTTP (Request) "Authorization" Header scheme.
+     */
     private final transient String scheme;
 
-    /** HTTP (Request) scheme token. */
+    /**
+     * HTTP (Request) scheme token.
+     */
     private final transient String token;
 
     public SpnegoAuthScheme(final String authScheme, final String authToken) {

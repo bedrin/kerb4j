@@ -57,7 +57,6 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
     private boolean holdOnToGSSContext;
 
 
-
     @Override
     public SpnegoAuthenticationToken validateTicket(byte[] token) {
 
@@ -102,7 +101,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
 
             spnegoClient = SpnegoClient.loginWithKeyTab(servicePrincipal, keyTabLocationAsString);
         } else {
-          spnegoClient = SpnegoClient.loginWithUsernamePassword(servicePrincipal, servicePassword);
+            spnegoClient = SpnegoClient.loginWithUsernamePassword(servicePrincipal, servicePassword);
         }
     }
 
@@ -125,7 +124,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
      * file is later on read by JAAS, we cannot guarantee that <code>classpath</code>
      * works in every environment, esp. not in Java EE application servers. You
      * should use <code>file:</code> there.
-     *
+     * <p>
      * This file also needs special protection, which is another reason to
      * not include it in the classpath but rather use <code>file:/etc/http.keytab</code>
      * for example.

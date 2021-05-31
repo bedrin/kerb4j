@@ -58,9 +58,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import javax.annotation.Resource;
 import java.io.File;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.*;
 
 //FIXME - Spring boot integration test require Spring 4 as long as Spring Boot is not upgraded to version 2.X
 @RunWith(SpringRunner.class)

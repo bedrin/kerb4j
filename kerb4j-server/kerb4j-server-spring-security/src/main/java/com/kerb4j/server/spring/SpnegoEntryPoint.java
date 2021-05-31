@@ -45,67 +45,65 @@ import java.io.IOException;
  * <p>See <code>spnego-with-form-login.xml</code> in
  * spring-security-kerberos-sample for details</p>
  *
- *
  * @author Mike Wiesner
  * @author Andre Schaefer, Namics AG
- * @since 1.0
  * @see SpnegoAuthenticationProcessingFilter
+ * @since 1.0
  */
 public class SpnegoEntryPoint implements AuthenticationEntryPoint {
 
-	private static final Log LOG = LogFactory.getLog(SpnegoEntryPoint.class);
+    private static final Log LOG = LogFactory.getLog(SpnegoEntryPoint.class);
 
-	private final String forwardUrl;
+    private final String forwardUrl;
 
-	private final boolean forward;
+    private final boolean forward;
 
-	/**
-	 * Instantiates a new spnego entry point. Using this constructor the
-	 * EntryPoint will Sends back a request for a Negotiate Authentication to
-	 * the browser without providing a fallback mechanism for login, Use
-	 * constructor with forwardUrl to provide form based login.
-	 */
-	public SpnegoEntryPoint() {
-		this(null);
-	}
+    /**
+     * Instantiates a new spnego entry point. Using this constructor the
+     * EntryPoint will Sends back a request for a Negotiate Authentication to
+     * the browser without providing a fallback mechanism for login, Use
+     * constructor with forwardUrl to provide form based login.
+     */
+    public SpnegoEntryPoint() {
+        this(null);
+    }
 
-	/**
-	 * Instantiates a new spnego entry point. This constructor enables security
-	 * configuration to use SPNEGO in combination with login form as fallback
-	 * for clients that do not support this kind of authentication.
-	 *
-	 * @param forwardUrl
-	 *            URL where the login page can be found. Should be
-	 *            relative to the web-app context path (include a leading
-	 *            {@code /}) and can't be absolute URL.
-	 */
-	public SpnegoEntryPoint(String forwardUrl) {
-		if (StringUtils.hasText(forwardUrl)) {
-			Assert.isTrue(UrlUtils.isValidRedirectUrl(forwardUrl), "Forward url specified must be a valid forward URL");
-			Assert.isTrue(!UrlUtils.isAbsoluteUrl(forwardUrl), "Forward url specified must not be absolute");
-			this.forwardUrl = forwardUrl;
-			this.forward = true;
-		} else {
-			this.forwardUrl = null;
-			this.forward = false;
-		}
-	}
+    /**
+     * Instantiates a new spnego entry point. This constructor enables security
+     * configuration to use SPNEGO in combination with login form as fallback
+     * for clients that do not support this kind of authentication.
+     *
+     * @param forwardUrl URL where the login page can be found. Should be
+     *                   relative to the web-app context path (include a leading
+     *                   {@code /}) and can't be absolute URL.
+     */
+    public SpnegoEntryPoint(String forwardUrl) {
+        if (StringUtils.hasText(forwardUrl)) {
+            Assert.isTrue(UrlUtils.isValidRedirectUrl(forwardUrl), "Forward url specified must be a valid forward URL");
+            Assert.isTrue(!UrlUtils.isAbsoluteUrl(forwardUrl), "Forward url specified must not be absolute");
+            this.forwardUrl = forwardUrl;
+            this.forward = true;
+        } else {
+            this.forwardUrl = null;
+            this.forward = false;
+        }
+    }
 
-	public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException ex)
-			throws IOException, ServletException {
-		if (LOG.isDebugEnabled()) {
-			LOG.debug("Add header WWW-Authenticate:Negotiate to " + request.getRequestURL() + ", forward: "
-					+ (forward ? forwardUrl : "no"));
-		}
-		response.addHeader("WWW-Authenticate", "Negotiate");
-		response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException ex)
+            throws IOException, ServletException {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Add header WWW-Authenticate:Negotiate to " + request.getRequestURL() + ", forward: "
+                    + (forward ? forwardUrl : "no"));
+        }
+        response.addHeader("WWW-Authenticate", "Negotiate");
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
-		if (forward) {
-			RequestDispatcher dispatcher = request.getRequestDispatcher(forwardUrl);
-			dispatcher.forward(request, response);
-		} else {
-			response.flushBuffer();
-		}
-	}
+        if (forward) {
+            RequestDispatcher dispatcher = request.getRequestDispatcher(forwardUrl);
+            dispatcher.forward(request, response);
+        } else {
+            response.flushBuffer();
+        }
+    }
 
 }

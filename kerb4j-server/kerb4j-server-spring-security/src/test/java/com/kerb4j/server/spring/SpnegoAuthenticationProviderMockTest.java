@@ -39,24 +39,20 @@ import static org.mockito.Mockito.*;
  */
 public class SpnegoAuthenticationProviderMockTest {
 
-    private SpnegoAuthenticationProvider provider;
-    private com.kerb4j.server.spring.KerberosTicketValidator ticketValidator;
-    private AuthenticationUserDetailsService<SpnegoAuthenticationToken> extractGroupsUserDetailsService;
-    private UserDetailsService userDetailsService;
-
     // data
     private static final byte[] TEST_TOKEN = "TestToken".getBytes();
     private static final byte[] RESPONSE_TOKEN = "ResponseToken".getBytes();
     private static final String TEST_USER = "Testuser@SPRINGSOURCE.ORG";
-
     private static final Subject subject = new Subject();
     private static final KerberosKey[] kerberosKeys = new KerberosKey[0];
-
     private static final SpnegoAuthenticationToken TICKET_VALIDATION = new SpnegoAuthenticationToken(TEST_TOKEN, TEST_USER, RESPONSE_TOKEN, subject, kerberosKeys);
-
     private static final List<GrantedAuthority> AUTHORITY_LIST = AuthorityUtils.createAuthorityList("ROLE_ADMIN");
-    private static final UserDetails USER_DETAILS = new User(TEST_USER, "empty", true, true, true,true, AUTHORITY_LIST);
+    private static final UserDetails USER_DETAILS = new User(TEST_USER, "empty", true, true, true, true, AUTHORITY_LIST);
     private static final SpnegoRequestToken INPUT_TOKEN = new SpnegoRequestToken(TEST_TOKEN);
+    private SpnegoAuthenticationProvider provider;
+    private com.kerb4j.server.spring.KerberosTicketValidator ticketValidator;
+    private AuthenticationUserDetailsService<SpnegoAuthenticationToken> extractGroupsUserDetailsService;
+    private UserDetailsService userDetailsService;
 
     @BeforeEach
     public void before() {
@@ -72,7 +68,7 @@ public class SpnegoAuthenticationProviderMockTest {
     }
 
     @Test
-    public void testEverythingWorks(){
+    public void testEverythingWorks() {
         Authentication output = callProviderAndReturnUser(USER_DETAILS, INPUT_TOKEN);
         Assertions.assertNotNull(output);
         Assertions.assertEquals(TEST_USER, output.getName());
@@ -82,9 +78,9 @@ public class SpnegoAuthenticationProviderMockTest {
     }
 
     @Test
-    public void testAuthenticationDetailsPropagation(){
-    	SpnegoRequestToken requestToken = new SpnegoRequestToken(TEST_TOKEN);
-    	requestToken.setDetails("TestDetails");
+    public void testAuthenticationDetailsPropagation() {
+        SpnegoRequestToken requestToken = new SpnegoRequestToken(TEST_TOKEN);
+        requestToken.setDetails("TestDetails");
         Authentication output = callProviderAndReturnUser(USER_DETAILS, requestToken);
         Assertions.assertNotNull(output);
         Assertions.assertEquals(requestToken.getDetails(), output.getDetails());
@@ -94,8 +90,8 @@ public class SpnegoAuthenticationProviderMockTest {
     @Test()
     public void testUserIsDisabled() {
         DisabledException exception = Assertions.assertThrows(DisabledException.class,
-                () ->{
-                    User disabledUser = new User(TEST_USER, "empty", false, true, true,true, AUTHORITY_LIST);
+                () -> {
+                    User disabledUser = new User(TEST_USER, "empty", false, true, true, true, AUTHORITY_LIST);
                     callProviderAndReturnUser(disabledUser, INPUT_TOKEN);
                 });
         Assertions.assertNotNull(exception);
@@ -104,7 +100,7 @@ public class SpnegoAuthenticationProviderMockTest {
     @Test()
     public void testUserAccountIsExpired() {
         AccountExpiredException exception = Assertions.assertThrows(AccountExpiredException.class, () -> {
-            User expiredUser = new User(TEST_USER, "empty", true, false, true,true, AUTHORITY_LIST);
+            User expiredUser = new User(TEST_USER, "empty", true, false, true, true, AUTHORITY_LIST);
             callProviderAndReturnUser(expiredUser, INPUT_TOKEN);
         });
         Assertions.assertNotNull(exception);
@@ -115,7 +111,7 @@ public class SpnegoAuthenticationProviderMockTest {
         CredentialsExpiredException exception = Assertions.assertThrows(
                 CredentialsExpiredException.class,
                 () -> {
-                    User credExpiredUser = new User(TEST_USER, "empty", true, true, false ,true, AUTHORITY_LIST);
+                    User credExpiredUser = new User(TEST_USER, "empty", true, true, false, true, AUTHORITY_LIST);
                     callProviderAndReturnUser(credExpiredUser, INPUT_TOKEN);
                 }
         );
@@ -127,7 +123,7 @@ public class SpnegoAuthenticationProviderMockTest {
         LockedException exception = Assertions.assertThrows(
                 LockedException.class,
                 () -> {
-                    User lockedUser = new User(TEST_USER, "empty", true, true, true ,false, AUTHORITY_LIST);
+                    User lockedUser = new User(TEST_USER, "empty", true, true, true, false, AUTHORITY_LIST);
                     callProviderAndReturnUser(lockedUser, INPUT_TOKEN);
                 }
         );
@@ -152,7 +148,7 @@ public class SpnegoAuthenticationProviderMockTest {
 
 
     @Test()
-    public void testTicketValidationWrong(){
+    public void testTicketValidationWrong() {
         BadCredentialsException exception = Assertions.assertThrows(
                 BadCredentialsException.class, () -> {
                     // stubbing

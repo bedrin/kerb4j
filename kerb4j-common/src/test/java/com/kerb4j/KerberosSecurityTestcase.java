@@ -19,10 +19,11 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kerby.kerberos.kerb.client.KrbConfig;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
-import java.io.File;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+
+import java.io.File;
 
 /**
  * KerberosSecurityTestcase provides a base class for using MiniKdc with other
@@ -32,77 +33,73 @@ import org.junit.jupiter.api.BeforeEach;
  *
  * @author Original Hadoop MiniKdc Authors
  * @author Janne Valkealahti
- *
  */
 public class KerberosSecurityTestcase {
 
-	private static final Log log = LogFactory.getLog(KerberosSecurityTestcase.class);
+    private static final Log log = LogFactory.getLog(KerberosSecurityTestcase.class);
+    private static int i = 10000;
+    protected int kdcPort;
+    private SimpleKdcServer kdc;
+    private File workDir;
+    private KrbConfig conf;
 
-	private SimpleKdcServer kdc;
-	private File workDir;
-	private KrbConfig conf;
+    @BeforeAll
+    public static void debugKerberos() {
+        System.setProperty("sun.security.krb5.debug", "true");
+    }
 
-	protected int kdcPort;
+    @BeforeEach
+    public void startMiniKdc() throws Exception {
 
-	private static int i = 10000;
+        kdcPort = i++; // Since SimpleKdcServer doesn't have reuse socket address option we need to increment the port
 
-	@BeforeAll
-	public static void debugKerberos() {
-		System.setProperty("sun.security.krb5.debug", "true");
-	}
+        createTestDir();
+        createMiniKdcConf();
 
-	@BeforeEach
-	public void startMiniKdc() throws Exception {
+        log.info("Starting Simple KDC server on port " + kdcPort);
 
-		kdcPort = i++; // Since SimpleKdcServer doesn't have reuse socket address option we need to increment the port
+        kdc = new SimpleKdcServer(workDir, conf);
+        kdc.setKdcPort(kdcPort);
+        kdc.setAllowUdp(false);
+        kdc.init();
+        kdc.start();
+    }
 
-		createTestDir();
-		createMiniKdcConf();
+    @AfterEach
+    public void stopMiniKdc() throws Exception {
+        log.info("Stopping Simple KDC server on port " + kdcPort);
+        if (kdc != null) {
+            kdc.stop();
+            log.info("Stopped Simple KDC server on port " + kdcPort);
+        }
+    }
 
-		log.info("Starting Simple KDC server on port " + kdcPort);
+    /**
+     * Create a working directory, it should be the build directory. Under this
+     * directory an ApacheDS working directory will be created, this directory
+     * will be deleted when the MiniKdc stops.
+     */
+    public void createTestDir() {
+        workDir = new File(System.getProperty("test.dir", "target"));
+    }
 
-		kdc = new SimpleKdcServer(workDir, conf);
-		kdc.setKdcPort(kdcPort);
-		kdc.setAllowUdp(false);
-		kdc.init();
-		kdc.start();
-	}
+    /**
+     * Create a Kdc configuration
+     */
+    public void createMiniKdcConf() {
+        conf = new KrbConfig();
+    }
 
-	@AfterEach
-	public void stopMiniKdc() throws Exception {
-		log.info("Stopping Simple KDC server on port " + kdcPort);
-		if (kdc != null) {
-			kdc.stop();
-			log.info("Stopped Simple KDC server on port " + kdcPort);
-		}
-	}
+    public SimpleKdcServer getKdc() {
+        return kdc;
+    }
 
-	/**
-	 * Create a working directory, it should be the build directory. Under this
-	 * directory an ApacheDS working directory will be created, this directory
-	 * will be deleted when the MiniKdc stops.
-	 */
-	public void createTestDir() {
-		workDir = new File(System.getProperty("test.dir", "target"));
-	}
+    public File getWorkDir() {
+        return workDir;
+    }
 
-	/**
-	 * Create a Kdc configuration
-	 */
-	public void createMiniKdcConf() {
-		conf = new KrbConfig();
-	}
-
-	public SimpleKdcServer getKdc() {
-		return kdc;
-	}
-
-	public File getWorkDir() {
-		return workDir;
-	}
-
-	public KrbConfig getConf() {
-		return conf;
-	}
+    public KrbConfig getConf() {
+        return conf;
+    }
 
 }

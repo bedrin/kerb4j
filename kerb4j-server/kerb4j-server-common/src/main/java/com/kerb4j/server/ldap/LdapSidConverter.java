@@ -1,15 +1,14 @@
 package com.kerb4j.server.ldap;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.directory.Attributes;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class LdapSidConverter {
 
@@ -35,17 +34,17 @@ public class LdapSidConverter {
         searchCtls.setSearchScope(SearchControls.SUBTREE_SCOPE);
         StringBuilder filterBuilder = new StringBuilder();
         filterBuilder.append("(&(objectClass=group)(|");
-        for(String sid : sids)
+        for (String sid : sids)
             filterBuilder.append("(objectSid=" + sid + ")");
         filterBuilder.append("))");
 
         names = new ArrayList<String>();
         NamingEnumeration<SearchResult> answer = ldapConnection.search(directoryBase, filterBuilder
                 .toString(), searchCtls);
-        while(answer.hasMoreElements()) {
-            Attributes resultAttrs = ((SearchResult)answer.nextElement()).getAttributes();
-            if(resultAttrs != null)
-                names.add((String)resultAttrs.get("sAMAccountName").get());
+        while (answer.hasMoreElements()) {
+            Attributes resultAttrs = ((SearchResult) answer.nextElement()).getAttributes();
+            if (resultAttrs != null)
+                names.add((String) resultAttrs.get("sAMAccountName").get());
         }
 
         return names;

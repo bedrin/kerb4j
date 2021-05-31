@@ -30,6 +30,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.util.List;
+
 import static org.mockito.Mockito.when;
 
 /**
@@ -40,16 +41,14 @@ import static org.mockito.Mockito.when;
  */
 public class KerberosAuthenticationProviderTest extends KerberosSecurityTestcase {
 
-    private com.kerb4j.server.spring.KerberosAuthenticationProvider provider;
-
-    @Mock
-    private UserDetailsService userDetailsService;
-
     private static final String TEST_USER = "Testuser";
     private static final String TEST_PASSWORD = "password";
     private static final UsernamePasswordAuthenticationToken INPUT_TOKEN = new UsernamePasswordAuthenticationToken(TEST_USER, TEST_PASSWORD);
     private static final List<GrantedAuthority> AUTHORITY_LIST = AuthorityUtils.createAuthorityList("ROLE_ADMIN");
     private static final UserDetails USER_DETAILS = new User(TEST_USER, TEST_PASSWORD, true, true, true, true, AUTHORITY_LIST);
+    private com.kerb4j.server.spring.KerberosAuthenticationProvider provider;
+    @Mock
+    private UserDetailsService userDetailsService;
 
     @BeforeEach
     public void before() {
@@ -76,10 +75,10 @@ public class KerberosAuthenticationProviderTest extends KerberosSecurityTestcase
     }
 
     @Test
-    public void testLoginFailed(){
+    public void testLoginFailed() {
 
         SimpleKdcServer kdc = getKdc();
-        Exception exception = Assertions.assertThrows(Exception.class, () ->{
+        Exception exception = Assertions.assertThrows(Exception.class, () -> {
             kdc.createPrincipal(TEST_USER, TEST_PASSWORD + "nonce");
             when(userDetailsService.loadUserByUsername(TEST_USER)).thenReturn(USER_DETAILS);
             provider.authenticate(INPUT_TOKEN);

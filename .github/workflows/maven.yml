@@ -19,18 +19,18 @@ jobs:
           java-version: 11
       - name: Build with Maven
         run: mvn -B clean package --file pom.xml -U
-#        run: mvn -B clean package jacoco:report --file pom.xml -U
-#      - uses: codecov/codecov-action@v1
-#        with:
-#          token: ${{ secrets.CODECOV_TOKEN }}
+  #        run: mvn -B clean package jacoco:report --file pom.xml -U
+  #      - uses: codecov/codecov-action@v1
+  #        with:
+  #          token: ${{ secrets.CODECOV_TOKEN }}
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         # test against latest update of each major Java version, as well as specific updates of LTS versions:
-        java: [ 8, 9, 10, 11, 12, 13, 14, 15, 16, 17-ea]
-        os: [ubuntu-20.04, windows-2019, macos-10.15]
-    name:  Test JDK ${{ matrix.java }}, ${{ matrix.os }}
+        java: [ 8, 9, 10, 11, 12, 13, 14, 15, 16, 17-ea ]
+        os: [ ubuntu-20.04, windows-2019, macos-10.15 ]
+    name: Test JDK ${{ matrix.java }}, ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
       - name: Set up JDK ${{ matrix.java }}

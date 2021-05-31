@@ -19,9 +19,10 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(locations= {"AuthProviderConfig.xml"})
+@ContextConfiguration(locations = {"AuthProviderConfig.xml"})
 public class AuthProviderConfigTest {
 
-	@Test
-	public void configLoads() {}
+    @Test
+    public void configLoads() {
+    }
 }

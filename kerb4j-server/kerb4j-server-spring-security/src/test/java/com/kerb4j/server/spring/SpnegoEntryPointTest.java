@@ -15,12 +15,13 @@
  */
 package com.kerb4j.server.spring;
 
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
 import javax.servlet.RequestDispatcher;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
 import static org.mockito.Mockito.*;
 
 /**
@@ -33,52 +34,52 @@ import static org.mockito.Mockito.*;
  */
 public class SpnegoEntryPointTest {
 
-	private final SpnegoEntryPoint entryPoint = new SpnegoEntryPoint();
+    private final SpnegoEntryPoint entryPoint = new SpnegoEntryPoint();
 
-	@Test
-	public void testEntryPointOk() throws Exception {
-		HttpServletRequest request = mock(HttpServletRequest.class);
-		HttpServletResponse response = mock(HttpServletResponse.class);
+    @Test
+    public void testEntryPointOk() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpServletResponse response = mock(HttpServletResponse.class);
 
-		entryPoint.commence(request, response, null);
+        entryPoint.commence(request, response, null);
 
-		verify(response).addHeader("WWW-Authenticate", "Negotiate");
-		verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-	}
+        verify(response).addHeader("WWW-Authenticate", "Negotiate");
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    }
 
-	@Test
-	public void testEntryPointOkWithDispatcher() throws Exception {
-		SpnegoEntryPoint entryPoint = new SpnegoEntryPoint();
-		HttpServletResponse response = mock(HttpServletResponse.class);
-		HttpServletRequest request = mock(HttpServletRequest.class);
-		RequestDispatcher requestDispatcher = mock(RequestDispatcher.class);
-		when(request.getRequestDispatcher(anyString())).thenReturn(requestDispatcher);
-		entryPoint.commence(request, response, null);
-		verify(response).addHeader("WWW-Authenticate", "Negotiate");
-		verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-	}
+    @Test
+    public void testEntryPointOkWithDispatcher() throws Exception {
+        SpnegoEntryPoint entryPoint = new SpnegoEntryPoint();
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        RequestDispatcher requestDispatcher = mock(RequestDispatcher.class);
+        when(request.getRequestDispatcher(anyString())).thenReturn(requestDispatcher);
+        entryPoint.commence(request, response, null);
+        verify(response).addHeader("WWW-Authenticate", "Negotiate");
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    }
 
-	@Test
-	public void testEntryPointForwardOk() throws Exception {
-		String forwardUrl = "/login";
-		SpnegoEntryPoint entryPoint = new SpnegoEntryPoint(forwardUrl);
-		HttpServletResponse response = mock(HttpServletResponse.class);
-		HttpServletRequest request = mock(HttpServletRequest.class);
-		RequestDispatcher requestDispatcher = mock(RequestDispatcher.class);
-		when(request.getRequestDispatcher(anyString())).thenReturn(requestDispatcher);
-		entryPoint.commence(request, response, null);
-		verify(response).addHeader("WWW-Authenticate", "Negotiate");
-		verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-		verify(request).getRequestDispatcher(forwardUrl);
-		verify(requestDispatcher).forward(request, response);
-	}
+    @Test
+    public void testEntryPointForwardOk() throws Exception {
+        String forwardUrl = "/login";
+        SpnegoEntryPoint entryPoint = new SpnegoEntryPoint(forwardUrl);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        RequestDispatcher requestDispatcher = mock(RequestDispatcher.class);
+        when(request.getRequestDispatcher(anyString())).thenReturn(requestDispatcher);
+        entryPoint.commence(request, response, null);
+        verify(response).addHeader("WWW-Authenticate", "Negotiate");
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        verify(request).getRequestDispatcher(forwardUrl);
+        verify(requestDispatcher).forward(request, response);
+    }
 
-	@Test()
-	public void testEntryPointForwardAbsolute() {
-		IllegalArgumentException exception = Assertions.assertThrows(
-				IllegalArgumentException.class, () -> new SpnegoEntryPoint("http://test/login")
-		);
-		Assertions.assertNotNull(exception);
-	}
+    @Test()
+    public void testEntryPointForwardAbsolute() {
+        IllegalArgumentException exception = Assertions.assertThrows(
+                IllegalArgumentException.class, () -> new SpnegoEntryPoint("http://test/login")
+        );
+        Assertions.assertNotNull(exception);
+    }
 
 }

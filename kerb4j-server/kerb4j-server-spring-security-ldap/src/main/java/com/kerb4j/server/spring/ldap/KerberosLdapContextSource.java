@@ -30,7 +30,7 @@ import java.util.List;
 /**
  * Implementation of an {@link LdapContextSource} that authenticates with the
  * ldap server using Kerberos.
- *
+ * <p>
  * Example usage:
  * <pre>
  *  &lt;bean id=&quot;authorizationContextSource&quot; class=&quot;org.springframework.security.kerberos.ldap.KerberosLdapContextSource&quot;&gt;
@@ -43,72 +43,71 @@ import java.util.List;
  *       group-search-filter=&quot;(member={0})&quot; group-role-attribute=&quot;cn&quot; role-prefix=&quot;none&quot; /&gt;
  * </pre>
  *
- * @see SpnegoClient
  * @author Nelson Rodrigues
- *
+ * @see SpnegoClient
  */
 public class KerberosLdapContextSource extends DefaultSpringSecurityContextSource {
 
-	private SpnegoClient spnegoClient;
+    private SpnegoClient spnegoClient;
 
-	/**
-	 * Instantiates a new kerberos ldap context source.
-	 *
-	 * @param url the url
-	 */
-	public KerberosLdapContextSource(String url) {
-		super(url);
-	}
+    /**
+     * Instantiates a new kerberos ldap context source.
+     *
+     * @param url the url
+     */
+    public KerberosLdapContextSource(String url) {
+        super(url);
+    }
 
-	/**
-	 * Instantiates a new kerberos ldap context source.
-	 *
-	 * @param urls the urls
-	 * @param baseDn the base dn
-	 */
-	public KerberosLdapContextSource(List<String> urls, String baseDn) {
-		super(urls, baseDn);
-	}
+    /**
+     * Instantiates a new kerberos ldap context source.
+     *
+     * @param urls   the urls
+     * @param baseDn the base dn
+     */
+    public KerberosLdapContextSource(List<String> urls, String baseDn) {
+        super(urls, baseDn);
+    }
 
-	@Override
-	protected DirContext getDirContextInstance(final Hashtable<String, Object> environment)
-			throws NamingException {
+    @Override
+    protected DirContext getDirContextInstance(final Hashtable<String, Object> environment)
+            throws NamingException {
 
-	    environment.put(Context.SECURITY_AUTHENTICATION, "GSSAPI");
+        environment.put(Context.SECURITY_AUTHENTICATION, "GSSAPI");
 
-		Subject serviceSubject = spnegoClient.getSubject();
+        Subject serviceSubject = spnegoClient.getSubject();
 
-		final NamingException[] suppressedException = new NamingException[] { null };
-		DirContext dirContext = Subject.doAs(serviceSubject, new PrivilegedAction<DirContext>() {
-			@Override
-			public DirContext run() {
-				try {
-					return KerberosLdapContextSource.super.getDirContextInstance(environment);
-				} catch (NamingException e) {
-					suppressedException[0] = e;
-					return null;
-				}
-			}
-		});
+        final NamingException[] suppressedException = new NamingException[]{null};
+        DirContext dirContext = Subject.doAs(serviceSubject, new PrivilegedAction<DirContext>() {
+            @Override
+            public DirContext run() {
+                try {
+                    return KerberosLdapContextSource.super.getDirContextInstance(environment);
+                } catch (NamingException e) {
+                    suppressedException[0] = e;
+                    return null;
+                }
+            }
+        });
 
-		if (suppressedException[0] != null) {
-			throw suppressedException[0];
-		}
+        if (suppressedException[0] != null) {
+            throw suppressedException[0];
+        }
 
-		return dirContext;
-	}
+        return dirContext;
+    }
 
-	/**
-	 * The spnegoClient to get the serviceSubject for LDAP authentication
-	 *
-	 * @param spnegoClient the spnegoClient
-	 */
-	public void setSpnegoClient(SpnegoClient spnegoClient) {
-		this.spnegoClient = spnegoClient;
-	}
+    public SpnegoClient getSpnegoClient() {
+        return spnegoClient;
+    }
 
-	public SpnegoClient getSpnegoClient() {
-		return spnegoClient;
-	}
+    /**
+     * The spnegoClient to get the serviceSubject for LDAP authentication
+     *
+     * @param spnegoClient the spnegoClient
+     */
+    public void setSpnegoClient(SpnegoClient spnegoClient) {
+        this.spnegoClient = spnegoClient;
+    }
 
 }

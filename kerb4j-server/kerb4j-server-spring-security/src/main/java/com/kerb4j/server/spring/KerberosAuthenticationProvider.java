@@ -17,14 +17,11 @@ package com.kerb4j.server.spring;
 
 import com.kerb4j.client.SpnegoClient;
 import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-
-import javax.security.auth.login.LoginException;
 
 /**
  * {@link AuthenticationProvider} for kerberos.
@@ -38,7 +35,7 @@ public class KerberosAuthenticationProvider implements AuthenticationProvider {
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-		UsernamePasswordAuthenticationToken auth = (UsernamePasswordAuthenticationToken) authentication;
+        UsernamePasswordAuthenticationToken auth = (UsernamePasswordAuthenticationToken) authentication;
         String validatedUsername;
 
         SpnegoClient spnegoClient = SpnegoClient.
@@ -47,9 +44,9 @@ public class KerberosAuthenticationProvider implements AuthenticationProvider {
         validatedUsername = auth.getName(); // TODO: take from spnegoClient instead ?
 
         UserDetails userDetails = this.userDetailsService.loadUserByUsername(validatedUsername);
-		UsernamePasswordAuthenticationToken output = new UsernamePasswordAuthenticationToken(userDetails,
-				auth.getCredentials(), userDetails.getAuthorities());
-		output.setDetails(authentication.getDetails());
+        UsernamePasswordAuthenticationToken output = new UsernamePasswordAuthenticationToken(userDetails,
+                auth.getCredentials(), userDetails.getAuthorities());
+        output.setDetails(authentication.getDetails());
         return output;
 
     }

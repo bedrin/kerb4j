@@ -1,14 +1,13 @@
 package com.kerb4j.server.marshall;
 
-import java.io.IOException;
-import java.io.InputStream;
-
-import javax.crypto.spec.SecretKeySpec;
-
 import com.kerb4j.server.marshall.pac.Pac;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import javax.crypto.spec.SecretKeySpec;
+import java.io.IOException;
+import java.io.InputStream;
 
 public class TestPac {
 
@@ -67,7 +66,7 @@ public class TestPac {
             Assertions.assertEquals("DOMAIN", pac.getLogonInfo().getDomainName());
             Assertions.assertEquals("WS2008", pac.getLogonInfo().getServerName());
 
-        } catch(Kerb4JException e) {
+        } catch (Kerb4JException e) {
             e.printStackTrace();
             Assertions.fail(e.getMessage());
         }
@@ -89,7 +88,7 @@ public class TestPac {
             Assertions.assertEquals("DOMAIN", pac.getLogonInfo().getDomainName());
             Assertions.assertEquals("WS2008", pac.getLogonInfo().getServerName());
 
-        } catch(Kerb4JException e) {
+        } catch (Kerb4JException e) {
             e.printStackTrace();
             Assertions.fail(e.getMessage());
         }
@@ -101,7 +100,7 @@ public class TestPac {
         try {
             pac = new Pac(corruptData, rc4Key);
             Assertions.fail("Should have thrown Kerb4JException.");
-        } catch(Kerb4JException e) {
+        } catch (Kerb4JException e) {
             Assertions.assertNotNull(e);
             Assertions.assertNull(pac);
         }
@@ -113,7 +112,7 @@ public class TestPac {
         try {
             pac = new Pac(new byte[0], rc4Key);
             Assertions.fail("Should have thrown Kerb4JException.");
-        } catch(Kerb4JException e) {
+        } catch (Kerb4JException e) {
             Assertions.assertNotNull(e);
             Assertions.assertNull(pac);
         }
@@ -125,10 +124,10 @@ public class TestPac {
         try {
             pac = new Pac(null, rc4Key);
             Assertions.fail("Should have thrown NullPointerException.");
-        } catch(Kerb4JException e) {
+        } catch (Kerb4JException e) {
             e.printStackTrace();
             Assertions.fail(e.getMessage());
-        } catch(NullPointerException e) {
+        } catch (NullPointerException e) {
             Assertions.assertNotNull(e);
             Assertions.assertNull(pac);
         }
@@ -140,7 +139,7 @@ public class TestPac {
         try {
             pac = new Pac(rc4Data, corruptKey);
             Assertions.fail("Should have thrown Kerb4JException.");
-        } catch(Kerb4JException e) {
+        } catch (Kerb4JException e) {
             Assertions.assertNotNull(e);
             Assertions.assertNull(pac);
         }

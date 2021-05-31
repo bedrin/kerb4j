@@ -3,8 +3,6 @@ package com.kerb4j.server.tomcat;
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoHttpURLConnection;
-import java.io.IOException;
-import java.security.PrivilegedActionException;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.WebResourceRoot;
 import org.apache.catalina.core.StandardContext;
@@ -14,27 +12,25 @@ import org.apache.catalina.webresources.StandardRoot;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.InetAddress;
-import java.net.URL;
-
 import org.ietf.jgss.GSSException;
-import static org.junit.Assert.assertEquals;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.URL;
+import java.security.PrivilegedActionException;
+
 public class BaseTomcatTest extends KerberosSecurityTestcase {
 
-    private static final Log log = LogFactory.getLog(BaseTomcatTest.class);
-
     public static final int TOMCAT_PORT = 8080;
-
+    private static final Log log = LogFactory.getLog(BaseTomcatTest.class);
     private Tomcat tomcat;
 
     private String host;

@@ -17,9 +17,6 @@ package com.kerb4j.server.spring;
 
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +32,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 import static org.mockito.Mockito.mock;
@@ -48,18 +48,16 @@ import static org.mockito.Mockito.when;
  */
 public class SpnegoAuthenticationProviderTest extends KerberosSecurityTestcase {
 
-    @TempDir
-    Path tempDir;
-
     public static final String SERVER_SPN = "HTTP/server.springsource.org";
-    private SpnegoAuthenticationProvider provider;
-    private UserDetailsService userDetailsService;
-
     private static final String TEST_USER = "Testuser";
     private static final String TEST_PASSWORD = "password";
     private static final UsernamePasswordAuthenticationToken INPUT_TOKEN = new UsernamePasswordAuthenticationToken(TEST_USER, TEST_PASSWORD);
     private static final List<GrantedAuthority> AUTHORITY_LIST = AuthorityUtils.createAuthorityList("ROLE_ADMIN");
     private static final UserDetails USER_DETAILS = new User(TEST_USER, TEST_PASSWORD, true, true, true, true, AUTHORITY_LIST);
+    @TempDir
+    Path tempDir;
+    private SpnegoAuthenticationProvider provider;
+    private UserDetailsService userDetailsService;
 
     @BeforeEach
     public void before() throws Exception {
@@ -67,7 +65,7 @@ public class SpnegoAuthenticationProviderTest extends KerberosSecurityTestcase {
         SimpleKdcServer kdc = getKdc();
         kdc.createPrincipal(TEST_USER, TEST_PASSWORD);
         Assertions.assertTrue(Files.isDirectory(tempDir));
-        Path keytabFilePath = Paths.get(tempDir.toFile().getAbsolutePath(),"serverKeyTab.keytab");
+        Path keytabFilePath = Paths.get(tempDir.toFile().getAbsolutePath(), "serverKeyTab.keytab");
         Files.deleteIfExists(keytabFilePath);
         File keytabFile = keytabFilePath.toFile();
         kdc.createAndExportPrincipals(keytabFile, SERVER_SPN);
