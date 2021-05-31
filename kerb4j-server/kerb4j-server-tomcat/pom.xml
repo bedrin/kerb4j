@@ -12,7 +12,7 @@
     <name>kerb4j-server-tomcat</name>
 
     <properties>
-        <tomcat.version>8.5.27</tomcat.version>
+        <tomcat.version>9.0.46</tomcat.version>
     </properties>
 
     <dependencies>
@@ -20,7 +20,7 @@
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-server-common</artifactId>
-            <version>0.1.1-SNAPSHOT</version>
+            <version>${project.parent.version}</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.apache.tomcat/tomcat-catalina -->

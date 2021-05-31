@@ -12,14 +12,14 @@
     <name>kerb4j-server-spring-security-ldap</name>
 
     <properties>
-        <spring.security.version>5.0.12.RELEASE</spring.security.version>
+        <spring.security.version>5.3.9.RELEASE</spring.security.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-server-spring-security</artifactId>
-            <version>0.1.1-SNAPSHOT</version>
+            <version>${project.parent.version}</version>
         </dependency>
 
         <dependency>

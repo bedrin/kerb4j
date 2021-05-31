@@ -26,11 +26,12 @@
              versions of JAVA, so we can use JAVA 8 features for testing -->
         <javaTargetSource>1.7</javaTargetSource>
         <javaDevelSource>1.8</javaDevelSource>
-        <spring.boot.version>2.0.9.RELEASE</spring.boot.version>
-        <spring.security.version>5.0.12.RELEASE</spring.security.version>
-        <spring.web.version>5.0.13.RELEASE</spring.web.version>
-        <servlet.api.version>3.1.0</servlet.api.version>
+        <spring.boot.version>2.3.11.RELEASE</spring.boot.version>
+        <spring.security.version>5.3.9.RELEASE</spring.security.version>
+        <spring.web.version>5.2.15.RELEASE</spring.web.version>
+        <servlet.api.version>4.0.1</servlet.api.version>
         <maven.compiler.version>3.8.1</maven.compiler.version>
+        <maven.javadoc.version>3.2.0</maven.javadoc.version>
         <apacheDirServerVersion>2.0.0.AM26</apacheDirServerVersion>
         <junit.jupiter.version>5.7.2</junit.jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
@@ -206,7 +207,6 @@
         </dependency>
 
         <!-- Spring test dependencies -->
-
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
@@ -309,7 +309,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.2.0</version>
+                <version>${maven.javadoc.version}</version>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>

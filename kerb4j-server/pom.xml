@@ -12,6 +12,11 @@
     <name>kerb4j-server</name>
     <packaging>pom</packaging>
 
+    <properties>
+        <servlet.api.version>4.0.1</servlet.api.version>
+    </properties>
+
+
     <modules>
         <module>kerb4j-server-common</module>
         <module>kerb4j-server-tomcat</module>
@@ -23,26 +28,25 @@
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-common</artifactId>
-            <version>0.1.1-SNAPSHOT</version>
+            <version>${project.parent.version}</version>
         </dependency>
 
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
-            <version>3.1.0</version>
+            <version>${servlet.api.version}</version>
             <scope>provided</scope>
         </dependency>
-
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-client</artifactId>
-            <version>0.1.1-SNAPSHOT</version>
+            <version>${project.parent.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-common</artifactId>
-            <version>0.1.1-SNAPSHOT</version>
+            <version>${project.parent.version}</version>
             <classifier>tests</classifier>
             <scope>test</scope>
         </dependency>

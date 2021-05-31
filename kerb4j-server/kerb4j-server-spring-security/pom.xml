@@ -13,16 +13,14 @@
 
     <properties>
         <io.sniffy.version>3.1.12</io.sniffy.version>
-        <!--<spring.security.version>4.2.18.RELEASE</spring.security.version>-->
-        <spring.security.version>5.0.12.RELEASE</spring.security.version>
-        <!--<spring.security.version>5.3.4.RELEASE</spring.security.version>-->
+        <spring.security.version>5.3.9.RELEASE</spring.security.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-server-common</artifactId>
-            <version>0.1.1-SNAPSHOT</version>
+            <version>${project.parent.version}</version>
         </dependency>
 
         <dependency>

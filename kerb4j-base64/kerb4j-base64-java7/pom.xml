@@ -15,13 +15,7 @@
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-base64-common</artifactId>
-            <version>0.1.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>jakarta.xml.bind</groupId>
-            <artifactId>jakarta.xml.bind-api</artifactId>
-            <version>2.3.3</version>
-            <scope>compile</scope>
+            <version>${project.parent.version}</version>
         </dependency>
     </dependencies>
 
@@ -30,7 +24,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.2.0</version>
+                <version>${maven.javadoc.version}</version>
                 <configuration>
                     <source>7</source>
                 </configuration>
