@@ -18,22 +18,39 @@ public class SpnegoAuthenticationToken extends SpnegoRequestToken {
     private final Subject subject;
     private final KerberosKey[] kerberosKeys;
 
+    private final String etype;
+
     // TODO: should contain everything for delegated auhentication
 
-    public SpnegoAuthenticationToken(Collection<? extends GrantedAuthority> authorities, byte[] spnegoInitToken, String username, byte[] responseToken, Subject subject, KerberosKey[] kerberosKeys) {
+    public SpnegoAuthenticationToken(
+            Collection<? extends GrantedAuthority> authorities,
+            byte[] spnegoInitToken,
+            String username,
+            byte[] responseToken,
+            Subject subject,
+            KerberosKey[] kerberosKeys,
+            String etype) {
         super(authorities, spnegoInitToken);
         this.username = username;
         this.responseToken = responseToken;
         this.subject = subject;
         this.kerberosKeys = kerberosKeys;
+        this.etype = etype;
     }
 
-    public SpnegoAuthenticationToken(byte[] token, String username, byte[] responseToken, Subject subject, KerberosKey[] kerberosKeys) {
+    public SpnegoAuthenticationToken(
+            byte[] token,
+            String username,
+            byte[] responseToken,
+            Subject subject,
+            KerberosKey[] kerberosKeys,
+            String etype) {
         super(token);
         this.username = username;
         this.responseToken = responseToken;
         this.subject = subject;
         this.kerberosKeys = kerberosKeys;
+        this.etype = etype;
     }
 
     public String username() {
@@ -91,4 +108,9 @@ public class SpnegoAuthenticationToken extends SpnegoRequestToken {
     public KerberosKey[] getKerberosKeys() {
         return kerberosKeys;
     }
+
+    public String getEtype() {
+        return etype;
+    }
+
 }
