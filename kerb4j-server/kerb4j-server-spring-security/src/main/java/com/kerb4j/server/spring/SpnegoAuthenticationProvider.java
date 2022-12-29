@@ -147,7 +147,8 @@ public class SpnegoAuthenticationProvider implements
         SpnegoAuthenticationToken responseAuth = new SpnegoAuthenticationToken(
                 userDetails.getAuthorities(), ticketValidation.getToken(),
                 canonicalName, ticketValidation.responseToken(),
-                ticketValidation.getSubject(), ticketValidation.getKerberosKeys()
+                ticketValidation.getSubject(), ticketValidation.getKerberosKeys(),
+                ticketValidation.getEtype()
         );
         responseAuth.setDetails(authentication.getDetails());
 

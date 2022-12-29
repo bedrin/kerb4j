@@ -18,10 +18,14 @@ package com.kerb4j.server.spring.jaas.sun;
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;
 import com.kerb4j.server.SpnegoTokenFixer;
+import com.kerb4j.server.marshall.Kerb4JException;
+import com.kerb4j.server.marshall.spnego.SpnegoInitToken;
+import com.kerb4j.server.marshall.spnego.SpnegoKerberosMechToken;
 import com.kerb4j.server.spring.KerberosTicketValidator;
 import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.kerby.kerberos.kerb.type.base.EncryptionType;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 import org.ietf.jgss.GSSName;
@@ -75,7 +79,24 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
                 acceptContext.close();
             }
 
-            return new SpnegoAuthenticationToken(token, srcName.toString(), responseToken, spnegoClient.getSubject(), spnegoClient.getKerberosKeys());
+            EncryptionType encryptionType = null;
+
+            try {
+                SpnegoInitToken spnegoInitToken = new SpnegoInitToken(token);
+                SpnegoKerberosMechToken spnegoKerberosMechToken = spnegoInitToken.getSpnegoKerberosMechToken();
+                encryptionType = spnegoKerberosMechToken.getApRequest().getTicket().getEncryptedEncPart().getEType();
+            } catch (Kerb4JException e) {
+                LOG.error("Failed to extract etype from spnego token", e);
+            }
+
+            return new SpnegoAuthenticationToken(
+                    token,
+                    srcName.toString(),
+                    responseToken,
+                    spnegoClient.getSubject(),
+                    spnegoClient.getKerberosKeys(),
+                    null == encryptionType ? null : encryptionType.getName()
+            );
             // TODO: check that it doesn't involve network
 
         } catch (IOException | GSSException | PrivilegedActionException e) {

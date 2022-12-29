@@ -130,9 +130,9 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
             assertThat(response, is("hello"));
         }
 
-        System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.12/connectionregistry/", String.class));
-        restTemplate.postForEntity("http://" + host + ":" + port + "/sniffy/3.1.12/connectionregistry/socket/localhost/" + kdcPort, "-1", Object.class);
-        System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.12/connectionregistry/", String.class));
+        System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.14/connectionregistry/", String.class));
+        restTemplate.postForEntity("http://" + host + ":" + port + "/sniffy/3.1.14/connectionregistry/socket/localhost/" + kdcPort, "-1", Object.class);
+        System.out.println(restTemplate.getForObject("http://" + host + ":" + port + "/sniffy/3.1.14/connectionregistry/", String.class));
 
         ConnectionsRegistry.INSTANCE.setSocketAddressStatus("localhost", kdcPort, -1);
         {
