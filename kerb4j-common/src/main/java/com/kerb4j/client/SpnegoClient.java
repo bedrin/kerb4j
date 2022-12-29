@@ -177,6 +177,7 @@ public final class SpnegoClient {
     /**
      * TODO: add @since information
      * TODO: add informative error if acceptOnly is true but used as a client (GSSException: No valid credentials provided (Mechanism level: Failed to find any Kerberos tgt))
+     * TODO: do isInititator=false by default and promote to isInitiator=true if required automatically
      * Creates an instance where authentication is done using keytab file
      *
      * @param principal principal
