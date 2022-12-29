@@ -21,8 +21,11 @@ import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.Configuration;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
+import static java.util.Collections.emptyMap;
 
 /**
  * Implementation of {@link Configuration} which uses Sun's JAAS
@@ -63,6 +66,17 @@ public class Krb5LoginConfig extends Configuration {
     }
 
     public static Krb5LoginConfig createKeyTabClientConfig(String principal, String keyTabLocation) {
+        return createKeyTabClientConfig(principal, keyTabLocation, Collections.<String,String>emptyMap());
+    }
+
+    /**
+     * TODO: add since parameter
+     * @param principal
+     * @param keyTabLocation
+     * @param additionalOptions
+     * @return
+     */
+    public static Krb5LoginConfig createKeyTabClientConfig(String principal, String keyTabLocation, Map<String, String> additionalOptions) {
         Map<String, String> options = new HashMap<>();
 
         options.put("principal", principal);
@@ -72,7 +86,8 @@ public class Krb5LoginConfig extends Configuration {
         options.put("storeKey", "true");
 
         options.put("doNotPrompt", "true");
-        // TODO: add isInitiator true
+
+        options.putAll(additionalOptions);
 
         return new Krb5LoginConfig(options);
     }

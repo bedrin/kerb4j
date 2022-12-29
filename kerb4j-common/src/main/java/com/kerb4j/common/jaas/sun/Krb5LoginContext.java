@@ -7,6 +7,7 @@ import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.Configuration;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
+import java.util.Collections;
 
 public class Krb5LoginContext extends LoginContext {
 
@@ -16,10 +17,17 @@ public class Krb5LoginContext extends LoginContext {
         super(name, subject, callbackHandler, config);
     }
 
-    public static Krb5LoginContext loginWithKeyTab(String principal, String keyTabLocation) {
+    /**
+     * TODO: add since information
+     * @param principal
+     * @param keyTabLocation
+     * @param acceptOnly
+     * @return
+     */
+    public static Krb5LoginContext loginWithKeyTab(String principal, String keyTabLocation, final boolean acceptOnly) {
         try {
             Krb5LoginContext krb5LoginContext = new Krb5LoginContext(UNUSED_CONFIGURATION_NAME, null, null,
-                    Krb5LoginConfig.createKeyTabClientConfig(principal, keyTabLocation)
+                    Krb5LoginConfig.createKeyTabClientConfig(principal, keyTabLocation, Collections.singletonMap("isInitiator", acceptOnly ? "false" : "true"))
             );
             krb5LoginContext.login();
             return krb5LoginContext;
@@ -27,6 +35,10 @@ public class Krb5LoginContext extends LoginContext {
             // TODO: here and in other places consider throwing LoginException instead of RuntimeException(LoginException)
             throw new RuntimeException(e);
         }
+    }
+
+    public static Krb5LoginContext loginWithKeyTab(String principal, String keyTabLocation) {
+        return loginWithKeyTab(principal, keyTabLocation, false);
     }
 
     public static Krb5LoginContext loginWithTicketCache(String principal) {

@@ -56,6 +56,8 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
     private String servicePassword;
     private Resource keyTabLocation;
 
+    private boolean acceptOnly;
+
     private SpnegoClient spnegoClient;
 
     private boolean holdOnToGSSContext;
@@ -120,7 +122,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
                 keyTabLocationAsString = keyTabLocationAsString.substring(5);
             }
 
-            spnegoClient = SpnegoClient.loginWithKeyTab(servicePrincipal, keyTabLocationAsString);
+            spnegoClient = SpnegoClient.loginWithKeyTab(servicePrincipal, keyTabLocationAsString, acceptOnly);
         } else {
             spnegoClient = SpnegoClient.loginWithUsernamePassword(servicePrincipal, servicePassword);
         }
@@ -172,4 +174,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
         this.holdOnToGSSContext = holdOnToGSSContext;
     }
 
+    public void setAcceptOnly(boolean acceptOnly) {
+        this.acceptOnly = acceptOnly;
+    }
 }
