@@ -89,6 +89,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
         SunJaasKerberosTicketValidator ticketValidator = new SunJaasKerberosTicketValidator();
         ticketValidator.setServicePrincipal(serverPrincipal);
         ticketValidator.setKeyTabLocation(new FileSystemResource(serverKeytab));
+        ticketValidator.setAcceptOnly(true);
         //ticketValidator.setDebug(true);
         return ticketValidator;
     }

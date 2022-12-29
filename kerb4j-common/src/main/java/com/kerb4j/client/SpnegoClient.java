@@ -76,6 +76,7 @@ public final class SpnegoClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoClient.class);
     private final static LRUCache<AbstractMap.SimpleEntry<String, String>, SpnegoClient> SPNEGO_CLIENT_CACHE = new LRUCache<>(1024);
     private final AtomicReference<SubjectTgtPair> subjectTgtPairReference = new AtomicReference<>();
+    private final AtomicReference<Subject> eternalSubjectReference = new AtomicReference<>();
     private final Callable<Subject> subjectSupplier;
     private final Lock authenticateLock = new ReentrantLock();
 
@@ -168,10 +169,24 @@ public final class SpnegoClient {
      * @param keyTabLocation keyTabLocation
      */
     public static SpnegoClient loginWithKeyTab(final String principal, final String keyTabLocation) {
+        return loginWithKeyTab(principal, keyTabLocation, false);
+    }
+
+    // TODO: add factory methods with implicit principal name
+
+    /**
+     * TODO: add @since information
+     * TODO: add informative error if acceptOnly is true but used as a client (GSSException: No valid credentials provided (Mechanism level: Failed to find any Kerberos tgt))
+     * Creates an instance where authentication is done using keytab file
+     *
+     * @param principal principal
+     * @param keyTabLocation keyTabLocation
+     */
+    public static SpnegoClient loginWithKeyTab(final String principal, final String keyTabLocation, final boolean acceptOnly) {
         return new SpnegoClient(new Callable<LoginContext>() {
             @Override
             public LoginContext call() throws Exception {
-                return Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation);
+                return Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation, acceptOnly);
             }
         });
     }
@@ -205,12 +220,24 @@ public final class SpnegoClient {
 
     public Subject getSubject() {
 
+        Subject eternalSubject = eternalSubjectReference.get();
+
+        if (null != eternalSubject) {
+            return eternalSubject;
+        }
+
         SubjectTgtPair subjectTgtPair = subjectTgtPairReference.get();
 
         if (null == subjectTgtPair || subjectTgtPair.isExpired()) {
 
             authenticateLock.lock();
             try {
+
+                eternalSubject = eternalSubjectReference.get();
+
+                if (null != eternalSubject) {
+                    return eternalSubject;
+                }
 
                 subjectTgtPair = subjectTgtPairReference.get();
 
@@ -226,6 +253,12 @@ public final class SpnegoClient {
                     }
 
                     subjectTgtPair = subjectTgtPairReference.get();
+
+                    if (null == subjectTgtPair) {
+                        // isInitiator = false  / acceptOnly client
+                        eternalSubjectReference.set(subject);
+                        return subject;
+                    }
 
                 }
 
