@@ -14,7 +14,7 @@
 
     <properties>
         <io.sniffy.version>3.1.14</io.sniffy.version>
-        <spring.security.version>5.3.9.RELEASE</spring.security.version>
+        <spring.security.version>5.7.6</spring.security.version>
     </properties>
 
     <dependencies>
