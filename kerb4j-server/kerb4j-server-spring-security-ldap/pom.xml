@@ -6,14 +6,14 @@
     <parent>
         <groupId>com.kerb4j</groupId>
         <artifactId>kerb4j-server</artifactId>
-        <version>0.1.2</version>
+        <version>0.1.3</version>
     </parent>
 
     <artifactId>kerb4j-server-spring-security-ldap</artifactId>
     <name>kerb4j-server-spring-security-ldap</name>
 
     <properties>
-        <spring.security.version>5.3.9.RELEASE</spring.security.version>
+        <spring.security.version>5.7.6</spring.security.version>
     </properties>
 
     <dependencies>

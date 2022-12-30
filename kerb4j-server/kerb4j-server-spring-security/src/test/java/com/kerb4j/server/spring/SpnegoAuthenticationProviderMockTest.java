@@ -45,7 +45,9 @@ public class SpnegoAuthenticationProviderMockTest {
     private static final String TEST_USER = "Testuser@SPRINGSOURCE.ORG";
     private static final Subject subject = new Subject();
     private static final KerberosKey[] kerberosKeys = new KerberosKey[0];
-    private static final SpnegoAuthenticationToken TICKET_VALIDATION = new SpnegoAuthenticationToken(TEST_TOKEN, TEST_USER, RESPONSE_TOKEN, subject, kerberosKeys);
+
+    private static final String ETYPE = "aes256-cts";
+    private static final SpnegoAuthenticationToken TICKET_VALIDATION = new SpnegoAuthenticationToken(TEST_TOKEN, TEST_USER, RESPONSE_TOKEN, subject, kerberosKeys, ETYPE);
     private static final List<GrantedAuthority> AUTHORITY_LIST = AuthorityUtils.createAuthorityList("ROLE_ADMIN");
     private static final UserDetails USER_DETAILS = new User(TEST_USER, "empty", true, true, true, true, AUTHORITY_LIST);
     private static final SpnegoRequestToken INPUT_TOKEN = new SpnegoRequestToken(TEST_TOKEN);

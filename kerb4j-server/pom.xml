@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.kerb4j</groupId>
         <artifactId>kerb4j</artifactId>
-        <version>0.1.2</version>
+        <version>0.1.3</version>
     </parent>
 
     <artifactId>kerb4j-server</artifactId>

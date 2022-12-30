@@ -76,6 +76,7 @@ public final class SpnegoClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoClient.class);
     private final static LRUCache<AbstractMap.SimpleEntry<String, String>, SpnegoClient> SPNEGO_CLIENT_CACHE = new LRUCache<>(1024);
     private final AtomicReference<SubjectTgtPair> subjectTgtPairReference = new AtomicReference<>();
+    private final AtomicReference<Subject> eternalSubjectReference = new AtomicReference<>();
     private final Callable<Subject> subjectSupplier;
     private final Lock authenticateLock = new ReentrantLock();
 
@@ -168,10 +169,25 @@ public final class SpnegoClient {
      * @param keyTabLocation keyTabLocation
      */
     public static SpnegoClient loginWithKeyTab(final String principal, final String keyTabLocation) {
+        return loginWithKeyTab(principal, keyTabLocation, false);
+    }
+
+    // TODO: add factory methods with implicit principal name
+
+    /**
+     * Creates an instance where authentication is done using keytab file
+     * Allows customizing underlying isInitiator parameter by using acceptOnly parameter - see description below
+     *
+     * @param principal principal
+     * @param keyTabLocation keyTabLocation
+     * @param acceptOnly when set to true, SpnegoClient will work offline and ONLY for accepting new tokens. As a result it doesn't require connection to Kerberos server but cannot request new tokens for other services
+     * @since 0.1.3
+     */
+    public static SpnegoClient loginWithKeyTab(final String principal, final String keyTabLocation, final boolean acceptOnly) {
         return new SpnegoClient(new Callable<LoginContext>() {
             @Override
             public LoginContext call() throws Exception {
-                return Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation);
+                return Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation, acceptOnly);
             }
         });
     }
@@ -205,12 +221,24 @@ public final class SpnegoClient {
 
     public Subject getSubject() {
 
+        Subject eternalSubject = eternalSubjectReference.get();
+
+        if (null != eternalSubject) {
+            return eternalSubject;
+        }
+
         SubjectTgtPair subjectTgtPair = subjectTgtPairReference.get();
 
         if (null == subjectTgtPair || subjectTgtPair.isExpired()) {
 
             authenticateLock.lock();
             try {
+
+                eternalSubject = eternalSubjectReference.get();
+
+                if (null != eternalSubject) {
+                    return eternalSubject;
+                }
 
                 subjectTgtPair = subjectTgtPairReference.get();
 
@@ -226,6 +254,12 @@ public final class SpnegoClient {
                     }
 
                     subjectTgtPair = subjectTgtPairReference.get();
+
+                    if (null == subjectTgtPair) {
+                        // isInitiator = false  / acceptOnly client
+                        eternalSubjectReference.set(subject);
+                        return subject;
+                    }
 
                 }
 

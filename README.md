@@ -3,7 +3,7 @@ Kerb4J
 ![Java CI](https://github.com/bedrin/kerb4j/workflows/Java%20CI/badge.svg?branch=develop)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.kerb4j/kerb4j/badge.svg?style=flat)](https://maven-badges.herokuapp.com/maven-central/com.kerb4j/kerb4j)
 
-Industry standard library for working with Kerberos/SPNEGO authentication in Java in 2020+.
+Industry standard library for working with Kerberos/SPNEGO authentication in Java in 2023+.
 
 Main features:
 
@@ -23,7 +23,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-client</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
 </dependency>
 ```
 
@@ -33,7 +33,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-server-spring-security</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
 </dependency>
 ```
 
@@ -43,7 +43,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-server-tomcat</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
 </dependency>
 ```
 
@@ -107,6 +107,10 @@ Use `SpnegoClient` and authenticate in KDC (e.g. in Active Directory Domain Cont
 Call `spnegoClient.createAcceptContext()` method to create a `SpnegoContext` instance responsible for authenticating
 your client. Pass decoded SPNEGO token (Base64 decoded value of token in 'Authorization: Negotiate' header)
 to `spnegoContext.acceptToken` method to validate it.
+
+If you only plan to validate client tokens on your server and do not use credentials delegation or reusing the same `SpnegoClient` for accessing other servers, you can create "offline" `SpengoClient` by passing `acceptOnly = true` parameter to `SpengoClient.loginWithKeyTab` factory method.
+
+Please note that it works with `keytab` secrets only.
 
 Kerb4J comes with an Authenticator for Apache Tomcat (kerb4j-server-tomcat artifact) as well as authentication provider
 for Spring Security (See kerb4j-server-spring-security)
