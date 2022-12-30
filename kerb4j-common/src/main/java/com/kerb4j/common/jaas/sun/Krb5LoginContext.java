@@ -18,11 +18,10 @@ public class Krb5LoginContext extends LoginContext {
     }
 
     /**
-     * TODO: add since information
-     * @param principal
-     * @param keyTabLocation
-     * @param acceptOnly
-     * @return
+     * @param principal principal
+     * @param keyTabLocation keyTabLocation
+     * @param acceptOnly when set to true, SpnegoClient will work offline and ONLY for accepting new tokens. As a result it doesn't require connection to Kerberos server but cannot request new tokens for other services
+     * @since 0.1.3
      */
     public static Krb5LoginContext loginWithKeyTab(String principal, String keyTabLocation, final boolean acceptOnly) {
         try {

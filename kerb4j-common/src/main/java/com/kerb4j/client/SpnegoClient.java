@@ -175,13 +175,13 @@ public final class SpnegoClient {
     // TODO: add factory methods with implicit principal name
 
     /**
-     * TODO: add @since information
-     * TODO: add informative error if acceptOnly is true but used as a client (GSSException: No valid credentials provided (Mechanism level: Failed to find any Kerberos tgt))
-     * TODO: do isInititator=false by default and promote to isInitiator=true if required automatically
      * Creates an instance where authentication is done using keytab file
+     * Allows customizing underlying isInitiator parameter by using acceptOnly parameter - see description below
      *
      * @param principal principal
      * @param keyTabLocation keyTabLocation
+     * @param acceptOnly when set to true, SpnegoClient will work offline and ONLY for accepting new tokens. As a result it doesn't require connection to Kerberos server but cannot request new tokens for other services
+     * @since 0.1.3
      */
     public static SpnegoClient loginWithKeyTab(final String principal, final String keyTabLocation, final boolean acceptOnly) {
         return new SpnegoClient(new Callable<LoginContext>() {

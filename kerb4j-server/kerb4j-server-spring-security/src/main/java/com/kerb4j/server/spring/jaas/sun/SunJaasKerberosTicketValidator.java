@@ -174,6 +174,9 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
         this.holdOnToGSSContext = holdOnToGSSContext;
     }
 
+    /**
+     * @since 0.1.3
+     */
     public void setAcceptOnly(boolean acceptOnly) {
         this.acceptOnly = acceptOnly;
     }

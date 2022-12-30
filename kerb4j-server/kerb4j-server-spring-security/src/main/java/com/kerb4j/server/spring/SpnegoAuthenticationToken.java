@@ -109,6 +109,9 @@ public class SpnegoAuthenticationToken extends SpnegoRequestToken {
         return kerberosKeys;
     }
 
+    /**
+     * @since 0.1.3
+     */
     public String getEtype() {
         return etype;
     }
