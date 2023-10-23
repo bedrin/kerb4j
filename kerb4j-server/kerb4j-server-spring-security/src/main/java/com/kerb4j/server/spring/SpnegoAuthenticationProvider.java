@@ -57,28 +57,24 @@ import java.util.Set;
  * @see UserDetailsService
  * @since 1.0
  */
-public class SpnegoAuthenticationProvider implements
-        AuthenticationProvider, InitializingBean {
+public class SpnegoAuthenticationProvider implements AuthenticationProvider, InitializingBean {
 
     private static final Log LOG = LogFactory.getLog(SpnegoAuthenticationProvider.class);
 
     private KerberosTicketValidator ticketValidator;
     private UserDetailsService userDetailsService;
-    private AuthenticationUserDetailsService<SpnegoAuthenticationToken> extractGroupsUserDetailsService =
-            new ExtractGroupsUserDetailsService();
+    private AuthenticationUserDetailsService<SpnegoAuthenticationToken> extractGroupsUserDetailsService = new ExtractGroupsUserDetailsService();
     private UserDetailsChecker userDetailsChecker = new AccountStatusUserDetailsChecker();
 
     private String serverSpn;
 
     @Override
     public SpnegoAuthenticationToken authenticate(Authentication authentication) {
-
         String canonicalName = null;
-
         if (authentication instanceof UsernamePasswordAuthenticationToken) {
             canonicalName = authentication.getName();
-            SpnegoClient spnegoClient = SpnegoClient.
-                    loginWithUsernamePassword(authentication.getName(), authentication.getCredentials().toString(), true);
+            SpnegoClient spnegoClient = SpnegoClient.loginWithUsernamePassword(authentication.getName(), authentication.getCredentials().toString(),
+                    true);
             SpnegoContext context = null;
             try {
                 context = spnegoClient.createContextForSPN(serverSpn);
@@ -124,15 +120,7 @@ public class SpnegoAuthenticationProvider implements
                 mergedAuthorities.addAll(userGroupsDetails.getAuthorities());
             }
 
-            userDetails = new User(
-                    userDetails.getUsername(),
-                    userDetails.getPassword(),
-                    userDetails.isEnabled(),
-                    userDetails.isAccountNonExpired(),
-                    userDetails.isCredentialsNonExpired(),
-                    userDetails.isAccountNonLocked(),
-                    mergedAuthorities
-            );
+            userDetails = new User(userDetails.getUsername(), userDetails.getPassword(), userDetails.isEnabled(), userDetails.isAccountNonExpired(), userDetails.isCredentialsNonExpired(), userDetails.isAccountNonLocked(), mergedAuthorities);
         }
 
         userDetailsChecker.check(userDetails);
@@ -144,12 +132,7 @@ public class SpnegoAuthenticationProvider implements
         }
 
         // TODO: make name "normalization" optional; probably take from UsernamePasswordAuthenticationToken if available
-        SpnegoAuthenticationToken responseAuth = new SpnegoAuthenticationToken(
-                userDetails.getAuthorities(), ticketValidation.getToken(),
-                canonicalName, ticketValidation.responseToken(),
-                ticketValidation.getSubject(), ticketValidation.getKerberosKeys(),
-                ticketValidation.getEtype()
-        );
+        SpnegoAuthenticationToken responseAuth = new SpnegoAuthenticationToken(userDetails.getAuthorities(), ticketValidation.getToken(), canonicalName, ticketValidation.responseToken(), ticketValidation.getSubject(), ticketValidation.getKerberosKeys(), ticketValidation.getEtype());
         responseAuth.setDetails(authentication.getDetails());
 
         return responseAuth;
@@ -157,8 +140,7 @@ public class SpnegoAuthenticationProvider implements
 
     @Override
     public boolean supports(Class<?> auth) {
-        return SpnegoRequestToken.class.isAssignableFrom(auth) ||
-                (null != serverSpn && UsernamePasswordAuthenticationToken.class.isAssignableFrom(auth));
+        return SpnegoRequestToken.class.isAssignableFrom(auth) || (null != serverSpn && UsernamePasswordAuthenticationToken.class.isAssignableFrom(auth));
     }
 
     @Override
@@ -199,8 +181,7 @@ public class SpnegoAuthenticationProvider implements
      * @throws AuthenticationException AuthenticationException if the credentials could not be validated (generally a
      *                                 <code>BadCredentialsException</code>, an <code>AuthenticationServiceException</code>)
      */
-    protected void additionalAuthenticationChecks(UserDetails userDetails, SpnegoRequestToken authentication)
-            throws AuthenticationException {
+    protected void additionalAuthenticationChecks(UserDetails userDetails, SpnegoRequestToken authentication) throws AuthenticationException {
     }
 
     // TODO: add javadoc

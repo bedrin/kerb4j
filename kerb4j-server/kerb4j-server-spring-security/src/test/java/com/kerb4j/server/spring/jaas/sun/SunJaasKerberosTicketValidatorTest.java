@@ -18,15 +18,15 @@ package com.kerb4j.server.spring.jaas.sun;
 import com.kerb4j.server.SpnegoTokenFixer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.springframework.security.crypto.codec.Base64;
 
 import java.util.Arrays;
+import java.util.Base64;
 
-public class SunJaasKerberosTicketValidatorTest {
+class SunJaasKerberosTicketValidatorTest {
 
     // copy of token taken from a test where windows host
     // is trying to authenticate with spnego. nothing sensitive here
-    private static String header = "YIIGXAYGKwYBBQUCoIIGUDCCBkygMDAuBgkqhkiC9xIBAgIGCSqGSIb3EgEC"
+    private static final String HEADER = "YIIGXAYGKwYBBQUCoIIGUDCCBkygMDAuBgkqhkiC9xIBAgIGCSqGSIb3EgEC"
             + "AgYKKwYBBAGCNwICHgYKKwYBBAGCNwICCqKCBhYEggYSYIIGDgYJKoZIhvcS"
             + "AQICAQBuggX9MIIF+aADAgEFoQMCAQ6iBwMFACAAAACjggSFYYIEgTCCBH2g"
             + "AwIBBaENGwtFWEFNUExFLk9SR6IiMCCgAwIBAqEZMBcbBEhUVFAbD25lby5l"
@@ -65,8 +65,8 @@ public class SunJaasKerberosTicketValidatorTest {
             + "eL2PHBfvkne/FgxC";
 
     @Test
-    public void testJdkMsKrb5OIDRegressionTweak() {
-        byte[] kerberosTicket = Base64.decode(header.getBytes());
+    void testJdkMsKrb5OIDRegressionTweak() {
+        byte[] kerberosTicket = Base64.getDecoder().decode(HEADER.getBytes());
         byte[] fixedToken = Arrays.copyOf(kerberosTicket, kerberosTicket.length);
         SpnegoTokenFixer.fix(fixedToken);
         Assertions.assertFalse(Arrays.equals(kerberosTicket, fixedToken));

@@ -22,10 +22,12 @@ import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 
 import javax.security.auth.Subject;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
 import java.io.IOException;
 import java.security.Principal;
 import java.security.PrivilegedActionException;
@@ -83,8 +85,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
         return storeDelegatedCredential;
     }
 
-    public void setStoreDelegatedCredential(
-            boolean storeDelegatedCredential) {
+    public void setStoreDelegatedCredential(boolean storeDelegatedCredential) {
         this.storeDelegatedCredential = storeDelegatedCredential;
     }
 
@@ -136,16 +137,13 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
     }
 
     @Override
-    protected boolean doAuthenticate(Request request, HttpServletResponse response)
-            throws IOException {
+    protected boolean doAuthenticate(Request request, HttpServletResponse response) throws IOException {
 
         if (checkForCachedAuthentication(request, response, true)) {
             return true;
         }
 
-        MessageBytes authorization =
-                request.getCoyoteRequest().getMimeHeaders()
-                        .getValue("authorization");
+        MessageBytes authorization = request.getCoyoteRequest().getMimeHeaders().getValue("authorization");
 
         if (authorization == null) {
             if (log.isDebugEnabled()) {
@@ -161,8 +159,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
 
         if (!authorizationBC.startsWithIgnoreCase("negotiate ", 0)) {
             if (log.isDebugEnabled()) {
-                log.debug(sm.getString(
-                        "spnegoAuthenticator.authHeaderNotNego"));
+                log.debug(sm.getString("spnegoAuthenticator.authHeaderNotNego"));
             }
             response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
@@ -171,9 +168,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
 
         authorizationBC.setOffset(authorizationBC.getOffset() + 10);
 
-        byte[] decoded = Base64.decodeBase64(authorizationBC.getBuffer(),
-                authorizationBC.getOffset(),
-                authorizationBC.getLength());
+        byte[] decoded = Base64.decodeBase64(authorizationBC.getBuffer(), authorizationBC.getOffset(), authorizationBC.getLength());
 
         if (getApplyJava8u40Fix()) {
             org.apache.catalina.authenticator.SpnegoAuthenticator.SpnegoTokenFixer.fix(decoded);
@@ -181,8 +176,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
 
         if (decoded.length == 0) {
             if (log.isDebugEnabled()) {
-                log.debug(sm.getString(
-                        "spnegoAuthenticator.authHeaderNoToken"));
+                log.debug(sm.getString("spnegoAuthenticator.authHeaderNoToken"));
             }
             response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
@@ -200,8 +194,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
 
             if (outToken == null) {
                 if (log.isDebugEnabled()) {
-                    log.debug(sm.getString(
-                            "spnegoAuthenticator.ticketValidateFail"));
+                    log.debug(sm.getString("spnegoAuthenticator.ticketValidateFail"));
                 }
                 // Start again
                 response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
@@ -239,9 +232,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
                 GSSContext gssContext = acceptContext.getGSSContext();
 
                 // TODO: check realm call?
-                principal = Subject.doAs(subject, new org.apache.catalina.authenticator.SpnegoAuthenticator.AuthenticateAction(
-                        context.getRealm(), gssContext, storeDelegatedCredential
-                ));
+                principal = Subject.doAs(subject, new org.apache.catalina.authenticator.SpnegoAuthenticator.AuthenticateAction(context.getRealm(), gssContext, storeDelegatedCredential));
             }
 
         } catch (GSSException e) {
@@ -274,8 +265,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
         }
 
         // Send response token on success and failure
-        response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER + " "
-                + Base64.encodeBase64String(outToken));
+        response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER + " " + Base64.encodeBase64String(outToken));
 
         if (principal != null) {
             register(request, response, principal, HTTP_NEGOTIATE.toUpperCase(), // TODO: what does it mean ? should it be "SPNEGO" ?,

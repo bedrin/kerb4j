@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -52,13 +53,13 @@ public class KerberosAuthenticationProviderTest extends KerberosSecurityTestcase
 
     @BeforeEach
     public void before() {
+        MockitoAnnotations.openMocks(this);
         this.provider = new KerberosAuthenticationProvider();
         this.provider.setUserDetailsService(userDetailsService);
     }
 
     @Test
     public void testLoginOk() throws Exception {
-
         SimpleKdcServer kdc = getKdc();
         kdc.createPrincipal(TEST_USER, TEST_PASSWORD);
 
@@ -76,7 +77,6 @@ public class KerberosAuthenticationProviderTest extends KerberosSecurityTestcase
 
     @Test
     public void testLoginFailed() {
-
         SimpleKdcServer kdc = getKdc();
         Exception exception = Assertions.assertThrows(Exception.class, () -> {
             kdc.createPrincipal(TEST_USER, TEST_PASSWORD + "nonce");

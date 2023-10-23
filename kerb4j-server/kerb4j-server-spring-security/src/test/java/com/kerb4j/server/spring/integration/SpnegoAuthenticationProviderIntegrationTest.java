@@ -19,52 +19,51 @@ import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.spring.KerberosRestTemplate;
 import com.kerb4j.client.spring.SpnegoRestTemplate;
-import com.kerb4j.server.spring.*;
+import com.kerb4j.server.spring.SpnegoAuthenticationProcessingFilter;
+import com.kerb4j.server.spring.SpnegoAuthenticationProvider;
+import com.kerb4j.server.spring.SpnegoAuthenticationToken;
+import com.kerb4j.server.spring.SpnegoEntryPoint;
+import com.kerb4j.server.spring.SpnegoMutualAuthenticationHandler;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
-import io.sniffy.boot.EnableSniffy;
-import io.sniffy.servlet.SniffyFilter;
+import jakarta.annotation.Resource;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.AuthenticationUserDetailsService;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.stereotype.Controller;
 import org.springframework.test.context.junit4.SpringRunner;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import javax.annotation.Resource;
 import java.io.File;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
-//FIXME - Spring boot integration test require Spring 4 as long as Spring Boot is not upgraded to version 2.X
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @SpringBootApplication
-@EnableSniffy
 public class SpnegoAuthenticationProviderIntegrationTest extends KerberosSecurityTestcase {
 
     private static final String USER_NAME = "username";
@@ -78,14 +77,13 @@ public class SpnegoAuthenticationProviderIntegrationTest extends KerberosSecurit
     @LocalServerPort
     private int port;
 
-    private File keytabFile;
-
     @Resource
     private SunJaasKerberosTicketValidator sunJaasKerberosTicketValidator;
 
     @Before
     public void setupKDC() throws Exception {
         // mocking
+        startMiniKdc();
         SimpleKdcServer kdc = getKdc();
 
         File keytabFile = folder.newFile("serverKeyTab.keytab");
@@ -98,82 +96,56 @@ public class SpnegoAuthenticationProviderIntegrationTest extends KerberosSecurit
         sunJaasKerberosTicketValidator.afterPropertiesSet();
 
         kdc.createPrincipal(USER_NAME, USER_PASSWORD);
-
     }
 
     @Test
-    @Ignore
-    public void testContextLoaded() {
-
-    }
-
-    @Test
-    @Ignore
     public void testSpnegoAuthentication() {
-
         SpnegoClient spnegoClient = SpnegoClient.loginWithUsernamePassword(USER_NAME, USER_PASSWORD);
         SpnegoRestTemplate restTemplate = new SpnegoRestTemplate(spnegoClient);
-
         String response = restTemplate.getForObject("http://localhost:" + port + "/hello", String.class);
-
         assertEquals("hello", response);
-
     }
 
     @Test
-    @Ignore
     public void testKerberosAuthentication() {
-
         KerberosRestTemplate restTemplate = new KerberosRestTemplate(USER_NAME, USER_PASSWORD);
-
         SpnegoClient.resetCache();
-
         {
             ResponseEntity<String> response = restTemplate.getForEntity("http://localhost:" + port + "/hello", String.class);
             assertEquals(HttpStatus.OK, response.getStatusCode());
             assertEquals("hello", response.getBody());
 
-            String requestDetailsURL = response.getHeaders().get(SniffyFilter.HEADER_REQUEST_DETAILS).get(0);
-            ResponseEntity<String> requestDetailsEntity = restTemplate.getForEntity("http://localhost:" + port + "/" + requestDetailsURL, String.class);
+            ResponseEntity<String> requestDetailsEntity = restTemplate.getForEntity("http://localhost:" + port + "/", String.class);
 
             assertEquals(HttpStatus.OK, requestDetailsEntity.getStatusCode());
             assertNotNull(requestDetailsEntity.getBody());
         }
-
         {
             ResponseEntity<String> response = restTemplate.getForEntity("http://localhost:" + port + "/hello", String.class);
             assertEquals(HttpStatus.OK, response.getStatusCode());
             assertEquals("hello", response.getBody());
 
-            String requestDetailsURL = response.getHeaders().get(SniffyFilter.HEADER_REQUEST_DETAILS).get(0);
-            ResponseEntity<String> requestDetailsEntity = restTemplate.getForEntity("http://localhost:" + port + "/" + requestDetailsURL, String.class);
+            ResponseEntity<String> requestDetailsEntity = restTemplate.getForEntity("http://localhost:" + port + "/", String.class);
 
             assertEquals(HttpStatus.OK, requestDetailsEntity.getStatusCode());
-            assertNull(requestDetailsEntity.getBody());
+            assertEquals("home", requestDetailsEntity.getBody());
         }
-
     }
 
     @Configuration
     @EnableWebSecurity
-    public static class WebSecurityConfigSuccessHandler extends WebSecurityConfigurerAdapter {
+    public static class WebSecurityConfigSuccessHandler {
 
-        @Override
-        protected void configure(HttpSecurity http) throws Exception {
-            http
-                    .exceptionHandling().authenticationEntryPoint(spnegoEntryPoint()).and()
-                    .authorizeRequests()
-                    .antMatchers("/", "/home").permitAll()
-                    .antMatchers("/hello").access("hasRole('ROLE_USER')")
-                    .anyRequest().authenticated()
-                    .and()
-
-                    .addFilterBefore(spnegoAuthenticationProcessingFilter(authenticationManagerBean()), BasicAuthenticationFilter.class);
-        }
-
-        @Override
-        protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-            auth.authenticationProvider(kerberosServiceAuthenticationProvider());
+        @Bean
+        protected SecurityFilterChain configure(final HttpSecurity http) throws Exception {
+            return http
+                    .exceptionHandling(e -> e.authenticationEntryPoint(spnegoEntryPoint()))
+                    .authorizeHttpRequests(a -> a
+                            .requestMatchers("/", "/home").permitAll()
+                            .requestMatchers("/hello").hasRole("USER")
+                            .anyRequest().authenticated())
+                    .addFilterBefore(spnegoAuthenticationProcessingFilter(authManager()), BasicAuthenticationFilter.class)
+                    .build();
         }
 
         @Bean
@@ -182,13 +154,10 @@ public class SpnegoAuthenticationProviderIntegrationTest extends KerberosSecurit
         }
 
         @Bean
-        public SpnegoAuthenticationProcessingFilter spnegoAuthenticationProcessingFilter(
-                AuthenticationManager authenticationManager) {
+        public SpnegoAuthenticationProcessingFilter spnegoAuthenticationProcessingFilter(AuthenticationManager authenticationManager) {
             SpnegoAuthenticationProcessingFilter filter = new SpnegoAuthenticationProcessingFilter();
-
             SpnegoMutualAuthenticationHandler successHandler = new SpnegoMutualAuthenticationHandler();
             filter.setAuthenticationSuccessHandler(successHandler);
-
             filter.setAuthenticationManager(authenticationManager);
             return filter;
         }
@@ -211,6 +180,11 @@ public class SpnegoAuthenticationProviderIntegrationTest extends KerberosSecurit
         }
 
         @Bean
+        public AuthenticationManager authManager() {
+            return new ProviderManager(kerberosServiceAuthenticationProvider());
+        }
+
+        @Bean
         public DummyUserDetailsService dummyUserDetailsService() {
             return new DummyUserDetailsService();
         }
@@ -222,32 +196,28 @@ public class SpnegoAuthenticationProviderIntegrationTest extends KerberosSecurit
                 return new User(token.username(), "notUsed", true, true, true, true,
                         AuthorityUtils.createAuthorityList("ROLE_USER"));
             }
-
         }
-
     }
 
     @Controller
     protected static class WebConfiguration {
 
-        @RequestMapping(method = RequestMethod.GET)
+        @GetMapping
         @ResponseBody
         public String home() {
             return "home";
         }
 
-        @RequestMapping(method = RequestMethod.GET, value = "/login")
         @ResponseBody
+        @GetMapping(value = "/login")
         public String login() {
             return "login";
         }
 
-        @RequestMapping(method = RequestMethod.GET, value = "/hello")
         @ResponseBody
+        @GetMapping(value = "/hello")
         public String hello() {
             return "hello";
         }
-
     }
-
 }
