@@ -54,17 +54,15 @@ import static org.mockito.Mockito.when;
  * @author Jeremy Stone
  * @since 1.0
  */
-class SpnegoAuthenticationProcessingFilterTest {
+public class SpnegoAuthenticationProcessingFilterTest {
 
     // data
     private static final byte[] TEST_TOKEN = "TestToken".getBytes();
     private static final String TEST_TOKEN_BASE64 = "VGVzdFRva2Vu";
-    private static final Authentication AUTHENTICATION = new SpnegoRequestToken(TEST_TOKEN);
     private static final String HEADER = "Authorization";
     private static final String TOKEN_PREFIX_NEG = "Negotiate ";
     private static final String TOKEN_PREFIX_KERB = "Kerberos ";
-    private static final BadCredentialsException BCE = new BadCredentialsException("");
-    private static SpnegoAuthenticationToken UNUSED_TICKET_VALIDATION = mock(SpnegoAuthenticationToken.class);
+    //private static SpnegoAuthenticationToken UNUSED_TICKET_VALIDATION = mock(SpnegoAuthenticationToken.class);
     private SpnegoAuthenticationProcessingFilter filter;
     private AuthenticationManager authenticationManager;
     private HttpServletRequest request;
@@ -110,6 +108,7 @@ class SpnegoAuthenticationProcessingFilterTest {
     }
 
     private void everythingWorksWithHandlers(String tokenPrefix) throws Exception {
+        Authentication AUTHENTICATION = new SpnegoRequestToken(TEST_TOKEN);
         createHandler();
         everythingWorks(tokenPrefix);
         verify(successHandler).onAuthenticationSuccess(request, response, AUTHENTICATION);
@@ -119,6 +118,7 @@ class SpnegoAuthenticationProcessingFilterTest {
 
     private void everythingWorks(String tokenPrefix) throws IOException,
             ServletException {
+        Authentication AUTHENTICATION = new SpnegoRequestToken(TEST_TOKEN);
         // stubbing
         when(request.getHeader(HEADER)).thenReturn(tokenPrefix + TEST_TOKEN_BASE64);
         SpnegoRequestToken requestToken = new SpnegoRequestToken(TEST_TOKEN);
@@ -151,7 +151,7 @@ class SpnegoAuthenticationProcessingFilterTest {
     @Test
     void testAuthenticationFailsWithHandlers() throws Exception {
         createHandler();
-        authenticationFails();
+        BadCredentialsException BCE = authenticationFails();
         verify(failureHandler).onAuthenticationFailure(request, response, BCE);
         verify(successHandler, never()).onAuthenticationSuccess(any(HttpServletRequest.class),
                 any(HttpServletResponse.class), any(Authentication.class));
@@ -210,7 +210,10 @@ class SpnegoAuthenticationProcessingFilterTest {
         }
     }
 
-    private void authenticationFails() throws IOException, ServletException {
+    private BadCredentialsException authenticationFails() throws IOException, ServletException {
+
+        BadCredentialsException BCE = new BadCredentialsException("");
+
         // stubbing
         when(request.getHeader(HEADER)).thenReturn(TOKEN_PREFIX_NEG + TEST_TOKEN_BASE64);
         when(authenticationManager.authenticate(any(Authentication.class))).thenThrow(BCE);
@@ -220,6 +223,8 @@ class SpnegoAuthenticationProcessingFilterTest {
         // chain should stop here and it should send back a 500
         // future version should call some error handler
         verify(chain, never()).doFilter(any(ServletRequest.class), any(ServletResponse.class));
+
+        return BCE;
     }
 
     private void createHandler() {
