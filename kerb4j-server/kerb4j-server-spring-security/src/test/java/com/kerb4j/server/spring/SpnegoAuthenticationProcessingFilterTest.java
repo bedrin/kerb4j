@@ -15,7 +15,11 @@
  */
 package com.kerb4j.server.spring;
 
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -28,17 +32,20 @@ import org.springframework.security.web.authentication.AuthenticationFailureHand
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Test class for {@link SpnegoAuthenticationProcessingFilter}
@@ -47,7 +54,7 @@ import static org.mockito.Mockito.*;
  * @author Jeremy Stone
  * @since 1.0
  */
-public class SpnegoAuthenticationProcessingFilterTest {
+class SpnegoAuthenticationProcessingFilterTest {
 
     // data
     private static final byte[] TEST_TOKEN = "TestToken".getBytes();
@@ -81,24 +88,24 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    public void testEverythingWorks() throws Exception {
+    void testEverythingWorks() throws Exception {
         everythingWorks(TOKEN_PREFIX_NEG);
     }
 
     @Test
     @Disabled("spring-security-kerberos used to support \"Kerberos\" scheme. Is it a valid use case?")
-    public void testEverythingWorks_Kerberos() throws Exception {
+    void testEverythingWorks_Kerberos() throws Exception {
         everythingWorks(TOKEN_PREFIX_KERB);
     }
 
     @Test
-    public void testEverythingWorksWithHandlers() throws Exception {
+    void testEverythingWorksWithHandlers() throws Exception {
         everythingWorksWithHandlers(TOKEN_PREFIX_NEG);
     }
 
     @Test
     @Disabled("spring-security-kerberos used to support \"Kerberos\" scheme. Is it a valid use case?")
-    public void testEverythingWorksWithHandlers_Kerberos() throws Exception {
+    void testEverythingWorksWithHandlers_Kerberos() throws Exception {
         everythingWorksWithHandlers(TOKEN_PREFIX_KERB);
     }
 
@@ -125,7 +132,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    public void testNoHeader() throws Exception {
+    void testNoHeader() throws Exception {
         filter.doFilter(request, response, chain);
         // If the header is not present, the filter is not allowed to call
         // authenticate()
@@ -136,13 +143,13 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    public void testAuthenticationFails() throws Exception {
+    void testAuthenticationFails() throws Exception {
         authenticationFails();
         verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
     }
 
     @Test
-    public void testAuthenticationFailsWithHandlers() throws Exception {
+    void testAuthenticationFailsWithHandlers() throws Exception {
         createHandler();
         authenticationFails();
         verify(failureHandler).onAuthenticationFailure(request, response, BCE);
@@ -152,7 +159,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    public void testAlreadyAuthenticated() throws Exception {
+    void testAlreadyAuthenticated() throws Exception {
         try {
             Authentication existingAuth = new UsernamePasswordAuthenticationToken("mike", "mike",
                     AuthorityUtils.createAuthorityList("ROLE_TEST"));
@@ -166,7 +173,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    public void testAlreadyAuthenticatedWithNotAuthenticatedToken()
+    void testAlreadyAuthenticatedWithNotAuthenticatedToken()
             throws Exception {
         try {
             // this token is not authenticated yet!
@@ -179,7 +186,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    public void testAlreadyAuthenticatedWithAnonymousToken() throws Exception {
+    void testAlreadyAuthenticatedWithAnonymousToken() throws Exception {
         try {
             Authentication existingAuth = new AnonymousAuthenticationToken("test", "mike",
                     AuthorityUtils.createAuthorityList("ROLE_TEST"));
@@ -191,7 +198,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    public void testAlreadyAuthenticatedNotActive() throws Exception {
+    void testAlreadyAuthenticatedNotActive() throws Exception {
         try {
             Authentication existingAuth = new UsernamePasswordAuthenticationToken("mike", "mike",
                     AuthorityUtils.createAuthorityList("ROLE_TEST"));

@@ -28,12 +28,7 @@ public class SpnegoContext implements Closeable {
     }
 
     public byte[] createToken() throws PrivilegedActionException {
-        return Subject.doAs(spnegoClient.getSubject(), new PrivilegedExceptionAction<byte[]>() {
-                    @Override
-                    public byte[] run() throws Exception {
-                        return gssContext.initSecContext(EMPTY_BYTE, 0, 0);
-                    }
-                }
+        return Subject.doAs(spnegoClient.getSubject(), (PrivilegedExceptionAction<byte[]>) () -> gssContext.initSecContext(EMPTY_BYTE, 0, 0)
         );
     }
 
@@ -42,12 +37,7 @@ public class SpnegoContext implements Closeable {
     }
 
     public byte[] processMutualAuthorization(final byte[] data, final int offset, final int length) throws PrivilegedActionException {
-        return Subject.doAs(spnegoClient.getSubject(), new PrivilegedExceptionAction<byte[]>() {
-                    @Override
-                    public byte[] run() throws Exception {
-                        return gssContext.initSecContext(data, offset, length);
-                    }
-                }
+        return Subject.doAs(spnegoClient.getSubject(), (PrivilegedExceptionAction<byte[]>) () -> gssContext.initSecContext(data, offset, length)
         );
     }
 

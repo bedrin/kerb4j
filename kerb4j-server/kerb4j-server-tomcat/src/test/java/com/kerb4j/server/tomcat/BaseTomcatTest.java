@@ -9,14 +9,14 @@ import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.webresources.DirResourceSet;
 import org.apache.catalina.webresources.StandardRoot;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.ietf.jgss.GSSException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -30,7 +30,7 @@ import java.security.PrivilegedActionException;
 public class BaseTomcatTest extends KerberosSecurityTestcase {
 
     public static final int TOMCAT_PORT = 8080;
-    private static final Log log = LogFactory.getLog(BaseTomcatTest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BaseTomcatTest.class);
     private Tomcat tomcat;
 
     private String host;
@@ -40,7 +40,6 @@ public class BaseTomcatTest extends KerberosSecurityTestcase {
 
     @BeforeEach
     public void startTomcat() throws Exception {
-
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
         host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase(); // doesn't work without toLowerCse
@@ -54,15 +53,16 @@ public class BaseTomcatTest extends KerberosSecurityTestcase {
         kdc.createAndExportPrincipals(clientKeytab, clientPrincipal);
 
         tomcat = new Tomcat();
+        tomcat.getConnector();
         tomcat.setPort(TOMCAT_PORT);
 
-        StandardContext ctx = (StandardContext) tomcat.addWebapp("/", new File(".").getAbsolutePath());
+        StandardContext ctx = (StandardContext) tomcat.addWebapp("", new File(".").getAbsolutePath());
         SpnegoAuthenticator valve = new SpnegoAuthenticator();
         valve.setKeyTab(serverKeytab.getAbsolutePath());
         valve.setPrincipalName(serverPrincipal);
         ctx.addValve(valve);
 
-        //Tomcat.addServlet(ctx, "dummyServlet", new DummyServlet());
+        Tomcat.addServlet(ctx, "dummyServlet", new DummyServlet());
 
         // Declare an alternative location for your "WEB-INF/classes" dir
         // Servlet 3.0 annotation will work
@@ -79,35 +79,25 @@ public class BaseTomcatTest extends KerberosSecurityTestcase {
 
     @AfterEach
     public void stopTomcat() throws LifecycleException {
-
-        log.info("Stopping Tomcat server on port " + TOMCAT_PORT);
-
+        LOG.info("Stopping Tomcat server on port {}", TOMCAT_PORT);
         tomcat.stop();
-        tomcat.getServer().await();
-
-        log.info("Stopped Tomcat server on port " + TOMCAT_PORT);
-
+        tomcat.destroy();
+        LOG.info("Stopped Tomcat server on port {}", TOMCAT_PORT);
     }
 
     @Test
     public void testNoAuthResponse() throws IOException {
-        HttpURLConnection urlConnection = (HttpURLConnection) new URL("http://localhost:8080/dummy")
-                .openConnection();
+        HttpURLConnection urlConnection = (HttpURLConnection) new URL("http://localhost:" + TOMCAT_PORT + "/dummy").openConnection();
         Assertions.assertEquals(401, urlConnection.getResponseCode());
     }
 
     @Test
     public void test1() throws IOException, GSSException, PrivilegedActionException {
-
         SpnegoClient spnegoClient = SpnegoClient.loginWithKeyTab(clientPrincipal, clientKeytab.getAbsolutePath());
-        HttpURLConnection huc = new SpnegoHttpURLConnection(spnegoClient)
-                .connect(new URL("http://" + host + ":" + 8080 + "/dummy"));
-
+        HttpURLConnection huc = new SpnegoHttpURLConnection(spnegoClient).connect(new URL("http://" + host + ":" + TOMCAT_PORT + "/dummy"));
         Assertions.assertEquals(200, huc.getResponseCode());
         Assertions.assertEquals("Hello, world!",
                 new BufferedReader(new InputStreamReader(huc.getInputStream())).readLine()
         );
-
     }
-
 }

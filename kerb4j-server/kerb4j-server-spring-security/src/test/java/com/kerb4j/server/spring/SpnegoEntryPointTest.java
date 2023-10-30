@@ -18,11 +18,14 @@ package com.kerb4j.server.spring;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import javax.servlet.RequestDispatcher;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Test class for {@link SpnegoEntryPoint}
@@ -32,12 +35,12 @@ import static org.mockito.Mockito.*;
  * @author Andre Schaefer, Namics AG
  * @since 1.0
  */
-public class SpnegoEntryPointTest {
+class SpnegoEntryPointTest {
 
     private final SpnegoEntryPoint entryPoint = new SpnegoEntryPoint();
 
     @Test
-    public void testEntryPointOk() throws Exception {
+    void testEntryPointOk() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
         HttpServletResponse response = mock(HttpServletResponse.class);
 
@@ -48,7 +51,7 @@ public class SpnegoEntryPointTest {
     }
 
     @Test
-    public void testEntryPointOkWithDispatcher() throws Exception {
+    void testEntryPointOkWithDispatcher() throws Exception {
         SpnegoEntryPoint entryPoint = new SpnegoEntryPoint();
         HttpServletResponse response = mock(HttpServletResponse.class);
         HttpServletRequest request = mock(HttpServletRequest.class);
@@ -60,7 +63,7 @@ public class SpnegoEntryPointTest {
     }
 
     @Test
-    public void testEntryPointForwardOk() throws Exception {
+    void testEntryPointForwardOk() throws Exception {
         String forwardUrl = "/login";
         SpnegoEntryPoint entryPoint = new SpnegoEntryPoint(forwardUrl);
         HttpServletResponse response = mock(HttpServletResponse.class);
@@ -74,8 +77,8 @@ public class SpnegoEntryPointTest {
         verify(requestDispatcher).forward(request, response);
     }
 
-    @Test()
-    public void testEntryPointForwardAbsolute() {
+    @Test
+    void testEntryPointForwardAbsolute() {
         IllegalArgumentException exception = Assertions.assertThrows(
                 IllegalArgumentException.class, () -> new SpnegoEntryPoint("http://test/login")
         );

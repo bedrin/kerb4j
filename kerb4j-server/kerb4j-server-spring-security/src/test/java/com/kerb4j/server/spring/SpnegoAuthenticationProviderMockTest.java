@@ -37,7 +37,7 @@ import static org.mockito.Mockito.*;
  * @author Jeremy Stone
  * @since 1.0
  */
-public class SpnegoAuthenticationProviderMockTest {
+class SpnegoAuthenticationProviderMockTest {
 
     // data
     private static final byte[] TEST_TOKEN = "TestToken".getBytes();
@@ -70,7 +70,7 @@ public class SpnegoAuthenticationProviderMockTest {
     }
 
     @Test
-    public void testEverythingWorks() {
+    void testEverythingWorks() {
         Authentication output = callProviderAndReturnUser(USER_DETAILS, INPUT_TOKEN);
         Assertions.assertNotNull(output);
         Assertions.assertEquals(TEST_USER, output.getName());
@@ -80,7 +80,7 @@ public class SpnegoAuthenticationProviderMockTest {
     }
 
     @Test
-    public void testAuthenticationDetailsPropagation() {
+    void testAuthenticationDetailsPropagation() {
         SpnegoRequestToken requestToken = new SpnegoRequestToken(TEST_TOKEN);
         requestToken.setDetails("TestDetails");
         Authentication output = callProviderAndReturnUser(USER_DETAILS, requestToken);
@@ -90,7 +90,7 @@ public class SpnegoAuthenticationProviderMockTest {
     }
 
     @Test()
-    public void testUserIsDisabled() {
+    void testUserIsDisabled() {
         DisabledException exception = Assertions.assertThrows(DisabledException.class,
                 () -> {
                     User disabledUser = new User(TEST_USER, "empty", false, true, true, true, AUTHORITY_LIST);
@@ -100,7 +100,7 @@ public class SpnegoAuthenticationProviderMockTest {
     }
 
     @Test()
-    public void testUserAccountIsExpired() {
+    void testUserAccountIsExpired() {
         AccountExpiredException exception = Assertions.assertThrows(AccountExpiredException.class, () -> {
             User expiredUser = new User(TEST_USER, "empty", true, false, true, true, AUTHORITY_LIST);
             callProviderAndReturnUser(expiredUser, INPUT_TOKEN);
@@ -109,7 +109,7 @@ public class SpnegoAuthenticationProviderMockTest {
     }
 
     @Test()
-    public void testUserCredentialsExpired() {
+    void testUserCredentialsExpired() {
         CredentialsExpiredException exception = Assertions.assertThrows(
                 CredentialsExpiredException.class,
                 () -> {
@@ -121,7 +121,7 @@ public class SpnegoAuthenticationProviderMockTest {
     }
 
     @Test()
-    public void testUserAccountLockedCredentialsExpired() {
+    void testUserAccountLockedCredentialsExpired() {
         LockedException exception = Assertions.assertThrows(
                 LockedException.class,
                 () -> {
@@ -150,7 +150,7 @@ public class SpnegoAuthenticationProviderMockTest {
 
 
     @Test()
-    public void testTicketValidationWrong() {
+    void testTicketValidationWrong() {
         BadCredentialsException exception = Assertions.assertThrows(
                 BadCredentialsException.class, () -> {
                     // stubbing

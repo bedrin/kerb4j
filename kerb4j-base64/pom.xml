@@ -5,17 +5,15 @@
     <parent>
         <artifactId>kerb4j</artifactId>
         <groupId>com.kerb4j</groupId>
-        <version>0.1.3</version>
+        <version>0.2.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>kerb4j-base64</artifactId>
     <packaging>pom</packaging>
 
-
     <modules>
         <module>kerb4j-base64-common</module>
-        <module>kerb4j-base64-java7</module>
         <module>kerb4j-base64-java8</module>
     </modules>
 

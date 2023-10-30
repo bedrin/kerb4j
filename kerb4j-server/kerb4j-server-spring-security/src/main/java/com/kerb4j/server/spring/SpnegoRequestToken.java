@@ -19,6 +19,7 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.io.Serial;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -39,6 +40,7 @@ import java.util.Collections;
  */
 public class SpnegoRequestToken extends AbstractAuthenticationToken {
 
+    @Serial
     private static final long serialVersionUID = 395488921064775014L;
 
     private final byte[] spnegoInitToken;

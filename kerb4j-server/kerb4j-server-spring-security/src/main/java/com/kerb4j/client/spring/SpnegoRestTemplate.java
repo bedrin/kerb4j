@@ -19,7 +19,6 @@ import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.common.util.Constants;
 import org.ietf.jgss.GSSException;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.client.ClientHttpRequest;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.web.client.RequestCallback;
@@ -69,20 +68,16 @@ public class SpnegoRestTemplate extends RestTemplate {
     }
 
     @Override
-    protected <T> T doExecute(final URI uri, final HttpMethod method, final RequestCallback requestCallback, final ResponseExtractor<T> responseExtractor) throws RestClientException {
-        return super.doExecute(uri, method, new RequestCallback() {
-            @Override
-            public void doWithRequest(ClientHttpRequest request) throws IOException {
-
-                requestCallback.doWithRequest(request);
-
-                // TODO: process response if required
-                try {
-                    request.getHeaders().add(Constants.AUTHZ_HEADER, spnegoClient.createAuthroizationHeader(uri.toURL()));
-                } catch (PrivilegedActionException | GSSException | IOException e) {
-                    throw new IOException(e);
-                }
-
+    protected <T> T doExecute(final URI uri, final String uriTemplate, final HttpMethod method, final RequestCallback requestCallback,
+                              final ResponseExtractor<T> responseExtractor)
+            throws RestClientException {
+        return super.doExecute(uri, uriTemplate, method, request -> {
+            requestCallback.doWithRequest(request);
+            // TODO: process response if required
+            try {
+                request.getHeaders().add(Constants.AUTHZ_HEADER, spnegoClient.createAuthroizationHeader(uri.toURL()));
+            } catch (PrivilegedActionException | GSSException | IOException e) {
+                throw new IOException(e);
             }
         }, responseExtractor);
     }
