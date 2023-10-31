@@ -70,30 +70,21 @@ public class KerberosLdapContextSource extends DefaultSpringSecurityContextSourc
     }
 
     @Override
-    protected DirContext getDirContextInstance(final Hashtable<String, Object> environment)
-            throws NamingException {
-
+    protected DirContext getDirContextInstance(final Hashtable<String, Object> environment) throws NamingException {
         environment.put(Context.SECURITY_AUTHENTICATION, "GSSAPI");
-
         Subject serviceSubject = spnegoClient.getSubject();
-
         final NamingException[] suppressedException = new NamingException[]{null};
-        DirContext dirContext = Subject.doAs(serviceSubject, new PrivilegedAction<DirContext>() {
-            @Override
-            public DirContext run() {
-                try {
-                    return KerberosLdapContextSource.super.getDirContextInstance(environment);
-                } catch (NamingException e) {
-                    suppressedException[0] = e;
-                    return null;
-                }
+        DirContext dirContext = Subject.doAs(serviceSubject, (PrivilegedAction<DirContext>) () -> {
+            try {
+                return KerberosLdapContextSource.super.getDirContextInstance(environment);
+            } catch (NamingException e) {
+                suppressedException[0] = e;
+                return null;
             }
         });
-
         if (suppressedException[0] != null) {
             throw suppressedException[0];
         }
-
         return dirContext;
     }
 

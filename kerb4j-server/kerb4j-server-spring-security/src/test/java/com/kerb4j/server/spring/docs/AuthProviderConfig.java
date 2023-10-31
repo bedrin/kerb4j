@@ -18,39 +18,40 @@ package com.kerb4j.server.spring.docs;
 import com.kerb4j.server.spring.KerberosAuthenticationProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.config.annotation.web.servlet.configuration.EnableWebMvcSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.LogoutConfigurer;
+import org.springframework.security.web.SecurityFilterChain;
 
 //tag::snippetA[]
 @Configuration
-@EnableWebMvcSecurity
-public class AuthProviderConfig extends WebSecurityConfigurerAdapter {
+@EnableWebSecurity
+public class AuthProviderConfig {
 
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        http
-                .authorizeRequests()
-                .antMatchers("/", "/home").permitAll()
-                .anyRequest().authenticated()
-                .and()
-                .formLogin()
-                .loginPage("/login").permitAll()
-                .and()
-                .logout()
-                .permitAll();
+    @Bean
+    public SecurityFilterChain configure(final HttpSecurity http) throws Exception {
+        return http
+                .authorizeHttpRequests(a ->
+                        a.requestMatchers("/", "/home").permitAll()
+                                .anyRequest().authenticated())
+                .formLogin(l -> l.loginPage("/login").permitAll())
+                .logout(LogoutConfigurer::permitAll)
+                .build();
     }
 
-    @Override
-    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        auth
-                .authenticationProvider(kerberosAuthenticationProvider());
+    @Bean
+    protected AuthenticationManager authManager(final HttpSecurity http) throws Exception {
+        return http
+                .getSharedObject(AuthenticationManagerBuilder.class)
+                .authenticationProvider(kerberosAuthenticationProvider())
+                .build();
     }
 
     @Bean
     public KerberosAuthenticationProvider kerberosAuthenticationProvider() {
-        KerberosAuthenticationProvider provider = new KerberosAuthenticationProvider();
+        final KerberosAuthenticationProvider provider = new KerberosAuthenticationProvider();
         provider.setUserDetailsService(dummyUserDetailsService());
         return provider;
     }

@@ -15,7 +15,11 @@
  */
 package com.kerb4j.server.spring;
 
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -28,17 +32,20 @@ import org.springframework.security.web.authentication.AuthenticationFailureHand
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Test class for {@link SpnegoAuthenticationProcessingFilter}
@@ -52,12 +59,10 @@ public class SpnegoAuthenticationProcessingFilterTest {
     // data
     private static final byte[] TEST_TOKEN = "TestToken".getBytes();
     private static final String TEST_TOKEN_BASE64 = "VGVzdFRva2Vu";
-    private static final Authentication AUTHENTICATION = new SpnegoRequestToken(TEST_TOKEN);
     private static final String HEADER = "Authorization";
     private static final String TOKEN_PREFIX_NEG = "Negotiate ";
     private static final String TOKEN_PREFIX_KERB = "Kerberos ";
-    private static final BadCredentialsException BCE = new BadCredentialsException("");
-    private static SpnegoAuthenticationToken UNUSED_TICKET_VALIDATION = mock(SpnegoAuthenticationToken.class);
+    //private static SpnegoAuthenticationToken UNUSED_TICKET_VALIDATION = mock(SpnegoAuthenticationToken.class);
     private SpnegoAuthenticationProcessingFilter filter;
     private AuthenticationManager authenticationManager;
     private HttpServletRequest request;
@@ -81,28 +86,29 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    public void testEverythingWorks() throws Exception {
+    void testEverythingWorks() throws Exception {
         everythingWorks(TOKEN_PREFIX_NEG);
     }
 
     @Test
     @Disabled("spring-security-kerberos used to support \"Kerberos\" scheme. Is it a valid use case?")
-    public void testEverythingWorks_Kerberos() throws Exception {
+    void testEverythingWorks_Kerberos() throws Exception {
         everythingWorks(TOKEN_PREFIX_KERB);
     }
 
     @Test
-    public void testEverythingWorksWithHandlers() throws Exception {
+    void testEverythingWorksWithHandlers() throws Exception {
         everythingWorksWithHandlers(TOKEN_PREFIX_NEG);
     }
 
     @Test
     @Disabled("spring-security-kerberos used to support \"Kerberos\" scheme. Is it a valid use case?")
-    public void testEverythingWorksWithHandlers_Kerberos() throws Exception {
+    void testEverythingWorksWithHandlers_Kerberos() throws Exception {
         everythingWorksWithHandlers(TOKEN_PREFIX_KERB);
     }
 
     private void everythingWorksWithHandlers(String tokenPrefix) throws Exception {
+        Authentication AUTHENTICATION = new SpnegoRequestToken(TEST_TOKEN);
         createHandler();
         everythingWorks(tokenPrefix);
         verify(successHandler).onAuthenticationSuccess(request, response, AUTHENTICATION);
@@ -112,6 +118,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
 
     private void everythingWorks(String tokenPrefix) throws IOException,
             ServletException {
+        Authentication AUTHENTICATION = new SpnegoRequestToken(TEST_TOKEN);
         // stubbing
         when(request.getHeader(HEADER)).thenReturn(tokenPrefix + TEST_TOKEN_BASE64);
         SpnegoRequestToken requestToken = new SpnegoRequestToken(TEST_TOKEN);
@@ -125,7 +132,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    public void testNoHeader() throws Exception {
+    void testNoHeader() throws Exception {
         filter.doFilter(request, response, chain);
         // If the header is not present, the filter is not allowed to call
         // authenticate()
@@ -136,15 +143,15 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    public void testAuthenticationFails() throws Exception {
+    void testAuthenticationFails() throws Exception {
         authenticationFails();
         verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
     }
 
     @Test
-    public void testAuthenticationFailsWithHandlers() throws Exception {
+    void testAuthenticationFailsWithHandlers() throws Exception {
         createHandler();
-        authenticationFails();
+        BadCredentialsException BCE = authenticationFails();
         verify(failureHandler).onAuthenticationFailure(request, response, BCE);
         verify(successHandler, never()).onAuthenticationSuccess(any(HttpServletRequest.class),
                 any(HttpServletResponse.class), any(Authentication.class));
@@ -152,7 +159,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    public void testAlreadyAuthenticated() throws Exception {
+    void testAlreadyAuthenticated() throws Exception {
         try {
             Authentication existingAuth = new UsernamePasswordAuthenticationToken("mike", "mike",
                     AuthorityUtils.createAuthorityList("ROLE_TEST"));
@@ -166,7 +173,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    public void testAlreadyAuthenticatedWithNotAuthenticatedToken()
+    void testAlreadyAuthenticatedWithNotAuthenticatedToken()
             throws Exception {
         try {
             // this token is not authenticated yet!
@@ -179,7 +186,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    public void testAlreadyAuthenticatedWithAnonymousToken() throws Exception {
+    void testAlreadyAuthenticatedWithAnonymousToken() throws Exception {
         try {
             Authentication existingAuth = new AnonymousAuthenticationToken("test", "mike",
                     AuthorityUtils.createAuthorityList("ROLE_TEST"));
@@ -191,7 +198,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
     }
 
     @Test
-    public void testAlreadyAuthenticatedNotActive() throws Exception {
+    void testAlreadyAuthenticatedNotActive() throws Exception {
         try {
             Authentication existingAuth = new UsernamePasswordAuthenticationToken("mike", "mike",
                     AuthorityUtils.createAuthorityList("ROLE_TEST"));
@@ -203,7 +210,10 @@ public class SpnegoAuthenticationProcessingFilterTest {
         }
     }
 
-    private void authenticationFails() throws IOException, ServletException {
+    private BadCredentialsException authenticationFails() throws IOException, ServletException {
+
+        BadCredentialsException BCE = new BadCredentialsException("");
+
         // stubbing
         when(request.getHeader(HEADER)).thenReturn(TOKEN_PREFIX_NEG + TEST_TOKEN_BASE64);
         when(authenticationManager.authenticate(any(Authentication.class))).thenThrow(BCE);
@@ -213,6 +223,8 @@ public class SpnegoAuthenticationProcessingFilterTest {
         // chain should stop here and it should send back a 500
         // future version should call some error handler
         verify(chain, never()).doFilter(any(ServletRequest.class), any(ServletResponse.class));
+
+        return BCE;
     }
 
     private void createHandler() {

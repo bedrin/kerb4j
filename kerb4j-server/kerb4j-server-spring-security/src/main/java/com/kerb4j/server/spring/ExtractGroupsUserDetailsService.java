@@ -31,30 +31,22 @@ public class ExtractGroupsUserDetailsService implements AuthenticationUserDetail
 
     @Override
     public UserDetails loadUserDetails(SpnegoAuthenticationToken token) throws UsernameNotFoundException {
-
         try {
             SpnegoInitToken spnegoInitToken = new SpnegoInitToken(token.getToken());
-
             SpnegoKerberosMechToken spnegoKerberosMechToken = spnegoInitToken.getSpnegoKerberosMechToken();
-
             Pac pac = spnegoKerberosMechToken.getPac(token.getKerberosKeys());
-
             List<SimpleGrantedAuthority> roles;
-
             if (null == pac) {
                 roles = Collections.emptyList();
             } else {
                 PacLogonInfo logonInfo = pac.getLogonInfo();
-
                 PacSid[] groupSids = logonInfo.getGroupSids();
                 roles = new ArrayList<>(groupSids.length);
                 for (PacSid pacSid : groupSids) {
                     roles.add(new SimpleGrantedAuthority(pacSid.toHumanReadableString()));
                 }
             }
-
             return new User(token.username(), "N/A", roles);
-
         } catch (Kerb4JException | KrbException e) {
             throw new UsernameNotFoundException("Cannot parse Spnego INIT token", e);
         }

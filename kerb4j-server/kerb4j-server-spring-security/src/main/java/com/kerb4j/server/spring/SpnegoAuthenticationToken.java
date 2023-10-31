@@ -5,7 +5,7 @@ import org.springframework.security.crypto.codec.Base64;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosKey;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 
 /**
@@ -76,14 +76,10 @@ public class SpnegoAuthenticationToken extends SpnegoRequestToken {
      * @return encoded response token
      */
     public String getEncodedResponseToken() {
-        if (!hasResponseToken())
+        if (!hasResponseToken()) {
             throw new IllegalStateException("Unauthenticated or no response token");
-
-        try {
-            return new String(Base64.encode(responseToken()), "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            throw new IllegalStateException("Unable to encodeImpl response token", e);
         }
+        return new String(Base64.encode(responseToken()), StandardCharsets.UTF_8);
     }
 
     @Override

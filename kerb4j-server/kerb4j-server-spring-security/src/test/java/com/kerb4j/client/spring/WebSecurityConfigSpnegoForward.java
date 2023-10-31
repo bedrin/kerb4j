@@ -24,20 +24,20 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
-public class WebSecurityConfigSpnegoForward extends WebSecurityConfigurerAdapter {
+public class WebSecurityConfigSpnegoForward {
 
     @Value("${serverPrincipal}")
     private String serverPrincipal;
@@ -45,22 +45,20 @@ public class WebSecurityConfigSpnegoForward extends WebSecurityConfigurerAdapter
     @Value("${serverKeytab}")
     private String serverKeytab;
 
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        http
-                .exceptionHandling().authenticationEntryPoint(spnegoEntryPoint()).and()
-                .authorizeRequests()
-                .antMatchers("/", "/home", "/login").permitAll()
-                .antMatchers("/hello").access("hasRole('ROLE_USER')")
-                .anyRequest().authenticated()
-                .and()
-
-                .addFilterBefore(spnegoAuthenticationProcessingFilter(authenticationManagerBean()), BasicAuthenticationFilter.class);
+    @Bean
+    protected SecurityFilterChain configure(HttpSecurity http) throws Exception {
+        return http.exceptionHandling(e -> e.authenticationEntryPoint(spnegoEntryPoint()))
+                .authorizeHttpRequests(a -> a
+                        .requestMatchers("/", "/home", "/login").permitAll()
+                        .requestMatchers("/hello").hasRole("USER")
+                        .anyRequest().authenticated())
+                .addFilterBefore(spnegoAuthenticationProcessingFilter(authManager()), BasicAuthenticationFilter.class)
+                .build();
     }
 
-    @Override
-    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        auth.authenticationProvider(kerberosServiceAuthenticationProvider());
+    @Bean
+    protected AuthenticationManager authManager() {
+        return new ProviderManager(kerberosServiceAuthenticationProvider());
     }
 
     @Bean

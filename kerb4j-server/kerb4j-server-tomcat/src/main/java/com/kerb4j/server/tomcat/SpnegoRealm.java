@@ -24,13 +24,13 @@ public class SpnegoRealm extends RealmBase {
     /**
      * cache des associations nom d'utilisateur - principal
      */
-    private Map<String, Principal> realm;
+    private final Map<String, Principal> realm;
 
     /**
      * Initialise le realm
      */
     public SpnegoRealm() {
-        realm = new HashMap();
+        realm = new HashMap<>();
     }
 
     public String getInfo() {
@@ -45,13 +45,8 @@ public class SpnegoRealm extends RealmBase {
         return null;
     }
 
-    protected Principal getPrincipal(String princ) {
-        SpnegoPrincipal principal = (SpnegoPrincipal) realm.get(princ);
-        if (principal == null) {
-            principal = new SpnegoPrincipal(princ);
-            realm.put(princ, principal);
-        }
-        return principal;
+    protected Principal getPrincipal(final String princ) {
+        return realm.computeIfAbsent(princ, p -> new SpnegoPrincipal(princ));
     }
 
 }

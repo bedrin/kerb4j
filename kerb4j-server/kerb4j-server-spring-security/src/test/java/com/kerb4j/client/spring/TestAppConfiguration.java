@@ -1,7 +1,5 @@
 package com.kerb4j.client.spring;
 
-
-import io.sniffy.boot.EnableSniffy;
 import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
 import org.springframework.boot.autoconfigure.http.HttpMessageConvertersAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
@@ -12,47 +10,33 @@ import org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConf
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 @Configuration
-@Import({
-        ServletWebServerFactoryAutoConfiguration.class,
+@Import({ServletWebServerFactoryAutoConfiguration.class,
         DispatcherServletAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
-        SecurityAutoConfiguration.class,
+        WebMvcAutoConfiguration.class, SecurityAutoConfiguration.class,
         HttpMessageConvertersAutoConfiguration.class,
         ErrorMvcAutoConfiguration.class,
-        PropertyPlaceholderAutoConfiguration.class
-})
-@EnableSniffy
+        PropertyPlaceholderAutoConfiguration.class})
 @Controller
 public class TestAppConfiguration {
 
-    @RequestMapping(
-            path = "/",
-            method = RequestMethod.GET,
-            produces = "text/plain")
     @ResponseBody
+    @GetMapping(path = "/", produces = "text/plain")
     public String home() {
         return "home";
     }
 
-    @RequestMapping(
-            path = "/login",
-            method = RequestMethod.GET,
-            produces = "text/plain")
     @ResponseBody
+    @GetMapping(path = "/login", produces = "text/plain")
     public String login() {
         return "login";
     }
 
-    @RequestMapping(
-            path = "/hello",
-            method = RequestMethod.GET,
-            produces = "text/plain")
     @ResponseBody
+    @GetMapping(path = "/hello", produces = "text/plain")
     public String hello() {
         return "hello";
     }

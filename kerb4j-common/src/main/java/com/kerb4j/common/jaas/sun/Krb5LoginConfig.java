@@ -25,8 +25,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import static java.util.Collections.emptyMap;
-
 /**
  * Implementation of {@link Configuration} which uses Sun's JAAS
  * Krb5LoginModule.
