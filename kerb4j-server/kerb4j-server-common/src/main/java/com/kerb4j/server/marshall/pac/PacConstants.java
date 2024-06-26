@@ -10,6 +10,7 @@ public interface PacConstants {
 
     int CLIENT_INFO_TYPE = 10;
     int S4U_DELEGATION_INFO = 11;
+    int UPN_DNS_INFO = 0x0c;
 
     int LOGON_EXTRA_SIDS = 0x20;
     int LOGON_RESOURCE_GROUPS = 0x200;
