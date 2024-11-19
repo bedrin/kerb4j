@@ -66,6 +66,11 @@ public class TestPac {
             Assertions.assertEquals("DOMAIN", pac.getLogonInfo().getDomainName());
             Assertions.assertEquals("WS2008", pac.getLogonInfo().getServerName());
 
+            Assertions.assertEquals("user.test@domain.com", pac.getUpnDnsInfo().getUpn());
+            Assertions.assertEquals("DOMAIN.COM", pac.getUpnDnsInfo().getDnsDomainName());
+            Assertions.assertFalse(pac.getUpnDnsInfo().hasUpn());
+            Assertions.assertFalse(pac.getUpnDnsInfo().hasSam());
+
         } catch (Kerb4JException e) {
             e.printStackTrace();
             Assertions.fail(e.getMessage());
@@ -87,6 +92,11 @@ public class TestPac {
             Assertions.assertEquals(48, pac.getLogonInfo().getLogonCount());
             Assertions.assertEquals("DOMAIN", pac.getLogonInfo().getDomainName());
             Assertions.assertEquals("WS2008", pac.getLogonInfo().getServerName());
+
+            Assertions.assertEquals("user.test@domain.com", pac.getUpnDnsInfo().getUpn());
+            Assertions.assertEquals("DOMAIN.COM", pac.getUpnDnsInfo().getDnsDomainName());
+            Assertions.assertFalse(pac.getUpnDnsInfo().hasUpn());
+            Assertions.assertFalse(pac.getUpnDnsInfo().hasSam());
 
         } catch (Kerb4JException e) {
             e.printStackTrace();
