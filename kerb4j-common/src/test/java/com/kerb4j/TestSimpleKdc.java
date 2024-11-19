@@ -15,9 +15,9 @@
  */
 package com.kerb4j;
 
-import org.apache.directory.server.kerberos.shared.keytab.Keytab;
-import org.apache.directory.server.kerberos.shared.keytab.KeytabEntry;
+import org.apache.kerby.kerberos.kerb.keytab.Keytab;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
+import org.apache.kerby.kerberos.kerb.type.base.PrincipalName;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -44,12 +44,11 @@ public class TestSimpleKdc extends KerberosSecurityTestcase {
         File workDir = getWorkDir();
 
         kdc.createAndExportPrincipals(new File(workDir, "keytab"), "foo/bar", "bar/foo");
-        Keytab kt = Keytab.read(new File(workDir, "keytab"));
+        Keytab kt = Keytab.loadKeytab(new File(workDir, "keytab"));
         Set<String> principals = new HashSet<String>();
-        for (KeytabEntry entry : kt.getEntries()) {
-            String principalName = entry.getPrincipalName();
-            if (!principalName.startsWith("krbtgt") && !principalName.startsWith("kadmin")) {
-                principals.add(principalName);
+        for (PrincipalName principalName : kt.getPrincipals()) {
+            if (!principalName.getName().startsWith("krbtgt") && !principalName.getName().startsWith("kadmin")) {
+                principals.add(principalName.getName());
             }
         }
         // here principals used to use \ instead of /
