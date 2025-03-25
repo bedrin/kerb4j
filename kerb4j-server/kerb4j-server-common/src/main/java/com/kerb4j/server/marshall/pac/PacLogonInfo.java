@@ -206,10 +206,10 @@ public class PacLogonInfo {
                 extraSids[i] = extraSidAtts[i].getId();
             }
 
-            // Compute Resource Group IDs with Resource Domain ID to get SIDs
+            // Extract Resource Group SIDs
             resourceGroupSids = new PacSid[resourceGroups.length];
             for (int i = 0; i < resourceGroups.length; i++) {
-                resourceGroupSids[i] = PacSid.append(resourceDomainId, resourceGroups[i].getId());
+                resourceGroupSids[i] = resourceGroups[i].getId();
             }
 
             // Compute User IDs with Domain ID to get User SIDs
