@@ -39,7 +39,6 @@ import javax.security.auth.kerberos.KerberosKey;
 import javax.security.auth.kerberos.KerberosPrincipal;
 import javax.security.auth.kerberos.KeyTab;
 import java.io.File;
-import java.net.InetAddress;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -67,7 +66,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
-        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
+        String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
         File serverKeytab = new File(workDir, "acceptOnly.keytab");
@@ -108,7 +107,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
-        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
+        String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
         File serverKeytab = new File(workDir, "server.keytab");
@@ -157,7 +156,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
-        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
+        String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
         File serverKeytab = new File(workDir, "server.keytab");
@@ -194,7 +193,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
-        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
+        String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
         String serverPassword = "TestPassword";
@@ -231,7 +230,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
-        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
+        String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
         File serverKeytab = new File(workDir, "server.keytab");
@@ -274,7 +273,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
-        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
+        String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
         File serverKeytab = new File(workDir, "server.keytab");

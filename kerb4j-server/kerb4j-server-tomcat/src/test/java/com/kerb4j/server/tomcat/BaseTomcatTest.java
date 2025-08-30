@@ -23,7 +23,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.InetAddress;
 import java.net.URL;
 import java.security.PrivilegedActionException;
 
@@ -42,7 +41,7 @@ public class BaseTomcatTest extends KerberosSecurityTestcase {
     public void startTomcat() throws Exception {
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
-        host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase(); // doesn't work without toLowerCse
+        host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
         File serverKeytab = new File(workDir, "server.keytab");
