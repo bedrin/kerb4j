@@ -11,6 +11,16 @@ Main features:
 - Proper caching of tickets - make just one request to domain controller and cache the ticket on both client and server
   sides
 - Flexible SPN resolution - you own the code and do not have to rely on magic SPN calculation algorithms
+- **NEW**: Pluggable Kerberos implementations - choose between JDK GSS API and Apache Kerby
+
+## Kerberos Implementation Support
+
+Kerb4J now supports multiple Kerberos implementations through a pluggable integration layer:
+
+- **JDK Implementation**: Uses built-in JDK GSS API (default, mature)
+- **Apache Kerby**: Pure Java implementation, cross-platform
+
+See [Integration Layer Documentation](kerb4j-integration/README.md) for details.
 
 Java Compatibility
 ========
