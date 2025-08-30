@@ -16,6 +16,7 @@
 package com.kerb4j.server.spring;
 
 import com.kerb4j.client.SpnegoClient;
+import com.kerb4j.server.MultiPrincipalManager;
 import org.springframework.core.io.Resource;
 
 import java.util.Map;

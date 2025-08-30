@@ -22,7 +22,7 @@ import com.kerb4j.server.marshall.Kerb4JException;
 import com.kerb4j.server.marshall.spnego.SpnegoInitToken;
 import com.kerb4j.server.marshall.spnego.SpnegoKerberosMechToken;
 import com.kerb4j.server.spring.KerberosTicketValidator;
-import com.kerb4j.server.spring.MultiPrincipalManager;
+import com.kerb4j.server.MultiPrincipalManager;
 import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

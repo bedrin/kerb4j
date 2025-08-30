@@ -16,6 +16,7 @@
 package com.kerb4j.server.tomcat;
 
 import com.kerb4j.client.SpnegoClient;
+import com.kerb4j.server.MultiPrincipalManager;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 
  * @since 2.0.0
  */
-public class TomcatMultiPrincipalManager {
+public class TomcatMultiPrincipalManager implements MultiPrincipalManager {
     
     private final Map<String, SpnegoClient> spnegoClients = new ConcurrentHashMap<>();
     
@@ -51,6 +52,7 @@ public class TomcatMultiPrincipalManager {
      * @param spn the service principal name
      * @return the SpnegoClient configured for this principal, or null if not found
      */
+    @Override
     public SpnegoClient getSpnegoClientForSPN(String spn) {
         return spnegoClients.get(spn);
     }
@@ -61,6 +63,7 @@ public class TomcatMultiPrincipalManager {
      * @param spn the service principal name
      * @return true if a principal is configured for this SPN
      */
+    @Override
     public boolean hasPrincipalForSPN(String spn) {
         return spnegoClients.containsKey(spn);
     }
@@ -70,6 +73,7 @@ public class TomcatMultiPrincipalManager {
      * 
      * @return array of configured SPNs
      */
+    @Override
     public String[] getConfiguredSPNs() {
         return spnegoClients.keySet().toArray(new String[0]);
     }
