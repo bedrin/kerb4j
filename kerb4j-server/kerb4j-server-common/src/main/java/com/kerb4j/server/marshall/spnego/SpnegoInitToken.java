@@ -68,6 +68,17 @@ public class SpnegoInitToken extends KrbSequenceType {
         return new SpnegoKerberosMechToken(getMechToken());
     }
 
+    /**
+     * Get the server principal name (SPN) from the SPNEGO token.
+     * This extracts the target service principal from the unencrypted part of the token.
+     * 
+     * @return the server principal name as a string
+     * @throws Kerb4JException if the token cannot be parsed
+     */
+    public String getServerPrincipalName() throws Kerb4JException {
+        return getSpnegoKerberosMechToken().getServerPrincipalName();
+    }
+
     public List<String> getMechTypes() {
         List<String> mechTypes = new ArrayList<String>();
         for (Asn1ObjectIdentifier objId : getFieldAs(MECH_TYPES, KrbObjectIds.class).getElements()) {
