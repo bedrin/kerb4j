@@ -109,6 +109,16 @@ public class SpnegoKerberosMechToken {
 
     }
 
+    /**
+     * Get the server principal name (SPN) from the ticket.
+     * This method extracts the server name from the unencrypted part of the ticket.
+     * 
+     * @return the server principal name as a string
+     */
+    public String getServerPrincipalName() {
+        return getApRequest().getTicket().getSname().getName();
+    }
+
     public Pac getPac(KerberosKey[] kerberosKeys) throws KrbException, Kerb4JException {
 
         EncryptedData encryptedData = getApRequest().getTicket().getEncryptedEncPart();

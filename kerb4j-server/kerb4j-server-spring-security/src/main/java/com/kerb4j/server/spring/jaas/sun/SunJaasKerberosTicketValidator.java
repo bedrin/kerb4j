@@ -22,6 +22,7 @@ import com.kerb4j.server.marshall.Kerb4JException;
 import com.kerb4j.server.marshall.spnego.SpnegoInitToken;
 import com.kerb4j.server.marshall.spnego.SpnegoKerberosMechToken;
 import com.kerb4j.server.spring.KerberosTicketValidator;
+import com.kerb4j.server.MultiPrincipalManager;
 import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -59,6 +60,9 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
     private boolean acceptOnly;
 
     private SpnegoClient spnegoClient;
+    
+    // Multi-principal support
+    private MultiPrincipalManager multiPrincipalManager;
 
     private boolean holdOnToGSSContext;
 
@@ -69,7 +73,34 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
         SpnegoTokenFixer.fix(token);
 
         try {
-            SpnegoContext acceptContext = spnegoClient.createAcceptContext();
+            SpnegoClient clientToUse = spnegoClient;
+            
+            // If multi-principal manager is configured, use it to select the appropriate client
+            if (multiPrincipalManager != null) {
+                try {
+                    SpnegoInitToken spnegoInitToken = new SpnegoInitToken(token);
+                    String targetSPN = spnegoInitToken.getServerPrincipalName();
+                    
+                    LOG.debug("Extracted target SPN from token: " + targetSPN);
+                    
+                    SpnegoClient multiClient = multiPrincipalManager.getSpnegoClientForSPN(targetSPN);
+                    if (multiClient != null) {
+                        clientToUse = multiClient;
+                        LOG.debug("Using multi-principal client for SPN: " + targetSPN);
+                    } else if (spnegoClient == null) {
+                        throw new BadCredentialsException("No principal configured for SPN: " + targetSPN);
+                    } else {
+                        LOG.debug("Using default single principal client for SPN: " + targetSPN);
+                    }
+                } catch (Kerb4JException e) {
+                    LOG.warn("Failed to extract SPN from token, using default principal", e);
+                    if (spnegoClient == null) {
+                        throw new BadCredentialsException("Failed to extract SPN and no default principal configured", e);
+                    }
+                }
+            }
+            
+            SpnegoContext acceptContext = clientToUse.createAcceptContext();
             byte[] responseToken = acceptContext.acceptToken(token);
             GSSName srcName = acceptContext.getSrcName();
 
@@ -95,8 +126,8 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
                     token,
                     srcName.toString(),
                     responseToken,
-                    spnegoClient.getSubject(),
-                    spnegoClient.getKerberosKeys(),
+                    clientToUse.getSubject(),
+                    clientToUse.getKerberosKeys(),
                     null == encryptionType ? null : encryptionType.getName()
             );
             // TODO: check that it doesn't involve network
@@ -109,6 +140,15 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
 
     @Override
     public void afterPropertiesSet() throws Exception {
+        // Multi-principal mode
+        if (multiPrincipalManager != null) {
+            String[] spns = multiPrincipalManager.getConfiguredSPNs();
+            Assert.state(spns.length > 0, "At least one principal must be configured in multiPrincipalManager");
+            LOG.info("Ticket validator initialized with multi-principal support for " + spns.length + " principals");
+            return;
+        }
+        
+        // Single principal mode (backward compatibility)
         Assert.notNull(this.servicePrincipal, "servicePrincipal must be specified");
         Assert.state(null != this.keyTabLocation || null != this.servicePassword, "Either password or keyTab must be specified");
         if (null != this.keyTabLocation) {
@@ -179,5 +219,17 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
      */
     public void setAcceptOnly(boolean acceptOnly) {
         this.acceptOnly = acceptOnly;
+    }
+    
+    /**
+     * Set the multi-principal manager for handling multiple service principals.
+     * When this is set, the validator will extract the target SPN from incoming tokens
+     * and select the appropriate principal for validation.
+     * 
+     * @param multiPrincipalManager the multi-principal manager
+     * @since 2.0.0
+     */
+    public void setMultiPrincipalManager(MultiPrincipalManager multiPrincipalManager) {
+        this.multiPrincipalManager = multiPrincipalManager;
     }
 }

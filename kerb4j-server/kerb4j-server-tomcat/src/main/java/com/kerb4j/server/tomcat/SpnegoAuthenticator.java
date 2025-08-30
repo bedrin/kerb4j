@@ -57,6 +57,9 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
 
     private SpnegoClient spnegoClient;
 
+    // Multi-principal support
+    private TomcatMultiPrincipalManager multiPrincipalManager;
+
     // ------ proprietes - permet de configurer la valve depuis la configuration de tomcat
     private String keyTab = null;
     private String principalName = null;
@@ -97,10 +100,33 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
         this.applyJava8u40Fix = applyJava8u40Fix;
     }
 
+    /**
+     * Set the multi-principal manager for handling multiple service principals.
+     * When this is set, the authenticator will extract the target SPN from incoming tokens
+     * and select the appropriate principal for validation.
+     * 
+     * @param multiPrincipalManager the multi-principal manager
+     * @since 2.0.0
+     */
+    public void setMultiPrincipalManager(TomcatMultiPrincipalManager multiPrincipalManager) {
+        this.multiPrincipalManager = multiPrincipalManager;
+    }
+
     @Override
     protected void initInternal() throws LifecycleException {
         super.initInternal();
 
+        // Multi-principal mode
+        if (multiPrincipalManager != null) {
+            String[] spns = multiPrincipalManager.getConfiguredSPNs();
+            if (spns.length == 0) {
+                throw new LifecycleException("At least one principal must be configured in multiPrincipalManager");
+            }
+            log.info("SpnegoAuthenticator initialized with multi-principal support for " + spns.length + " principals");
+            return;
+        }
+        
+        // Single principal mode (backward compatibility)
         try {
             spnegoClient = SpnegoClient.loginWithKeyTab(principalName, keyTab);
         } catch (Exception e) {
@@ -188,8 +214,52 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
         byte[] outToken;
 
         try {
+            SpnegoClient clientToUse = spnegoClient;
+            
+            // If multi-principal manager is configured, use it to select the appropriate client
+            if (multiPrincipalManager != null) {
+                try {
+                    SpnegoInitToken spnegoInitToken = new SpnegoInitToken(decoded);
+                    String targetSPN = spnegoInitToken.getServerPrincipalName();
+                    
+                    if (log.isDebugEnabled()) {
+                        log.debug("Extracted target SPN from token: " + targetSPN);
+                    }
+                    
+                    SpnegoClient multiClient = multiPrincipalManager.getSpnegoClientForSPN(targetSPN);
+                    if (multiClient != null) {
+                        clientToUse = multiClient;
+                        if (log.isDebugEnabled()) {
+                            log.debug("Using multi-principal client for SPN: " + targetSPN);
+                        }
+                    } else if (spnegoClient == null) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("No principal configured for SPN: " + targetSPN);
+                        }
+                        response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                        return false;
+                    } else {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Using default single principal client for SPN: " + targetSPN);
+                        }
+                    }
+                } catch (Kerb4JException e) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Failed to extract SPN from token, using default principal", e);
+                    }
+                    if (spnegoClient == null) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Failed to extract SPN and no default principal configured");
+                        }
+                        response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                        return false;
+                    }
+                }
+            }
 
-            acceptContext = spnegoClient.createAcceptContext();
+            acceptContext = clientToUse.createAcceptContext();
             outToken = acceptContext.acceptToken(decoded);
 
             if (outToken == null) {
@@ -202,12 +272,12 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
                 return false;
             }
 
-            Subject subject = spnegoClient.getSubject();
+            Subject subject = clientToUse.getSubject();
 
             try {
                 SpnegoInitToken spnegoInitToken = new SpnegoInitToken(decoded);
                 SpnegoKerberosMechToken spnegoKerberosMechToken = spnegoInitToken.getSpnegoKerberosMechToken();
-                Pac pac = spnegoKerberosMechToken.getPac(spnegoClient.getKerberosKeys());
+                Pac pac = spnegoKerberosMechToken.getPac(clientToUse.getKerberosKeys());
 
                 if (null != pac) {
                     PacLogonInfo logonInfo = pac.getLogonInfo();
