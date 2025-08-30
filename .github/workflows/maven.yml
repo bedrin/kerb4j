@@ -31,7 +31,7 @@ jobs:
       matrix:
         # test against latest update of LTS Java versions >= 17:
         java: [ 17, 21 ]
-        os: [ ubuntu-24.04, windows-latest, macos-14 ]
+        os: [ ubuntu-24.04, windows-latest, macos-latest ]
     name: Test JDK ${{ matrix.java }}, ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
