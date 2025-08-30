@@ -48,7 +48,7 @@ import static org.mockito.Mockito.when;
  */
 public class SpnegoAuthenticationProviderTest extends KerberosSecurityTestcase {
 
-    public static final String SERVER_SPN = "HTTP/server.springsource.org";
+    public static final String SERVER_SPN = "HTTP/localhost";
     private static final String TEST_USER = "Testuser";
     private static final String TEST_PASSWORD = "password";
     private static final UsernamePasswordAuthenticationToken INPUT_TOKEN = new UsernamePasswordAuthenticationToken(TEST_USER, TEST_PASSWORD);
