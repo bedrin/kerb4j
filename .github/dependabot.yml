@@ -1,0 +1,63 @@
+version: 2
+
+updates:
+  # Maven dependencies for a multi-module repo.
+  # Scan the repository root. Add separate update entries for module directories if needed, for example:
+  # - package-ecosystem: "maven"
+  #   directory: "/service-a"
+  #   schedule:
+  #     interval: "weekly"
+  #     day: "monday"
+  #     time: "09:00"
+  #     timezone: "Europe/Berlin"
+  - package-ecosystem: "maven"
+    directory: "/"
+
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Berlin"
+
+    open-pull-requests-limit: 10
+
+    labels:
+      - "dependencies"
+      - "maven"
+
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+    groups:
+      maven-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions versions in .github/workflows/*.yml
+  - package-ecosystem: "github-actions"
+    directory: "/"
+
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:15"
+      timezone: "Europe/Berlin"
+
+    open-pull-requests-limit: 5
+
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+    groups:
+      github-actions:
+        patterns:
+          - "*"
