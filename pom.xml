@@ -26,15 +26,15 @@
         <spring.boot.version>3.1.4</spring.boot.version>
         <spring.security.version>6.1.5</spring.security.version>
         <spring.web.version>6.0.12</spring.web.version>
-        <servlet.api.version>6.0.0</servlet.api.version>
-        <maven.compiler.version>3.11.0</maven.compiler.version>
-        <maven.javadoc.version>3.6.0</maven.javadoc.version>
+        <servlet.api.version>6.1.0</servlet.api.version>
+        <maven.compiler.version>3.15.0</maven.compiler.version>
+        <maven.javadoc.version>3.12.0</maven.javadoc.version>
         <apacheDirServerVersion>2.0.0.AM26</apacheDirServerVersion>
-        <kerby.version>2.0.3</kerby.version>
+        <kerby.version>2.1.1</kerby.version>
         <junit.jupiter.version>5.9.2</junit.jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
-        <mokito.version>5.2.0</mokito.version>
-        <slf4j.version>2.0.9</slf4j.version>
+        <mokito.version>5.23.0</mokito.version>
+        <slf4j.version>2.0.18</slf4j.version>
     </properties>
 
     <licenses>
@@ -204,7 +204,7 @@
         <dependency>
             <groupId>org.apache.directory.api</groupId>
             <artifactId>api-ldap-codec-standalone</artifactId>
-            <version>2.1.2</version>
+            <version>2.1.7</version>
             <scope>test</scope>
         </dependency>
 
@@ -256,7 +256,7 @@
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
-            <version>2.11.0</version>
+            <version>2.22.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -298,7 +298,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.3.0</version>
+                <version>3.4.0</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -335,7 +335,7 @@
                     <plugin>
                         <groupId>org.sonatype.plugins</groupId>
                         <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.6.13</version>
+                        <version>1.7.0</version>
                         <extensions>true</extensions>
                         <configuration>
                             <serverId>sonatype-nexus-snapshots</serverId>
@@ -373,7 +373,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>3.1.0</version>
+                        <version>3.2.8</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
