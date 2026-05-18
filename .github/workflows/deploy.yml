@@ -13,7 +13,7 @@ jobs:
         with:
           java-version: 17
           distribution: 'temurin'
-          server-id: sonatype-nexus-snapshots
+          server-id: central
           server-username: MAVEN_USERNAME
           server-password: MAVEN_PASSWORD
       - name: Import GPG key
@@ -31,8 +31,8 @@ jobs:
       - name: Publish to the Maven Central Repository
         run: mvn -P sonatype,release -B deploy
         env:
-          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
+          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
       - name: Set up Java for publishing to GitHub Packages
         uses: actions/setup-java@v5
         with:
