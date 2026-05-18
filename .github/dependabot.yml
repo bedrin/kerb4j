@@ -28,6 +28,8 @@ updates:
 
     groups:
       maven-minor-and-patch:
+        patterns:
+          - "*"
         update-types:
           - "minor"
           - "patch"
