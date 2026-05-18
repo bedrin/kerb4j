@@ -1,0 +1,60 @@
+version: 2
+
+updates:
+  # Maven dependencies for a multi-module repo.
+  # Include every directory that has its own pom.xml which Dependabot should scan.
+  - package-ecosystem: "maven"
+    directories:
+      - "/"
+      # Add module directories only if they have independent pom.xml files
+      # and Dependabot does not pick them up sufficiently from the root aggregator.
+      # - "/service-a"
+      # - "/service-b"
+      # - "/libs/common"
+
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Berlin"
+
+    open-pull-requests-limit: 10
+
+    labels:
+      - "dependencies"
+      - "maven"
+
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+    groups:
+      maven-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions versions in .github/workflows/*.yml
+  - package-ecosystem: "github-actions"
+    directory: "/"
+
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:15"
+      timezone: "Europe/Berlin"
+
+    open-pull-requests-limit: 5
+
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+    groups:
+      github-actions:
+        patterns:
+          - "*"
