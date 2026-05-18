@@ -2,13 +2,16 @@ version: 2
 
 updates:
   # Maven dependencies for a multi-module repo.
-  # Scan the repository root. Add separate update entries for module directories if needed.
+  # Scan the repository root. Add separate update entries for module directories if needed, for example:
+  # - package-ecosystem: "maven"
+  #   directory: "/service-a"
+  #   schedule:
+  #     interval: "weekly"
+  #     day: "monday"
+  #     time: "09:00"
+  #     timezone: "Europe/Berlin"
   - package-ecosystem: "maven"
     directory: "/"
-      # If some modules need independent scanning, add additional `updates` entries such as:
-      # directory: "/service-a"
-      # directory: "/service-b"
-      # directory: "/libs/common"
 
     schedule:
       interval: "weekly"
