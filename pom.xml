@@ -32,7 +32,7 @@
         <apacheDirServerVersion>2.0.0.AM26</apacheDirServerVersion>
         <kerby.version>2.1.1</kerby.version>
         <junit.jupiter.version>5.9.2</junit.jupiter.version>
-        <hamcrest.version>2.2</hamcrest.version>
+        <hamcrest.version>3.0</hamcrest.version>
         <mokito.version>5.23.0</mokito.version>
         <slf4j.version>2.0.18</slf4j.version>
     </properties>
