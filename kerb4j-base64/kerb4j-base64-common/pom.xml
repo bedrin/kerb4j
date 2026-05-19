@@ -10,5 +10,6 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>kerb4j-base64-common</artifactId>
+    <name>kerb4j-base64-common</name>
 
 </project>
