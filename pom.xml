@@ -24,8 +24,6 @@
         <javaTargetSource>17</javaTargetSource>
         <javaDevelSource>17</javaDevelSource>
         <spring.boot.version>3.1.4</spring.boot.version>
-        <spring.security.version>6.1.5</spring.security.version>
-        <spring.web.version>6.0.12</spring.web.version>
         <servlet.api.version>6.1.0</servlet.api.version>
         <maven.compiler.version>3.15.0</maven.compiler.version>
         <maven.javadoc.version>3.12.0</maven.javadoc.version>
@@ -84,6 +82,13 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
@@ -218,13 +223,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-            <version>${spring.boot.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
-            <version>${spring.boot.version}</version>
             <scope>test</scope>
             <!-- exclude junit 4 -->
             <exclusions>
@@ -237,7 +240,6 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-web</artifactId>
-            <version>${spring.security.version}</version>
             <scope>test</scope>
             <exclusions>
                 <exclusion>
@@ -249,7 +251,6 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-config</artifactId>
-            <version>${spring.security.version}</version>
             <scope>test</scope>
         </dependency>
 
