@@ -24,7 +24,7 @@
         <javaTargetSource>17</javaTargetSource>
         <javaDevelSource>17</javaDevelSource>
         <spring.boot.version>3.1.4</spring.boot.version>
-        <spring.security.version>6.1.5</spring.security.version>
+        <spring.security.version>7.0.5</spring.security.version>
         <spring.web.version>6.0.12</spring.web.version>
         <servlet.api.version>6.1.0</servlet.api.version>
         <maven.compiler.version>3.15.0</maven.compiler.version>
