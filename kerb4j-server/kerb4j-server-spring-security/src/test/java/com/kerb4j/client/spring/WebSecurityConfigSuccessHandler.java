@@ -24,7 +24,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -64,19 +63,11 @@ public class WebSecurityConfigSuccessHandler {
     }
 
     @Bean
-    public FilterRegistrationBean<SpnegoAuthenticationProcessingFilter> spnegoFilterRegistration(SpnegoAuthenticationProcessingFilter filter) {
-        FilterRegistrationBean<SpnegoAuthenticationProcessingFilter> registration = new FilterRegistrationBean<>(filter);
-        registration.setEnabled(false);
-        return registration;
-    }
-
-    @Bean
     public SpnegoEntryPoint spnegoEntryPoint() {
         return new SpnegoEntryPoint();
     }
 
-    @Bean
-    public SpnegoAuthenticationProcessingFilter spnegoAuthenticationProcessingFilter(
+    private SpnegoAuthenticationProcessingFilter spnegoAuthenticationProcessingFilter(
             AuthenticationManager authenticationManager) {
         SpnegoAuthenticationProcessingFilter filter = new SpnegoAuthenticationProcessingFilter();
 
