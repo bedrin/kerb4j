@@ -30,6 +30,11 @@ updates:
       include: "scope"
 
     groups:
+      spring:
+        patterns:
+          - "org.springframework*"
+          - "org.springframework.boot*"
+          - "org.springframework.security*"
       maven-minor-and-patch:
         patterns:
           - "*"

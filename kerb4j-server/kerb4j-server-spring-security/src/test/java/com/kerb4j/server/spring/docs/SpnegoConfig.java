@@ -20,6 +20,7 @@ import com.kerb4j.server.spring.SpnegoAuthenticationProcessingFilter;
 import com.kerb4j.server.spring.SpnegoAuthenticationProvider;
 import com.kerb4j.server.spring.SpnegoEntryPoint;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
@@ -58,6 +59,13 @@ public class SpnegoConfig {
         KerberosAuthenticationProvider provider = new KerberosAuthenticationProvider();
         provider.setUserDetailsService(dummyUserDetailsService());
         return provider;
+    }
+
+    @Bean
+    public FilterRegistrationBean<SpnegoAuthenticationProcessingFilter> spnegoFilterRegistration(SpnegoAuthenticationProcessingFilter filter) {
+        FilterRegistrationBean<SpnegoAuthenticationProcessingFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

@@ -16,6 +16,7 @@
 package com.kerb4j.client;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
@@ -62,6 +63,13 @@ public class WebSecurityConfigSuccessHandler {
     @Bean
     protected AuthenticationManager authManager() {
         return new ProviderManager(kerberosServiceAuthenticationProvider());
+    }
+
+    @Bean
+    public FilterRegistrationBean<SpnegoAuthenticationProcessingFilter> spnegoFilterRegistration(SpnegoAuthenticationProcessingFilter filter) {
+        FilterRegistrationBean<SpnegoAuthenticationProcessingFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean
