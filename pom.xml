@@ -23,9 +23,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javaTargetSource>17</javaTargetSource>
         <javaDevelSource>17</javaDevelSource>
-        <spring.boot.version>3.5.3</spring.boot.version>
-        <spring.security.version>6.5.1</spring.security.version>
-        <spring.web.version>6.2.8</spring.web.version>
+        <spring.boot.version>3.5.14</spring.boot.version>
+        <spring.security.version>6.5.10</spring.security.version>
+        <spring.web.version>6.2.18</spring.web.version>
         <servlet.api.version>6.0.0</servlet.api.version>
         <maven.compiler.version>3.11.0</maven.compiler.version>
         <maven.javadoc.version>3.6.0</maven.javadoc.version>

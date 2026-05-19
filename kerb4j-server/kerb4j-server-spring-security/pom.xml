@@ -13,7 +13,7 @@
     <name>kerb4j-server-spring-security</name>
 
     <properties>
-        <spring.security.version>6.5.1</spring.security.version>
+        <spring.security.version>6.5.10</spring.security.version>
     </properties>
 
     <dependencies>
