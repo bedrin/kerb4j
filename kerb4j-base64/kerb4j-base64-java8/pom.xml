@@ -5,17 +5,18 @@
     <parent>
         <artifactId>kerb4j-base64</artifactId>
         <groupId>com.kerb4j</groupId>
-        <version>0.2.0</version>
+        <version>0.2.1</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>kerb4j-base64-java8</artifactId>
+    <name>kerb4j-base64-java8</name>
 
     <dependencies>
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-base64-common</artifactId>
-            <version>0.2.0</version>
+            <version>0.2.1</version>
         </dependency>
     </dependencies>
 
