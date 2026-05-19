@@ -8,8 +8,9 @@ All notable changes to this project are documented in this file.
 - Finalized all module versions to `0.2.2` for release publishing.
 
 ### Dependencies
-- Updated `org.springframework.security:spring-security-ldap` to `7.0.5`.
-- Updated `org.hamcrest:hamcrest-library` to `3.0`.
+- Updated `org.springframework.security:spring-security-ldap` in `kerb4j-server-spring-security-ldap` from `6.1.5` to `7.0.5`.
+- Updated `org.hamcrest:hamcrest-library` from `2.2` to `3.0`.
+- No other direct Spring dependency versions changed for `0.2.2`; the shared Spring Boot and Spring Security versions remained at `3.1.4` and `6.1.5`.
 
 ## 0.2.1
 
