@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.2
+
+### Release preparation
+- Finalized all module versions to `0.2.2` for release publishing.
+
+### Dependencies
+- Updated the shared Spring stack via PR `#94`, including `org.springframework.boot` from `3.1.4` to `3.5.14`, shared `org.springframework.security` from `6.1.5` to `6.5.10`, and `org.springframework:spring-web` from `6.0.12` to `6.2.18`.
+- Updated `org.springframework.security:spring-security-ldap` in `kerb4j-server-spring-security-ldap` from `6.5.10` to `7.0.5`.
+- Updated `org.hamcrest:hamcrest-library` from `2.2` to `3.0`.
+
 ## 0.2.1
 
 ### Build and release
