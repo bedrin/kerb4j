@@ -10,6 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>kerb4j-base64-java8</artifactId>
+    <name>kerb4j-base64-java8</name>
 
     <dependencies>
         <dependency>

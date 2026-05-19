@@ -10,6 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>kerb4j-base64</artifactId>
+    <name>kerb4j-base64</name>
     <packaging>pom</packaging>
 
     <modules>
