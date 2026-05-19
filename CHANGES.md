@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.2.2
+
+### Release preparation
+- Finalized all module versions to `0.2.2` for release publishing.
+
+### Dependencies
+- Updated `org.springframework.security:spring-security-ldap` to `7.0.5`.
+- Updated `org.hamcrest:hamcrest-library` to `3.0`.
+
 ## 0.2.1
 
 ### Build and release
