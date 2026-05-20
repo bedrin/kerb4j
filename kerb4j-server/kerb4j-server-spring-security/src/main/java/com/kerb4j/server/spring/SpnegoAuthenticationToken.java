@@ -1,11 +1,10 @@
 package com.kerb4j.server.spring;
 
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.crypto.codec.Base64;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosKey;
-import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Collection;
 
 /**
@@ -79,7 +78,7 @@ public class SpnegoAuthenticationToken extends SpnegoRequestToken {
         if (!hasResponseToken()) {
             throw new IllegalStateException("Unauthenticated or no response token");
         }
-        return new String(Base64.encode(responseToken()), StandardCharsets.UTF_8);
+        return Base64.getEncoder().encodeToString(responseToken());
     }
 
     @Override
