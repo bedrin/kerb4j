@@ -20,13 +20,17 @@ import com.kerb4j.common.util.base64.Base64Codec;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextHolderStrategy;
 import org.springframework.security.crypto.codec.Base64;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.util.Assert;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -108,6 +112,8 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
     private AuthenticationSuccessHandler authenticationSuccessHandler;
     private AuthenticationFailureHandler authenticationFailureHandler;
     private SessionAuthenticationStrategy sessionAuthenticationStrategy = new NullAuthenticatedSessionStrategy();
+    private SecurityContextHolderStrategy securityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
+    private SecurityContextRepository securityContextRepository = new RequestAttributeSecurityContextRepository();
     private boolean skipIfAlreadyAuthenticated = true;
 
     private boolean supportBasicAuthentication;
@@ -178,7 +184,10 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
                 return;
             }
             sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+            SecurityContext context = securityContextHolderStrategy.createEmptyContext();
+            context.setAuthentication(authentication);
+            securityContextHolderStrategy.setContext(context);
+            securityContextRepository.saveContext(context, request, response);
             // this.rememberMeServices.loginSuccess(request, response, authResult); ??
             if (authenticationSuccessHandler != null) {
                 authenticationSuccessHandler.onAuthenticationSuccess(request, response, authentication);
@@ -276,6 +285,16 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
      */
     public void setSessionAuthenticationStrategy(SessionAuthenticationStrategy sessionStrategy) {
         this.sessionAuthenticationStrategy = sessionStrategy;
+    }
+
+    public void setSecurityContextHolderStrategy(SecurityContextHolderStrategy securityContextHolderStrategy) {
+        Assert.notNull(securityContextHolderStrategy, "securityContextHolderStrategy cannot be null");
+        this.securityContextHolderStrategy = securityContextHolderStrategy;
+    }
+
+    public void setSecurityContextRepository(SecurityContextRepository securityContextRepository) {
+        Assert.notNull(securityContextRepository, "securityContextRepository cannot be null");
+        this.securityContextRepository = securityContextRepository;
     }
 
 
