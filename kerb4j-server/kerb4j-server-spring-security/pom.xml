@@ -6,14 +6,14 @@
     <parent>
         <groupId>com.kerb4j</groupId>
         <artifactId>kerb4j-server</artifactId>
-        <version>0.2.2</version>
+        <version>0.3.0</version>
     </parent>
 
     <artifactId>kerb4j-server-spring-security</artifactId>
     <name>kerb4j-server-spring-security</name>
 
     <properties>
-        <spring.security.version>6.1.5</spring.security.version>
+        <spring.security.version>7.0.5</spring.security.version>
     </properties>
 
     <dependencies>

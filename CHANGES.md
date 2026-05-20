@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.3.0
+
+### Release preparation
+- Finalized all module versions to `0.3.0` for release publishing.
+
+### Dependencies
+- Updated `org.springframework.boot` from `3.1.4` to `4.0.6`.
+- Updated shared `org.springframework.security` from `6.1.5` to `7.0.5`.
+
 ## 0.2.2
 
 ### Release preparation
