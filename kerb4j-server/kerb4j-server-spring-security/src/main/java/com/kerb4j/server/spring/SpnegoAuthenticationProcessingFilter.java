@@ -130,7 +130,7 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
         if (skipIfAlreadyAuthenticated) {
-            Authentication existingAuth = SecurityContextHolder.getContext().getAuthentication();
+            Authentication existingAuth = securityContextHolderStrategy.getContext().getAuthentication();
 
             if (existingAuth != null && existingAuth.isAuthenticated() && !(existingAuth instanceof AnonymousAuthenticationToken)) {
                 filterChain.doFilter(request, response);
@@ -174,7 +174,7 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
                 // That shouldn't happen, as it is most likely a wrong
                 // configuration on the server side
                 logger.warn("Negotiate Header was invalid: " + header, e);
-                SecurityContextHolder.clearContext();
+                securityContextHolderStrategy.clearContext();
                 if (authenticationFailureHandler != null) {
                     authenticationFailureHandler.onAuthenticationFailure(request, response, e);
                 } else {
