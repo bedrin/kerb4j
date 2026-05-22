@@ -9,7 +9,6 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>kerb4j-base64</module>
         <module>kerb4j-common</module>
         <module>kerb4j-client</module>
         <module>kerb4j-server</module>

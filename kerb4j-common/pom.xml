@@ -16,11 +16,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.kerb4j</groupId>
-            <artifactId>kerb4j-base64-java8</artifactId>
-            <version>0.2.2</version>
-        </dependency>
-        <dependency>
             <groupId>org.apache.kerby</groupId>
             <artifactId>kerb-simplekdc</artifactId>
             <scope>test</scope>
