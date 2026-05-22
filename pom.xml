@@ -21,8 +21,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <javaTargetSource>17</javaTargetSource>
-        <javaDevelSource>17</javaDevelSource>
+        <maven.compiler.release>17</maven.compiler.release>
         <spring.boot.version>3.5.14</spring.boot.version>
         <servlet.api.version>6.1.0</servlet.api.version>
         <maven.compiler.version>3.15.0</maven.compiler.version>
@@ -270,17 +269,14 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven.compiler.version}</version>
                 <configuration>
-                    <fork>true</fork>
-                    <source>${javaDevelSource}</source>
-                    <target>${javaDevelSource}</target>
+                    <release>${maven.compiler.release}</release>
                 </configuration>
                 <executions>
                     <execution>
                         <id>default-compile</id>
                         <configuration>
                             <compilerArguments>
-                                <source>${javaTargetSource}</source>
-                                <target>${javaTargetSource}</target>
+                                <release>${maven.compiler.release}</release>
                             </compilerArguments>
                         </configuration>
                     </execution>
@@ -288,8 +284,7 @@
                         <id>default-testCompile</id>
                         <configuration>
                             <compilerArguments>
-                                <source>${javaDevelSource}</source>
-                                <target>${javaDevelSource}</target>
+                                <release>${maven.compiler.release}</release>
                             </compilerArguments>
                         </configuration>
                     </execution>
@@ -322,7 +317,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <source>${javaDevelSource}</source>
+                    <source>${maven.compiler.release}</source>
                 </configuration>
             </plugin>
         </plugins>
