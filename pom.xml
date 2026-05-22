@@ -270,24 +270,6 @@
                 <configuration>
                     <release>${maven.compiler.release}</release>
                 </configuration>
-                <executions>
-                    <execution>
-                        <id>default-compile</id>
-                        <configuration>
-                            <compilerArguments>
-                                <release>${maven.compiler.release}</release>
-                            </compilerArguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>default-testCompile</id>
-                        <configuration>
-                            <compilerArguments>
-                                <release>${maven.compiler.release}</release>
-                            </compilerArguments>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
 
             <plugin>
