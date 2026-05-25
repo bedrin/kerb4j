@@ -8,7 +8,7 @@ All notable changes to this project are documented in this file.
 - Finalized all module versions to `0.3.0` for release publishing.
 
 ### Dependencies
-- Updated `org.springframework.boot` from `3.1.4` to `4.0.6`.
+- Updated `org.springframework.boot` from `3.5.14` to `4.0.6`.
 
 ## 0.2.3
 
