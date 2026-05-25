@@ -16,7 +16,6 @@
 package com.kerb4j.server.spring;
 
 import com.kerb4j.common.util.Constants;
-import com.kerb4j.common.util.base64.Base64Codec;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -28,7 +27,7 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.util.Assert;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -107,13 +106,13 @@ import java.util.Base64;
  */
 public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
 
-    private SecurityContextHolderStrategy securityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
-    private SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
     private AuthenticationDetailsSource<HttpServletRequest, ?> authenticationDetailsSource = new WebAuthenticationDetailsSource();
     private AuthenticationManager authenticationManager;
     private AuthenticationSuccessHandler authenticationSuccessHandler;
     private AuthenticationFailureHandler authenticationFailureHandler;
     private SessionAuthenticationStrategy sessionAuthenticationStrategy = new NullAuthenticatedSessionStrategy();
+    private SecurityContextHolderStrategy securityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
+    private SecurityContextRepository securityContextRepository = new RequestAttributeSecurityContextRepository();
     private boolean skipIfAlreadyAuthenticated = true;
 
     private boolean supportBasicAuthentication;
@@ -150,7 +149,8 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
                 if (logger.isDebugEnabled()) {
                     logger.debug("Received Negotiate Header for request " + request.getRequestURL() + ": " + header);
                 }
-                byte[] kerberosTicket = Base64.getDecoder().decode(header.substring(header.indexOf(" ") + 1));
+                byte[] base64Token = header.substring(header.indexOf(" ") + 1).getBytes(StandardCharsets.UTF_8);
+                byte[] kerberosTicket = Base64.getDecoder().decode(base64Token);
                 authenticationRequest = new SpnegoRequestToken(kerberosTicket);
 
             } else if (supportBasicAuthentication && header.startsWith(Constants.BASIC_HEADER)) {
@@ -206,7 +206,7 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
         String base64Token = header.substring(6);
         byte[] decoded;
         try {
-            decoded = Base64Codec.decode(base64Token);
+            decoded = java.util.Base64.getDecoder().decode(base64Token);
         } catch (IllegalArgumentException e) {
             throw new BadCredentialsException(
                     "Failed to decode basic authentication token");
@@ -284,6 +284,16 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
      */
     public void setSessionAuthenticationStrategy(SessionAuthenticationStrategy sessionStrategy) {
         this.sessionAuthenticationStrategy = sessionStrategy;
+    }
+
+    public void setSecurityContextHolderStrategy(SecurityContextHolderStrategy securityContextHolderStrategy) {
+        Assert.notNull(securityContextHolderStrategy, "securityContextHolderStrategy cannot be null");
+        this.securityContextHolderStrategy = securityContextHolderStrategy;
+    }
+
+    public void setSecurityContextRepository(SecurityContextRepository securityContextRepository) {
+        Assert.notNull(securityContextRepository, "securityContextRepository cannot be null");
+        this.securityContextRepository = securityContextRepository;
     }
 
 

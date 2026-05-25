@@ -9,7 +9,6 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>kerb4j-base64</module>
         <module>kerb4j-common</module>
         <module>kerb4j-client</module>
         <module>kerb4j-server</module>
@@ -21,17 +20,13 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <javaTargetSource>17</javaTargetSource>
-        <javaDevelSource>17</javaDevelSource>
+        <maven.compiler.release>17</maven.compiler.release>
         <spring.boot.version>4.0.6</spring.boot.version>
-        <spring.security.version>7.0.5</spring.security.version>
-        <spring.web.version>6.0.12</spring.web.version>
         <servlet.api.version>6.1.0</servlet.api.version>
         <maven.compiler.version>3.15.0</maven.compiler.version>
         <maven.javadoc.version>3.12.0</maven.javadoc.version>
         <apacheDirServerVersion>2.0.0.AM26</apacheDirServerVersion>
         <kerby.version>2.1.1</kerby.version>
-        <junit.jupiter.version>5.9.2</junit.jupiter.version>
         <hamcrest.version>3.0</hamcrest.version>
         <mokito.version>5.23.0</mokito.version>
         <slf4j.version>2.0.18</slf4j.version>
@@ -85,10 +80,11 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.junit</groupId>
-                <artifactId>junit-bom</artifactId>
-                <version>${junit.jupiter.version}</version>
-                <scope>test</scope>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.kerby</groupId>
@@ -116,19 +112,16 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <version>${junit.jupiter.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
-            <version>${junit.jupiter.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.vintage</groupId>
             <artifactId>junit-vintage-engine</artifactId>
-            <version>${junit.jupiter.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -218,13 +211,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-            <version>${spring.boot.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
-            <version>${spring.boot.version}</version>
             <scope>test</scope>
             <!-- exclude junit 4 -->
             <exclusions>
@@ -237,7 +228,6 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-web</artifactId>
-            <version>${spring.security.version}</version>
             <scope>test</scope>
             <exclusions>
                 <exclusion>
@@ -249,7 +239,6 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-config</artifactId>
-            <version>${spring.security.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -269,30 +258,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven.compiler.version}</version>
                 <configuration>
-                    <fork>true</fork>
-                    <source>${javaDevelSource}</source>
-                    <target>${javaDevelSource}</target>
+                    <release>${maven.compiler.release}</release>
                 </configuration>
-                <executions>
-                    <execution>
-                        <id>default-compile</id>
-                        <configuration>
-                            <compilerArguments>
-                                <source>${javaTargetSource}</source>
-                                <target>${javaTargetSource}</target>
-                            </compilerArguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>default-testCompile</id>
-                        <configuration>
-                            <compilerArguments>
-                                <source>${javaDevelSource}</source>
-                                <target>${javaDevelSource}</target>
-                            </compilerArguments>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
 
             <plugin>
@@ -321,7 +288,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <source>${javaDevelSource}</source>
+                    <source>${maven.compiler.release}</source>
                 </configuration>
             </plugin>
         </plugins>
@@ -335,7 +302,7 @@
                     <plugin>
                         <groupId>org.sonatype.central</groupId>
                         <artifactId>central-publishing-maven-plugin</artifactId>
-                        <version>0.7.0</version>
+                        <version>0.10.0</version>
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>

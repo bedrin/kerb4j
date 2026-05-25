@@ -27,10 +27,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.AuthorityUtils;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.core.context.SecurityContextHolderStrategy;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.security.web.context.SecurityContextRepository;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -39,9 +42,11 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.function.Supplier;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -71,6 +76,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
     private AuthenticationSuccessHandler successHandler;
     private AuthenticationFailureHandler failureHandler;
     private WebAuthenticationDetailsSource detailsSource;
+    private SecurityContextHolderStrategy securityContextHolderStrategy;
 
     @BeforeEach
     public void before() throws Exception {
@@ -79,6 +85,9 @@ public class SpnegoAuthenticationProcessingFilterTest {
         detailsSource = new WebAuthenticationDetailsSource();
         filter = new SpnegoAuthenticationProcessingFilter();
         filter.setAuthenticationManager(authenticationManager);
+        // Use a dedicated strategy instance so tests assert against the same strategy the filter uses.
+        securityContextHolderStrategy = new TestSecurityContextHolderStrategy();
+        filter.setSecurityContextHolderStrategy(securityContextHolderStrategy);
         request = mock(HttpServletRequest.class);
         response = mock(HttpServletResponse.class);
         chain = mock(FilterChain.class);
@@ -128,7 +137,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
         // testing
         filter.doFilter(request, response, chain);
         verify(chain).doFilter(request, response);
-        Assertions.assertEquals(AUTHENTICATION, SecurityContextHolder.getContext().getAuthentication());
+        Assertions.assertEquals(AUTHENTICATION, currentAuthentication());
     }
 
     @Test
@@ -139,7 +148,7 @@ public class SpnegoAuthenticationProcessingFilterTest {
         verify(authenticationManager, never()).authenticate(any(Authentication.class));
         // chain should go on
         verify(chain).doFilter(request, response);
-        Assertions.assertNull(SecurityContextHolder.getContext().getAuthentication());
+        Assertions.assertNull(currentAuthentication());
     }
 
     @Test
@@ -163,12 +172,12 @@ public class SpnegoAuthenticationProcessingFilterTest {
         try {
             Authentication existingAuth = new UsernamePasswordAuthenticationToken("mike", "mike",
                     AuthorityUtils.createAuthorityList("ROLE_TEST"));
-            SecurityContextHolder.getContext().setAuthentication(existingAuth);
+            setCurrentAuthentication(existingAuth);
             when(request.getHeader(HEADER)).thenReturn(TOKEN_PREFIX_NEG + TEST_TOKEN_BASE64);
             filter.doFilter(request, response, chain);
             verify(authenticationManager, never()).authenticate(any(Authentication.class));
         } finally {
-            SecurityContextHolder.clearContext();
+            securityContextHolderStrategy.clearContext();
         }
     }
 
@@ -178,10 +187,10 @@ public class SpnegoAuthenticationProcessingFilterTest {
         try {
             // this token is not authenticated yet!
             Authentication existingAuth = new UsernamePasswordAuthenticationToken("mike", "mike");
-            SecurityContextHolder.getContext().setAuthentication(existingAuth);
+            setCurrentAuthentication(existingAuth);
             everythingWorks(TOKEN_PREFIX_NEG);
         } finally {
-            SecurityContextHolder.clearContext();
+            securityContextHolderStrategy.clearContext();
         }
     }
 
@@ -190,10 +199,10 @@ public class SpnegoAuthenticationProcessingFilterTest {
         try {
             Authentication existingAuth = new AnonymousAuthenticationToken("test", "mike",
                     AuthorityUtils.createAuthorityList("ROLE_TEST"));
-            SecurityContextHolder.getContext().setAuthentication(existingAuth);
+            setCurrentAuthentication(existingAuth);
             everythingWorks(TOKEN_PREFIX_NEG);
         } finally {
-            SecurityContextHolder.clearContext();
+            securityContextHolderStrategy.clearContext();
         }
     }
 
@@ -202,12 +211,27 @@ public class SpnegoAuthenticationProcessingFilterTest {
         try {
             Authentication existingAuth = new UsernamePasswordAuthenticationToken("mike", "mike",
                     AuthorityUtils.createAuthorityList("ROLE_TEST"));
-            SecurityContextHolder.getContext().setAuthentication(existingAuth);
+            setCurrentAuthentication(existingAuth);
             filter.setSkipIfAlreadyAuthenticated(false);
             everythingWorks(TOKEN_PREFIX_NEG);
         } finally {
-            SecurityContextHolder.clearContext();
+            securityContextHolderStrategy.clearContext();
         }
+    }
+
+    @Test
+    void testConfiguredSecurityContextRepositoryIsUsed() throws Exception {
+        Authentication authentication = new SpnegoRequestToken(TEST_TOKEN);
+        SecurityContextRepository securityContextRepository = mock(SecurityContextRepository.class);
+        filter.setSecurityContextRepository(securityContextRepository);
+        when(request.getHeader(HEADER)).thenReturn(TOKEN_PREFIX_NEG + TEST_TOKEN_BASE64);
+        SpnegoRequestToken requestToken = new SpnegoRequestToken(TEST_TOKEN);
+        requestToken.setDetails(detailsSource.buildDetails(request));
+        when(authenticationManager.authenticate(requestToken)).thenReturn(authentication);
+
+        filter.doFilter(request, response, chain);
+
+        verify(securityContextRepository).saveContext(any(SecurityContext.class), eq(request), eq(response));
     }
 
     private BadCredentialsException authenticationFails() throws IOException, ServletException {
@@ -236,7 +260,51 @@ public class SpnegoAuthenticationProcessingFilterTest {
 
     @AfterEach
     public void after() {
-        SecurityContextHolder.clearContext();
+        securityContextHolderStrategy.clearContext();
+    }
+
+    private Authentication currentAuthentication() {
+        return securityContextHolderStrategy.getContext().getAuthentication();
+    }
+
+    private void setCurrentAuthentication(Authentication authentication) {
+        SecurityContext context = securityContextHolderStrategy.createEmptyContext();
+        context.setAuthentication(authentication);
+        securityContextHolderStrategy.setContext(context);
+    }
+
+    private static final class TestSecurityContextHolderStrategy implements SecurityContextHolderStrategy {
+        private final ThreadLocal<SecurityContext> contextHolder = new ThreadLocal<>();
+
+        @Override
+        public void clearContext() {
+            contextHolder.remove();
+        }
+
+        @Override
+        public SecurityContext getContext() {
+            SecurityContext context = contextHolder.get();
+            if (context == null) {
+                context = createEmptyContext();
+                contextHolder.set(context);
+            }
+            return context;
+        }
+
+        @Override
+        public Supplier<SecurityContext> getDeferredContext() {
+            return this::getContext;
+        }
+
+        @Override
+        public void setContext(SecurityContext context) {
+            contextHolder.set(context);
+        }
+
+        @Override
+        public SecurityContext createEmptyContext() {
+            return new SecurityContextImpl();
+        }
     }
 
 }

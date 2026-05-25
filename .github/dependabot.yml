@@ -30,9 +30,25 @@ updates:
       include: "scope"
 
     groups:
+      spring-ecosystem:
+        patterns:
+          - "org.springframework.boot:*"
+          - "org.springframework.security:*"
+          - "org.springframework:*"
+          - "org.apache.tomcat:*"
+          - "org.apache.tomcat.embed:*"
+        update-types:
+          - "minor"
+          - "patch"
       maven-minor-and-patch:
         patterns:
           - "*"
+        exclude-patterns:
+          - "org.springframework.boot:*"
+          - "org.springframework.security:*"
+          - "org.springframework:*"
+          - "org.apache.tomcat:*"
+          - "org.apache.tomcat.embed:*"
         update-types:
           - "minor"
           - "patch"

@@ -12,10 +12,6 @@
     <artifactId>kerb4j-server-spring-security-ldap</artifactId>
     <name>kerb4j-server-spring-security-ldap</name>
 
-    <properties>
-        <spring.security.version>7.0.5</spring.security.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.kerb4j</groupId>
@@ -26,7 +22,6 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-ldap</artifactId>
-            <version>${spring.security.version}</version>
         </dependency>
     </dependencies>
 

@@ -17,7 +17,6 @@ import org.apache.juli.logging.LogFactory;
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.tomcat.util.buf.ByteChunk;
 import org.apache.tomcat.util.buf.MessageBytes;
-import org.apache.tomcat.util.codec.binary.Base64;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 
@@ -31,7 +30,9 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.security.Principal;
 import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 /**
@@ -168,7 +169,9 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
 
         authorizationBC.setOffset(authorizationBC.getOffset() + 10);
 
-        byte[] decoded = Base64.decodeBase64(authorizationBC.getBuffer(), authorizationBC.getOffset(), authorizationBC.getLength());
+        byte[] encoded = new byte[authorizationBC.getLength()];
+        System.arraycopy(authorizationBC.getBuffer(), authorizationBC.getOffset(), encoded, 0, authorizationBC.getLength());
+        byte[] decoded = Base64.getDecoder().decode(encoded);
 
         if (getApplyJava8u40Fix()) {
             org.apache.catalina.authenticator.SpnegoAuthenticator.SpnegoTokenFixer.fix(decoded);
@@ -232,7 +235,8 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
                 GSSContext gssContext = acceptContext.getGSSContext();
 
                 // TODO: check realm call?
-                principal = Subject.doAs(subject, new org.apache.catalina.authenticator.SpnegoAuthenticator.AuthenticateAction(context.getRealm(), gssContext, storeDelegatedCredential));
+                principal = Subject.doAs(subject,
+                        (PrivilegedExceptionAction<Principal>) () -> context.getRealm().authenticate(gssContext, storeDelegatedCredential));
             }
 
         } catch (GSSException e) {
@@ -265,7 +269,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
         }
 
         // Send response token on success and failure
-        response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER + " " + Base64.encodeBase64String(outToken));
+        response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER + " " + Base64.getEncoder().encodeToString(outToken));
 
         if (principal != null) {
             register(request, response, principal, HTTP_NEGOTIATE.toUpperCase(), // TODO: what does it mean ? should it be "SPNEGO" ?,
