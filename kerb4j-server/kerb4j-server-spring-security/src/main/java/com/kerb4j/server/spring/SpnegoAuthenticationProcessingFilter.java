@@ -184,6 +184,7 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
                 return;
             }
             sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
+//            SecurityContextHolder.getContext().setAuthentication(authentication);
             SecurityContext context = securityContextHolderStrategy.createEmptyContext();
             context.setAuthentication(authentication);
             securityContextHolderStrategy.setContext(context);
