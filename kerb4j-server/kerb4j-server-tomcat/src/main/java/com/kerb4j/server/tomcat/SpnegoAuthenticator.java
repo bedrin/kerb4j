@@ -30,8 +30,8 @@ import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.security.Principal;
-import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -234,7 +234,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
 
                 // TODO: check realm call?
                 principal = Subject.doAs(subject,
-                        (PrivilegedAction<Principal>) () -> context.getRealm().authenticate(gssContext, storeDelegatedCredential));
+                        (PrivilegedExceptionAction<Principal>) () -> context.getRealm().authenticate(gssContext, storeDelegatedCredential));
             }
 
         } catch (GSSException e) {
