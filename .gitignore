@@ -1,3 +1,4 @@
 .idea/
 *.iml
 target/
+kerb4j-server/kerb4j-server-spring-security/krb5.conf
