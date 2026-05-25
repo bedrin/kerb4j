@@ -4,6 +4,7 @@ import org.springframework.security.core.GrantedAuthority;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collection;
 

@@ -144,13 +144,19 @@ public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
 
             AbstractAuthenticationToken authenticationRequest;
 
-            if (header.startsWith(Constants.NEGOTIATE_HEADER)) {
+            String negotiatePrefix = Constants.NEGOTIATE_HEADER + " ";
+            if (header.startsWith(negotiatePrefix)) {
 
                 if (logger.isDebugEnabled()) {
                     logger.debug("Received Negotiate Header for request " + request.getRequestURL() + ": " + header);
                 }
-                byte[] base64Token = header.substring(header.indexOf(" ") + 1).getBytes(StandardCharsets.UTF_8);
-                byte[] kerberosTicket = Base64.getDecoder().decode(base64Token);
+                String base64Token = header.substring(negotiatePrefix.length()).trim();
+                if (base64Token.isEmpty()) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.flushBuffer();
+                    return;
+                }
+                byte[] kerberosTicket = Base64.getDecoder().decode(base64Token.getBytes(StandardCharsets.UTF_8));
                 authenticationRequest = new SpnegoRequestToken(kerberosTicket);
 
             } else if (supportBasicAuthentication && header.startsWith(Constants.BASIC_HEADER)) {

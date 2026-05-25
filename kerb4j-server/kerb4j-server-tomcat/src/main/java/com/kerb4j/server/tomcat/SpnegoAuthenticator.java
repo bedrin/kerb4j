@@ -168,13 +168,14 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
             return false;
         }
 
-        authorizationBC.setOffset(authorizationBC.getOffset() + 10);
+        authorizationBC.setStart(authorizationBC.getStart() + 10);
 
-        ByteBuffer decodedBuffer = Base64.getDecoder().decode(
-                ByteBuffer.wrap(authorizationBC.getBuffer(), authorizationBC.getOffset(), authorizationBC.getLength())
+        byte[] encoded = java.util.Arrays.copyOfRange(
+                authorizationBC.getBuffer(),
+                authorizationBC.getStart(),
+                authorizationBC.getStart() + authorizationBC.getLength()
         );
-        byte[] decoded = new byte[decodedBuffer.remaining()];
-        decodedBuffer.get(decoded);
+        byte[] decoded = Base64.getDecoder().decode(encoded);
 
         if (getApplyJava8u40Fix()) {
             org.apache.catalina.authenticator.SpnegoAuthenticator.SpnegoTokenFixer.fix(decoded);
