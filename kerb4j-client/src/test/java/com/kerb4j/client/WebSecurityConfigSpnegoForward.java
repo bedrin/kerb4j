@@ -31,6 +31,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.kerberos.authentication.KerberosServiceAuthenticationProvider;
 import org.springframework.security.kerberos.authentication.sun.SunJaasKerberosTicketValidator;
 import org.springframework.security.kerberos.web.authentication.SpnegoEntryPoint;
+import org.springframework.security.kerberos.web.authentication.SpnegoAuthenticationProcessingFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
@@ -67,8 +68,8 @@ public class WebSecurityConfigSpnegoForward {
     }
 
     @Bean
-    public SpringSecurity7SpnegoAuthenticationProcessingFilter spnegoAuthenticationProcessingFilter(AuthenticationManager authenticationManager) {
-        SpringSecurity7SpnegoAuthenticationProcessingFilter filter = new SpringSecurity7SpnegoAuthenticationProcessingFilter();
+    public SpnegoAuthenticationProcessingFilter spnegoAuthenticationProcessingFilter(AuthenticationManager authenticationManager) {
+        SpnegoAuthenticationProcessingFilter filter = new SpnegoAuthenticationProcessingFilter();
         filter.setAuthenticationManager(authenticationManager);
         return filter;
     }
