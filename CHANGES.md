@@ -11,6 +11,15 @@ All notable changes to this project are documented in this file.
 - Updated `org.springframework.boot` from `3.1.4` to `4.0.6`.
 - Updated shared `org.springframework.security` from `6.1.5` to `7.0.5`.
 
+## 0.2.3
+
+### Build and release
+- Documented the release process in `RELEASE.md`.
+- Updated Dependabot configuration to align Spring/Tomcat dependency updates behind the Spring Boot BOM.
+
+### Dependencies
+- Updated `org.sonatype.central:central-publishing-maven-plugin` from `0.7.0` to `0.10.0`.
+
 ## 0.2.2
 
 ### Release preparation
