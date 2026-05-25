@@ -18,7 +18,7 @@
             <artifactId>kerb4j-server-common</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.apache.tomcat/tomcat-catalina -->
+        <!-- Compile against Tomcat auth APIs via Boot-managed coordinates; runtime stays container-provided. -->
         <dependency>
             <groupId>org.apache.tomcat.embed</groupId>
             <artifactId>tomcat-embed-core</artifactId>
