@@ -17,7 +17,6 @@ import org.apache.juli.logging.LogFactory;
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.tomcat.util.buf.ByteChunk;
 import org.apache.tomcat.util.buf.MessageBytes;
-import org.apache.tomcat.util.codec.binary.Base64;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 
@@ -29,10 +28,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.security.Principal;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 /**
@@ -167,9 +168,14 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
             return false;
         }
 
-        authorizationBC.setOffset(authorizationBC.getOffset() + 10);
+        authorizationBC.setStart(authorizationBC.getStart() + 10);
 
-        byte[] decoded = Base64.decodeBase64(authorizationBC.getBuffer(), authorizationBC.getOffset(), authorizationBC.getLength());
+        byte[] encoded = java.util.Arrays.copyOfRange(
+                authorizationBC.getBuffer(),
+                authorizationBC.getStart(),
+                authorizationBC.getStart() + authorizationBC.getLength()
+        );
+        byte[] decoded = Base64.getDecoder().decode(encoded);
 
         if (getApplyJava8u40Fix()) {
             org.apache.catalina.authenticator.SpnegoAuthenticator.SpnegoTokenFixer.fix(decoded);
@@ -267,7 +273,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
         }
 
         // Send response token on success and failure
-        response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER + " " + Base64.encodeBase64String(outToken));
+        response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER + " " + Base64.getEncoder().encodeToString(outToken));
 
         if (principal != null) {
             register(request, response, principal, HTTP_NEGOTIATE.toUpperCase(), // TODO: what does it mean ? should it be "SPNEGO" ?,
