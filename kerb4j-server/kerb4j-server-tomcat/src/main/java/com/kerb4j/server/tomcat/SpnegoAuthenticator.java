@@ -28,6 +28,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.security.Principal;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
@@ -169,9 +170,11 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
 
         authorizationBC.setOffset(authorizationBC.getOffset() + 10);
 
-        byte[] encoded = new byte[authorizationBC.getLength()];
-        System.arraycopy(authorizationBC.getBuffer(), authorizationBC.getOffset(), encoded, 0, authorizationBC.getLength());
-        byte[] decoded = Base64.getDecoder().decode(encoded);
+        ByteBuffer decodedBuffer = Base64.getDecoder().decode(
+                ByteBuffer.wrap(authorizationBC.getBuffer(), authorizationBC.getOffset(), authorizationBC.getLength())
+        );
+        byte[] decoded = new byte[decodedBuffer.remaining()];
+        decodedBuffer.get(decoded);
 
         if (getApplyJava8u40Fix()) {
             org.apache.catalina.authenticator.SpnegoAuthenticator.SpnegoTokenFixer.fix(decoded);
