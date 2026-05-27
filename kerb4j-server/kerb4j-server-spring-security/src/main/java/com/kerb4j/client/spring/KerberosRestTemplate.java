@@ -16,7 +16,6 @@
 package com.kerb4j.client.spring;
 
 import com.kerb4j.common.util.Constants;
-import com.kerb4j.common.util.base64.Base64Codec;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -26,7 +25,9 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Base64;
 
 /**
  * {@code RestTemplate} that is able to make kerberos authenticated REST
@@ -53,7 +54,7 @@ public class KerberosRestTemplate extends RestTemplate {
     }
 
     private static String getAuthorizationHeader(String username, String password) {
-        return "Basic " + Base64Codec.encode((username + ":" + password).getBytes());
+        return "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8));
     }
 
     @Override

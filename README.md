@@ -28,7 +28,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-client</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
 </dependency>
 ```
 
@@ -38,7 +38,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-server-spring-security</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
 </dependency>
 ```
 
@@ -48,7 +48,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-server-tomcat</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
 </dependency>
 ```
 
@@ -132,8 +132,11 @@ SpnegoInitToken spnegoInitToken = new SpnegoInitToken(decoded);
 SpnegoKerberosMechToken spnegoKerberosMechToken = spnegoInitToken.getSpnegoKerberosMechToken();
 Pac pac = spnegoKerberosMechToken.getPac(spnegoClient.getKerberosKeys());
 PacLogonInfo logonInfo = pac.getLogonInfo();
-List<String> roles = Stream.of(logonInfo.getGroupSids()).map(PacSid::toHumanReadableString).collect(Collectors.toList());
+List<String> roles = Stream.of(logonInfo.getAllGroupSids()).map(PacSid::toSidString).collect(Collectors.toList());
 ```
+
+Use `getAllGroupSids()` when you need all PAC authorization group-like SIDs in one collection.
+Advanced callers can inspect `getGroupSids()`, `getResourceGroupSids()`, and `getExtraSids()` separately.
 
 This functionality is specific to Microsoft Active Directory and supported both by Kerb4J Tomcat and Spring Security
 integrations. 

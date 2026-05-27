@@ -19,6 +19,7 @@ import com.kerb4j.server.SpnegoTokenFixer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
 
@@ -66,7 +67,7 @@ class SunJaasKerberosTicketValidatorTest {
 
     @Test
     void testJdkMsKrb5OIDRegressionTweak() {
-        byte[] kerberosTicket = Base64.getDecoder().decode(HEADER.getBytes());
+        byte[] kerberosTicket = Base64.getDecoder().decode(HEADER.getBytes(StandardCharsets.UTF_8));
         byte[] fixedToken = Arrays.copyOf(kerberosTicket, kerberosTicket.length);
         SpnegoTokenFixer.fix(fixedToken);
         Assertions.assertFalse(Arrays.equals(kerberosTicket, fixedToken));
