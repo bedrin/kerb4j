@@ -6,77 +6,63 @@
     <parent>
         <groupId>com.kerb4j</groupId>
         <artifactId>kerb4j-server</artifactId>
-        <version>0.2.0</version>
+        <version>0.4.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>kerb4j-server-spring-webflux</artifactId>
     <name>kerb4j-server-spring-webflux</name>
 
-    <properties>
-        <spring.security.version>6.1.5</spring.security.version>
-        <spring.webflux.version>6.0.12</spring.webflux.version>
-    </properties>
-
     <dependencies>
+        <!-- Core Spring Security / Kerberos primitives shared with WebMVC -->
         <dependency>
             <groupId>com.kerb4j</groupId>
-            <artifactId>kerb4j-server-common</artifactId>
+            <artifactId>kerb4j-server-spring-security-core</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
 
-        <!-- Reuse core Spring Security components from the webmvc module -->
-        <dependency>
-            <groupId>com.kerb4j</groupId>
-            <artifactId>kerb4j-server-spring-security</artifactId>
-            <version>${project.parent.version}</version>
-        </dependency>
-
-        <!-- Add explicit Spring Security WebFlux support -->
+        <!-- Reactive Spring Security WebFlux support -->
         <dependency>
             <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-web</artifactId>
-            <version>${spring.security.version}</version>
+            <artifactId>spring-security-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-config</artifactId>
-            <version>${spring.security.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-            <version>${spring.boot.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-logging</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-web</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-            <version>${spring.boot.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-logging</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webflux</artifactId>
         </dependency>
-        
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
-            <version>${spring.security.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-test</artifactId>
-            <version>3.5.11</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 

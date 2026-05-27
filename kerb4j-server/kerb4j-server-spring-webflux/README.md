@@ -2,9 +2,21 @@
 
 This module provides Spring WebFlux reactive support for Kerberos/SPNEGO authentication in kerb4j.
 
-## Overview
+## Module Structure
 
-The `kerb4j-server-spring-webflux` module extends kerb4j to support Spring WebFlux applications with reactive streams and non-blocking I/O. This module provides WebFlux equivalents of the Spring MVC components found in the `kerb4j-server-spring-security` module.
+The WebFlux and WebMVC integrations share core Kerberos/Spring Security primitives through a
+dedicated common module:
+
+```
+kerb4j-server-spring-security-core   ← shared tokens, providers, validators
+    ↑                                    ↑
+kerb4j-server-spring-security        kerb4j-server-spring-webflux
+(servlet/WebMVC integration)         (reactive/WebFlux integration)
+```
+
+`SpnegoRequestToken`, `SpnegoAuthenticationProvider`, `SunJaasKerberosTicketValidator`, and
+other authentication primitives live in `kerb4j-server-spring-security-core`, which both
+sibling modules depend on.
 
 ## Key Components
 
@@ -13,37 +25,40 @@ The `kerb4j-server-spring-webflux` module extends kerb4j to support Spring WebFl
 Reactive equivalent of `SpnegoEntryPoint` that implements `ServerAuthenticationEntryPoint`. This component:
 
 - Sends `WWW-Authenticate: Negotiate` header to initiate SPNEGO authentication
-- Supports optional redirect URLs for fallback authentication (e.g., form login)
-- Works with reactive ServerWebExchange instead of servlet request/response
+- Supports optional redirect URL for fallback login pages (uses `303 See Other` for redirects)
+- Works with reactive `ServerWebExchange` instead of servlet request/response
 
 ### SpnegoServerAuthenticationConverter
 
 Reactive authentication converter that implements `ServerAuthenticationConverter`. This component:
 
-- Parses SPNEGO `Negotiate` headers from incoming requests
-- Supports basic authentication fallback when configured
-- Creates `SpnegoRequestToken` objects from Kerberos tickets
-- Handles both SPNEGO and basic authentication headers
+- Parses `Authorization: Negotiate <token>` headers from incoming requests
+- Converts malformed headers to `BadCredentialsException` rather than letting raw exceptions bubble up
+- **Basic authentication fallback is disabled by default** — enable it explicitly when needed
+- Creates `SpnegoRequestToken` objects from decoded Kerberos tickets
 
 ### ReactiveAuthenticationManagerAdapter
 
-Adapter that wraps traditional `AuthenticationManager` implementations for use in reactive applications. This component:
+Adapter that wraps traditional blocking `AuthenticationManager` implementations for use in
+reactive applications. This component:
 
-- Adapts blocking authentication managers to reactive streams
-- Uses bounded elastic scheduler for non-blocking operations
-- Allows reuse of existing Kerberos authentication providers
+- Offloads blocking authentication work (Kerberos ticket validation, JAAS calls) to the
+  `boundedElastic` scheduler — **authentication is not fully non-blocking**; it runs on a
+  thread-pool-backed scheduler designed for blocking I/O
+- Allows reuse of existing `SpnegoAuthenticationProvider` and `KerberosAuthenticationProvider`
+  without modification
 
 ### SpnegoWebFluxConfigurer
 
 Utility class providing helper methods to configure SPNEGO authentication in WebFlux applications:
 
-- `createSpnegoAuthenticationWebFilter()` - Creates configured authentication web filters
-- Supports custom matchers and authentication managers
-- Provides both blocking and reactive authentication manager support
+- `createSpnegoAuthenticationWebFilter()` — Creates configured `AuthenticationWebFilter` instances
+- Defaults to SPNEGO-only authentication; pass `true` to enable basic auth fallback
+- Supports custom exchange matchers
 
 ## Usage
 
-### Basic Configuration
+### Basic Configuration (SPNEGO-only)
 
 ```java
 @Configuration
@@ -61,15 +76,15 @@ public class WebFluxSecurityConfig {
         return http
                 .exceptionHandling(e -> e.authenticationEntryPoint(spnegoServerAuthenticationEntryPoint()))
                 .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers("/").permitAll()
-                        .pathMatchers("/hello").hasRole("USER")
-                        .anyExchange().permitAll())
+                        .pathMatchers("/public/**").permitAll()
+                        .anyExchange().hasRole("USER"))
                 .addFilterBefore(spnegoAuthenticationWebFilter(), SecurityWebFiltersOrder.AUTHENTICATION)
                 .build();
     }
 
     @Bean
     public AuthenticationWebFilter spnegoAuthenticationWebFilter() {
+        // Wraps the blocking Kerberos AuthenticationManager on boundedElastic scheduler
         return SpnegoWebFluxConfigurer.createSpnegoAuthenticationWebFilter(
                 new ReactiveAuthenticationManagerAdapter(authManager()));
     }
@@ -100,16 +115,30 @@ public class WebFluxSecurityConfig {
         return ticketValidator;
     }
 
-    // ... other beans
+    // ... userDetailsService() and other beans
 }
 ```
 
-### With Form Login Fallback
+### With Form Login Fallback (redirect on unauthenticated)
 
 ```java
 @Bean
 public SpnegoServerAuthenticationEntryPoint spnegoServerAuthenticationEntryPoint() {
+    // Responds with 303 See Other + Location header when SPNEGO challenge fails
     return new SpnegoServerAuthenticationEntryPoint("/login");
+}
+```
+
+### Enabling Basic Authentication Fallback (opt-in)
+
+```java
+@Bean
+public AuthenticationWebFilter spnegoAuthenticationWebFilter() {
+    // Enable Basic auth fallback explicitly — disabled by default
+    return SpnegoWebFluxConfigurer.createSpnegoAuthenticationWebFilter(
+            new ReactiveAuthenticationManagerAdapter(authManager()),
+            true /* supportBasicAuthentication */
+    );
 }
 ```
 
@@ -122,52 +151,35 @@ public AuthenticationWebFilter spnegoAuthenticationWebFilter() {
     return SpnegoWebFluxConfigurer.createSpnegoAuthenticationWebFilter(
             new ReactiveAuthenticationManagerAdapter(authManager()),
             matcher,
-            true // support basic auth fallback
+            false // SPNEGO only, no basic auth fallback
     );
 }
 ```
 
-## Dependencies
+## Maven Dependency
 
-This module depends on:
-
-- `kerb4j-server-common` - Core server functionality
-- `kerb4j-server-spring-security` - Reuses authentication providers and tokens
-- `spring-boot-starter-webflux` - Spring WebFlux reactive web framework
-- `spring-boot-starter-security` - Spring Security with reactive support
-- `reactor-core` - Reactive streams implementation
-
-## Integration with Existing Code
-
-This module is designed to work alongside the existing `kerb4j-server-spring-security` module:
-
-- **Reuses**: Authentication providers, ticket validators, tokens, and user details services
-- **Adds**: Reactive/WebFlux-specific filters, entry points, and configuration helpers
-- **Maintains**: Full backward compatibility with existing WebMVC applications
-
-## Testing
-
-The module includes comprehensive tests for:
-
-- `SpnegoServerAuthenticationEntryPoint` - Entry point behavior and configuration
-- `SpnegoServerAuthenticationConverter` - Token parsing and conversion
-- `ReactiveAuthenticationManagerAdapter` - Reactive wrapper functionality
-- Integration scenarios with sample configurations
-
-Run tests with:
-
-```bash
-mvn test
+```xml
+<dependency>
+    <groupId>com.kerb4j</groupId>
+    <artifactId>kerb4j-server-spring-webflux</artifactId>
+    <version>${kerb4j.version}</version>
+</dependency>
 ```
+
+This module depends on `kerb4j-server-spring-security-core` (shared authentication primitives),
+Spring Security reactive/WebFlux artifacts, and Reactor Core. Dependency versions are managed
+by the Spring Boot BOM.
 
 ## Migration from WebMVC
 
-To migrate from WebMVC to WebFlux:
+To migrate from WebMVC (`kerb4j-server-spring-security`) to WebFlux:
 
 1. Replace `@EnableWebSecurity` with `@EnableWebFluxSecurity`
 2. Replace `SecurityFilterChain` with `SecurityWebFilterChain`
 3. Replace `HttpSecurity` with `ServerHttpSecurity`
-4. Use `SpnegoWebFluxConfigurer` instead of manual filter configuration
+4. Replace `SpnegoAuthenticationProcessingFilter` + `SpnegoEntryPoint` with
+   `SpnegoWebFluxConfigurer.createSpnegoAuthenticationWebFilter()` + `SpnegoServerAuthenticationEntryPoint`
 5. Wrap existing `AuthenticationManager` with `ReactiveAuthenticationManagerAdapter`
 
-The authentication providers, ticket validators, and business logic remain unchanged.
+Authentication providers, ticket validators, and user detail services from
+`kerb4j-server-spring-security-core` work unchanged in both WebMVC and WebFlux configurations.

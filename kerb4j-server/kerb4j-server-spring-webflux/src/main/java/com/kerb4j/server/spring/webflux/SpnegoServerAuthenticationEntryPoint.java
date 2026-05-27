@@ -75,19 +75,20 @@ public class SpnegoServerAuthenticationEntryPoint implements ServerAuthenticatio
     @Override
     public Mono<Void> commence(ServerWebExchange exchange, AuthenticationException ex) {
         if (LOG.isDebugEnabled()) {
-            LOG.debug("Add header WWW-Authenticate:Negotiate to " + exchange.getRequest().getURI() + 
+            LOG.debug("Add header WWW-Authenticate:Negotiate to " + exchange.getRequest().getURI() +
                       ", redirect: " + (redirect ? redirectUrl : "no"));
         }
-        
+
         exchange.getResponse().getHeaders().add("WWW-Authenticate", "Negotiate");
-        exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
 
         if (redirect) {
+            exchange.getResponse().setStatusCode(HttpStatus.SEE_OTHER);
             exchange.getResponse().getHeaders().setLocation(exchange.getRequest().getURI().resolve(redirectUrl));
-            return exchange.getResponse().setComplete();
         } else {
-            return exchange.getResponse().setComplete();
+            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
         }
+
+        return exchange.getResponse().setComplete();
     }
 
     private boolean isAbsoluteUrl(String url) {
