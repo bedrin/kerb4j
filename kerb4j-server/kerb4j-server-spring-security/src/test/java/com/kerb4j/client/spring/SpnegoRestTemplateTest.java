@@ -40,6 +40,7 @@ import javax.security.auth.kerberos.KerberosKey;
 import javax.security.auth.kerberos.KerberosPrincipal;
 import javax.security.auth.kerberos.KeyTab;
 import java.io.File;
+import java.net.InetAddress;
 import java.net.URI;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -47,9 +48,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
@@ -68,6 +67,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
+//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
         String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
@@ -109,6 +109,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
+//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
         String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
@@ -158,6 +159,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
+//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
         String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
@@ -195,6 +197,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
+//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
         String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
@@ -232,6 +235,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
+//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
         String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
@@ -275,6 +279,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
+//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
         String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
@@ -331,6 +336,7 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
         public TomcatServletWebServerFactory tomcatServletWebServerFactory() {
             TomcatServletWebServerFactory factory = new TomcatServletWebServerFactory();
             factory.setPort(0);
+            factory.setAddress(InetAddress.getLoopbackAddress());
             return factory;
         }
     }

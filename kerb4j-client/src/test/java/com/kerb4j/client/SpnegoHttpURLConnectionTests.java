@@ -37,6 +37,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URL;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -61,8 +62,8 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
         SimpleKdcServer kdc = getKdc();
         Assertions.assertNotNull(kdc);
         File workDir = getWorkDir();
+//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase(); // doesn't work without toLowerCse
         String host = "localhost";
-
         String serverPrincipal = "HTTP/" + host;
         File serverKeytab = new File(workDir, "server.keytab");
         kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
@@ -99,6 +100,7 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
         SimpleKdcServer kdc = getKdc();
         Assertions.assertNotNull(kdc);
         File workDir = getWorkDir();
+//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase(); // doesn't work without toLowerCse
         String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
@@ -188,6 +190,7 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
         public TomcatServletWebServerFactory tomcatServletWebServerFactory() {
             TomcatServletWebServerFactory factory = new TomcatServletWebServerFactory();
             factory.setPort(0);
+            factory.setAddress(InetAddress.getLoopbackAddress());
             return factory;
         }
     }

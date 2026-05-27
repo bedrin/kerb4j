@@ -41,6 +41,7 @@ public class BaseTomcatTest extends KerberosSecurityTestcase {
     public void startTomcat() throws Exception {
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
+//        host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase(); // doesn't work without toLowerCse
         host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
@@ -53,6 +54,8 @@ public class BaseTomcatTest extends KerberosSecurityTestcase {
 
         tomcat = new Tomcat();
         tomcat.getConnector();
+//        tomcat.getConnector().setProperty("address", InetAddress.getByName(host).getHostAddress());
+//        tomcat.getConnector().setProperty("address", "127.0.0.1");
         tomcat.setPort(TOMCAT_PORT);
 
         StandardContext ctx = (StandardContext) tomcat.addWebapp("", new File(".").getAbsolutePath());
