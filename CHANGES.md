@@ -4,11 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## 0.4.0-SNAPSHOT
 
+### New Functionality
+- Reactive Spring Security support via `[kerb4j-server-spring-webflux](kerb4j-server/kerb4j-server-spring-webflux)` module
+
 ### Bug fixes
 - Fixed PAC resource-domain group SID expansion in `PacLogonInfo`:
-  - MS-PAC KERB_VALIDATION_INFO: `ResourceGroupDomainSid` + `ResourceGroupIds` create resource group SIDs.
-  - MS-KILE Domain Local Group Membership: compressed resource SIDs are represented as `GROUP_MEMBERSHIP` RelativeIds under `ResourceGroupDomainSid`.
-  - Resource group SIDs are now built once and no longer have `ResourceGroupDomainSid` appended twice.
+- MS-PAC KERB_VALIDATION_INFO: `ResourceGroupDomainSid` + `ResourceGroupIds` create resource group SIDs.
+- MS-KILE Domain Local Group Membership: compressed resource SIDs are represented as `GROUP_MEMBERSHIP` RelativeIds under `ResourceGroupDomainSid`.
+- Resource group SIDs are now built once and no longer have `ResourceGroupDomainSid` appended twice.
 
 ### Breaking change note
 - `PacLogonInfo#getResourceGroupSids()` now returns correctly constructed resource group SIDs without duplicated domain components. Code that previously relied on the incorrect double-appended SID format may need adjustment.
