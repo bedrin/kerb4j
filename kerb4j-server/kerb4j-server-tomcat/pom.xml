@@ -6,15 +6,11 @@
     <parent>
         <groupId>com.kerb4j</groupId>
         <artifactId>kerb4j-server</artifactId>
-        <version>0.2.0</version>
+        <version>0.4.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>kerb4j-server-tomcat</artifactId>
     <name>kerb4j-server-tomcat</name>
-
-    <properties>
-        <tomcat.version>10.1.15</tomcat.version>
-    </properties>
 
     <dependencies>
         <dependency>
@@ -22,41 +18,15 @@
             <artifactId>kerb4j-server-common</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.apache.tomcat/tomcat-catalina -->
+        <!-- Compile against Tomcat auth APIs via Boot-managed coordinates; runtime stays container-provided. -->
         <dependency>
-            <groupId>org.apache.tomcat</groupId>
-            <artifactId>tomcat-catalina</artifactId>
-            <version>${tomcat.version}</version>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-core</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.tomcat.embed</groupId>
-            <artifactId>tomcat-embed-core</artifactId>
-            <version>${tomcat.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.tomcat.embed</groupId>
             <artifactId>tomcat-embed-jasper</artifactId>
-            <version>${tomcat.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.tomcat</groupId>
-            <artifactId>tomcat-jasper</artifactId>
-            <version>${tomcat.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.tomcat</groupId>
-            <artifactId>tomcat-jasper-el</artifactId>
-            <version>${tomcat.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.tomcat</groupId>
-            <artifactId>tomcat-jsp-api</artifactId>
-            <version>${tomcat.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
