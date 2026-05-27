@@ -175,12 +175,12 @@ public class PacLogonInfo {
                     }
                     resourceGroups = new PacGroup[resourceGroupCount];
                     for (int i = 0; i < resourceGroupCount; i++) {
-                        byte[] relativeId = new byte[4]; // is an unsigned int
+                        byte[] relativeId = new byte[4]; // is an unsigned int RID
                         pacStream.readFully(relativeId);
                         int attributes = (int) pacStream.readInt();
                         PacSid relativeSid = PacSid.createFromSubs(relativeId);
-                        PacSid id = PacSid.append(resourceDomainId, relativeSid);
-                        resourceGroups[i] = new PacGroup(id, attributes);
+                        PacSid fullResourceGroupSid = PacSid.append(resourceDomainId, relativeSid);
+                        resourceGroups[i] = new PacGroup(fullResourceGroupSid, attributes);
                     }
                 }
             } else {
@@ -206,11 +206,9 @@ public class PacLogonInfo {
                 extraSids[i] = extraSidAtts[i].getId();
             }
 
-            // Compute Resource Group IDs with Resource Domain ID to get SIDs
-            resourceGroupSids = new PacSid[resourceGroups.length];
-            for (int i = 0; i < resourceGroups.length; i++) {
-                resourceGroupSids[i] = PacSid.append(resourceDomainId, resourceGroups[i].getId());
-            }
+            // MS-PAC KERB_VALIDATION_INFO + MS-KILE domain local groups:
+            // resource groups are already full SIDs here (compressed RIDs expanded above).
+            resourceGroupSids = extractGroupSids(resourceGroups);
 
             // Compute User IDs with Domain ID to get User SIDs
             // First extra is user if userId is empty
@@ -222,10 +220,7 @@ public class PacLogonInfo {
             groupSid = PacSid.append(domainId, groupId);
 
             // Compute Group IDs with Domain ID to get Group SIDs
-            groupSids = new PacSid[groups.length];
-            for (int i = 0; i < groups.length; i++) {
-                groupSids[i] = PacSid.append(domainId, groups[i].getId());
-            }
+            groupSids = expandDomainGroupSids(groups, domainId);
         } catch (IOException e) {
             throw new Kerb4JException("pac.logoninfo.malformed", null, e);
         }
@@ -325,6 +320,22 @@ public class PacLogonInfo {
 
     private boolean resourceSIDCompressionEnabled(PacSid resourceDomainId) {
         return resourceDomainId != null;
+    }
+
+    static PacSid[] extractGroupSids(PacGroup[] groups) {
+        PacSid[] groupSids = new PacSid[groups.length];
+        for (int i = 0; i < groups.length; i++) {
+            groupSids[i] = groups[i].getId();
+        }
+        return groupSids;
+    }
+
+    static PacSid[] expandDomainGroupSids(PacGroup[] groups, PacSid domainId) {
+        PacSid[] groupSids = new PacSid[groups.length];
+        for (int i = 0; i < groups.length; i++) {
+            groupSids[i] = PacSid.append(domainId, groups[i].getId());
+        }
+        return groupSids;
     }
 
 }
