@@ -33,12 +33,6 @@
             <version>${project.parent.version}</version>
         </dependency>
         <dependency>
-            <groupId>jakarta.servlet</groupId>
-            <artifactId>jakarta.servlet-api</artifactId>
-            <version>${servlet.api.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-client</artifactId>
             <version>${project.parent.version}</version>

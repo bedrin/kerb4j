@@ -89,6 +89,27 @@ class SpnegoServerAuthenticationConverterTest {
     }
 
     @Test
+    void testConvertWithCaseInsensitiveNegotiateHeader() {
+        byte[] tokenBytes = "TestToken".getBytes(StandardCharsets.UTF_8);
+        String base64Token = Base64.getEncoder().encodeToString(tokenBytes);
+        String negotiateHeader = "negotiate " + base64Token;
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/test")
+                        .header(Constants.AUTHZ_HEADER, negotiateHeader)
+        );
+
+        StepVerifier.create(converter.convert(exchange))
+                .assertNext(auth -> {
+                    assertThat(auth).isInstanceOf(SpnegoRequestToken.class);
+                    SpnegoRequestToken spnegoToken = (SpnegoRequestToken) auth;
+                    assertThat(spnegoToken.getToken()).isEqualTo(tokenBytes);
+                })
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
     void testConvertWithBasicAuthenticationHeader() {
         converter.setSupportBasicAuthentication(true);
 

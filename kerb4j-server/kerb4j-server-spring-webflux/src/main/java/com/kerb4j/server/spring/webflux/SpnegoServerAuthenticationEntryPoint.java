@@ -15,6 +15,7 @@
  */
 package com.kerb4j.server.spring.webflux;
 
+import com.kerb4j.common.util.Constants;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.http.HttpStatus;
@@ -28,11 +29,10 @@ import reactor.core.publisher.Mono;
 /**
  * Sends back a request for a Negotiate Authentication to the browser for WebFlux applications.
  *
- * <p>This is the reactive WebFlux equivalent of {@link com.kerb4j.server.spring.SpnegoEntryPoint}.</p>
+ * <p>This is the reactive WebFlux equivalent of Kerb4J's servlet SPNEGO entry point.</p>
  *
  * @author Mike Wiesner (original SpnegoEntryPoint)
  * @author GitHub Copilot (WebFlux adaptation)
- * @see com.kerb4j.server.spring.SpnegoEntryPoint
  * @since 1.0
  */
 public class SpnegoServerAuthenticationEntryPoint implements ServerAuthenticationEntryPoint {
@@ -64,6 +64,7 @@ public class SpnegoServerAuthenticationEntryPoint implements ServerAuthenticatio
     public SpnegoServerAuthenticationEntryPoint(String redirectUrl) {
         if (StringUtils.hasText(redirectUrl)) {
             Assert.isTrue(!isAbsoluteUrl(redirectUrl), "Redirect url specified must not be absolute");
+            Assert.isTrue(redirectUrl.startsWith("/"), "Redirect url specified must start with /");
             this.redirectUrl = redirectUrl;
             this.redirect = true;
         } else {
@@ -79,16 +80,21 @@ public class SpnegoServerAuthenticationEntryPoint implements ServerAuthenticatio
                       ", redirect: " + (redirect ? redirectUrl : "no"));
         }
 
-        exchange.getResponse().getHeaders().add("WWW-Authenticate", "Negotiate");
+        exchange.getResponse().getHeaders().add(Constants.AUTHN_HEADER, Constants.NEGOTIATE_HEADER);
 
         if (redirect) {
             exchange.getResponse().setStatusCode(HttpStatus.SEE_OTHER);
-            exchange.getResponse().getHeaders().setLocation(exchange.getRequest().getURI().resolve(redirectUrl));
+            exchange.getResponse().getHeaders().setLocation(createRedirectUri(exchange));
         } else {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
         }
 
         return exchange.getResponse().setComplete();
+    }
+
+    private java.net.URI createRedirectUri(ServerWebExchange exchange) {
+        String contextPath = exchange.getRequest().getPath().contextPath().value();
+        return exchange.getRequest().getURI().resolve(contextPath + redirectUrl);
     }
 
     private boolean isAbsoluteUrl(String url) {

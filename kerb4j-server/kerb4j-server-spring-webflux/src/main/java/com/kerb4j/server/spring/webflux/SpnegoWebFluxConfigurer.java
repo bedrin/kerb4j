@@ -20,6 +20,7 @@ import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
+import org.springframework.util.Assert;
 
 /**
  * Utility class for configuring SPNEGO authentication in Spring WebFlux applications.
@@ -30,7 +31,11 @@ import org.springframework.security.web.server.util.matcher.ServerWebExchangeMat
  * @author GitHub Copilot
  * @since 1.0
  */
-public class SpnegoWebFluxConfigurer {
+public final class SpnegoWebFluxConfigurer {
+
+    private SpnegoWebFluxConfigurer() {
+        // Utility class
+    }
 
     /**
      * Creates an authentication web filter configured for SPNEGO authentication.
@@ -67,6 +72,7 @@ public class SpnegoWebFluxConfigurer {
     public static AuthenticationWebFilter createSpnegoAuthenticationWebFilter(
             ReactiveAuthenticationManager reactiveAuthenticationManager,
             boolean supportBasicAuthentication) {
+        Assert.notNull(reactiveAuthenticationManager, "ReactiveAuthenticationManager cannot be null");
         
         SpnegoServerAuthenticationConverter converter = 
                 new SpnegoServerAuthenticationConverter(supportBasicAuthentication);
@@ -92,6 +98,8 @@ public class SpnegoWebFluxConfigurer {
             ReactiveAuthenticationManager reactiveAuthenticationManager,
             ServerWebExchangeMatcher matcher,
             boolean supportBasicAuthentication) {
+        Assert.notNull(reactiveAuthenticationManager, "ReactiveAuthenticationManager cannot be null");
+        Assert.notNull(matcher, "ServerWebExchangeMatcher cannot be null");
         
         SpnegoServerAuthenticationConverter converter = 
                 new SpnegoServerAuthenticationConverter(supportBasicAuthentication);

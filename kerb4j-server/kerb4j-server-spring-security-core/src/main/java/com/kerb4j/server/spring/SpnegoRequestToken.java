@@ -55,7 +55,7 @@ public class SpnegoRequestToken extends AbstractAuthenticationToken {
      */
     public SpnegoRequestToken(Collection<? extends GrantedAuthority> authorities, byte[] spnegoInitToken) {
         super(authorities);
-        this.spnegoInitToken = spnegoInitToken;
+        this.spnegoInitToken = Arrays.copyOf(spnegoInitToken, spnegoInitToken.length);
     }
 
     /**
@@ -117,7 +117,7 @@ public class SpnegoRequestToken extends AbstractAuthenticationToken {
      * @return the token data
      */
     public byte[] getToken() {
-        return this.spnegoInitToken;
+        return Arrays.copyOf(this.spnegoInitToken, this.spnegoInitToken.length);
     }
 
     @Override

@@ -26,8 +26,8 @@ import reactor.core.scheduler.Schedulers;
  * Reactive wrapper for {@link AuthenticationManager} to be used in WebFlux applications.
  *
  * <p>This allows existing blocking {@link AuthenticationManager} implementations (such as
- * {@link com.kerb4j.server.spring.SpnegoAuthenticationProvider}) to be used in reactive
- * WebFlux applications. The blocking authentication call is offloaded to the
+ * the Kerb4J SPNEGO authentication provider) to be used in reactive WebFlux applications.
+ * The blocking authentication call is offloaded to the
  * {@link reactor.core.scheduler.Schedulers#boundedElastic() boundedElastic} scheduler,
  * meaning that authentication work is <strong>not</strong> fully non-blocking — it runs
  * on a thread-pool-backed scheduler designed for blocking I/O.</p>
