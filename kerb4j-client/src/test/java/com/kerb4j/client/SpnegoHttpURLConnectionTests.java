@@ -62,7 +62,6 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
         SimpleKdcServer kdc = getKdc();
         Assertions.assertNotNull(kdc);
         File workDir = getWorkDir();
-//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase(); // doesn't work without toLowerCse
         String host = "localhost";
         String serverPrincipal = "HTTP/" + host;
         File serverKeytab = new File(workDir, "server.keytab");
@@ -100,7 +99,6 @@ public class SpnegoHttpURLConnectionTests extends KerberosSecurityTestcase {
         SimpleKdcServer kdc = getKdc();
         Assertions.assertNotNull(kdc);
         File workDir = getWorkDir();
-//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase(); // doesn't work without toLowerCse
         String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;

@@ -6,4 +6,4 @@
   - `mvn -B clean test -U`
 - Preserve existing module boundaries (`kerb4j-common`, `kerb4j-client`, `kerb4j-server`).
 - Follow existing coding style and package structure.
-- Never commit `kerb4j-server/kerb4j-server-spring-security/krb5.conf` (must remain gitignored).
+- Never commit `krb5.conf` (must remain gitignored).

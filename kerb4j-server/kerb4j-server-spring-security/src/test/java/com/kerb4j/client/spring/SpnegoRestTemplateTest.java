@@ -67,7 +67,6 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
-//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
         String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
@@ -109,7 +108,6 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
-//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
         String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
@@ -159,7 +157,6 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
-//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
         String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
@@ -197,7 +194,6 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
-//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
         String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
@@ -235,7 +231,6 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
-//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
         String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
@@ -279,7 +274,6 @@ public class SpnegoRestTemplateTest extends KerberosSecurityTestcase {
 
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
-//        String host = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
         String host = "localhost";
 
         String serverPrincipal = "HTTP/" + host;
