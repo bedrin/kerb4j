@@ -16,7 +16,6 @@
 package com.kerb4j.server.spring.webflux;
 
 import com.kerb4j.common.util.Constants;
-import com.kerb4j.common.util.base64.Base64Codec;
 import com.kerb4j.server.spring.SpnegoRequestToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +27,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -71,7 +71,7 @@ class SpnegoServerAuthenticationConverterTest {
     @Test
     void testConvertWithBasicAuthenticationHeader() {
         String credentials = "user:password";
-        String base64Credentials = new String(Base64Codec.encode(credentials.getBytes(StandardCharsets.UTF_8)));
+        String base64Credentials = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
         String basicHeader = Constants.BASIC_HEADER + base64Credentials;
         
         MockServerWebExchange exchange = MockServerWebExchange.from(
@@ -96,7 +96,7 @@ class SpnegoServerAuthenticationConverterTest {
         converter.setSupportBasicAuthentication(false);
         
         String credentials = "user:password";
-        String base64Credentials = new String(Base64Codec.encode(credentials.getBytes(StandardCharsets.UTF_8)));
+        String base64Credentials = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
         String basicHeader = Constants.BASIC_HEADER + base64Credentials;
         
         MockServerWebExchange exchange = MockServerWebExchange.from(

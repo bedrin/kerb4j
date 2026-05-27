@@ -16,27 +16,21 @@
 package com.kerb4j.server.spring.webflux;
 
 import com.kerb4j.common.util.Constants;
-import com.kerb4j.common.util.base64.Base64Codec;
 import com.kerb4j.server.spring.SpnegoRequestToken;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.crypto.codec.Base64;
 import org.springframework.security.web.server.authentication.ServerAuthenticationConverter;
-import org.springframework.security.web.server.authentication.AuthenticationWebFilter;
-import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 /**
  * Reactive WebFlux equivalent of {@link com.kerb4j.server.spring.SpnegoAuthenticationProcessingFilter}.
@@ -101,7 +95,7 @@ public class SpnegoServerAuthenticationConverter implements ServerAuthentication
             }
             
             String base64Token = header.substring(Constants.NEGOTIATE_HEADER.length());
-            byte[] kerberosTicket = Base64Codec.decode(base64Token);
+            byte[] kerberosTicket = Base64.getDecoder().decode(base64Token);
             return Mono.just(new SpnegoRequestToken(kerberosTicket));
             
         } else if (supportBasicAuthentication && header.startsWith(Constants.BASIC_HEADER)) {
@@ -110,7 +104,7 @@ public class SpnegoServerAuthenticationConverter implements ServerAuthentication
             }
             
             String base64Token = header.substring(Constants.BASIC_HEADER.length());
-            String token = new String(Base64Codec.decode(base64Token), StandardCharsets.UTF_8);
+            String token = new String(Base64.getDecoder().decode(base64Token), StandardCharsets.UTF_8);
 
             String username = "";
             String password = "";

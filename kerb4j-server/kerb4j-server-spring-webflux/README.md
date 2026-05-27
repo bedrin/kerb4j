@@ -137,6 +137,8 @@ This module depends on:
 - `spring-boot-starter-security` - Spring Security with reactive support
 - `reactor-core` - Reactive streams implementation
 
+Dependency versions are inherited from the project Spring Boot BOM (Spring Boot 4.x), ensuring compatibility with the current Spring Security release.
+
 ## Integration with Existing Code
 
 This module is designed to work alongside the existing `kerb4j-server-spring-security` module:
