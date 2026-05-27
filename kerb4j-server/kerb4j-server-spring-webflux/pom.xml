@@ -24,6 +24,7 @@
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-server-spring-security</artifactId>
             <version>${project.parent.version}</version>
+            <optional>true</optional>
         </dependency>
 
         <!-- Add explicit Spring Security WebFlux support -->
