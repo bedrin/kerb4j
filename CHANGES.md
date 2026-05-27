@@ -6,6 +6,7 @@ All notable changes to this project are documented in this file.
 
 ### New Functionality
 - Reactive Spring Security support via `[kerb4j-server-spring-webflux](kerb4j-server/kerb4j-server-spring-webflux)` module
+- Multi-principal SPNEGO support is now shared in `kerb4j-server-spring-security-core` for feature parity between servlet and reactive Spring stacks
 
 ### Bug fixes
 - Fixed PAC resource-domain group SID expansion in `PacLogonInfo`:

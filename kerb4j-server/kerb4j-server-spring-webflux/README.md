@@ -142,6 +142,30 @@ public AuthenticationWebFilter spnegoAuthenticationWebFilter() {
 }
 ```
 
+### Multi-Principal Configuration (Reactive)
+
+```java
+@Bean
+public SimpleMultiPrincipalManager multiPrincipalManager() {
+    SimpleMultiPrincipalManager manager = new SimpleMultiPrincipalManager();
+    manager.addPrincipal("HTTP/www1.server.com@EXAMPLE.COM",
+            new FileSystemResource("/etc/keytabs/www1.keytab"));
+    manager.addPrincipal("HTTP/www2.server.com@EXAMPLE.COM",
+            new FileSystemResource("/etc/keytabs/www2.keytab"));
+    return manager;
+}
+
+@Bean
+public SunJaasKerberosTicketValidator sunJaasKerberosTicketValidator() {
+    SunJaasKerberosTicketValidator ticketValidator = new SunJaasKerberosTicketValidator();
+    ticketValidator.setMultiPrincipalManager(multiPrincipalManager());
+    return ticketValidator;
+}
+```
+
+`SimpleMultiPrincipalManager` is provided by `kerb4j-server-spring-security-core`, so the same
+configuration style works in both servlet and reactive stacks.
+
 ### Custom Authentication Matching
 
 ```java

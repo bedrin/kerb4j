@@ -76,6 +76,30 @@ public SunJaasKerberosTicketValidator kerberosTicketValidator() {
 }
 ```
 
+### Spring WebFlux Configuration
+
+```java
+@Bean
+public SimpleMultiPrincipalManager multiPrincipalManager() {
+    SimpleMultiPrincipalManager manager = new SimpleMultiPrincipalManager();
+    manager.addPrincipal("HTTP/www1.server.com@EXAMPLE.COM",
+                         new FileSystemResource("/etc/keytabs/www1.keytab"));
+    manager.addPrincipal("HTTP/www2.server.com@EXAMPLE.COM",
+                         new FileSystemResource("/etc/keytabs/www2.keytab"));
+    return manager;
+}
+
+@Bean
+public SunJaasKerberosTicketValidator kerberosTicketValidator() {
+    SunJaasKerberosTicketValidator validator = new SunJaasKerberosTicketValidator();
+    validator.setMultiPrincipalManager(multiPrincipalManager());
+    return validator;
+}
+```
+
+The same `SunJaasKerberosTicketValidator` and `SimpleMultiPrincipalManager` APIs are shared by
+both Spring Security servlet and Spring WebFlux configurations.
+
 ### Tomcat Configuration
 
 #### Multi-Principal Tomcat Authenticator
@@ -120,9 +144,10 @@ The changes are fully backward compatible. Existing configurations will continue
 - `boolean hasPrincipalForSPN(String spn)`: Check if SPN is configured
 - `String[] getConfiguredSPNs()`: Get all configured SPNs
 
-#### `SimpleMultiPrincipalManager` (Spring Security)
+#### `SimpleMultiPrincipalManager` (Spring Security / WebFlux)
 - `void addPrincipal(String principal, Resource keyTabLocation)`: Add a principal with keytab
 - `void addPrincipal(String principal, Resource keyTabLocation, boolean acceptOnly)`: Add with accept-only option
+- Provided by `kerb4j-server-spring-security-core` so both servlet and reactive integrations can use it
 
 #### `TomcatMultiPrincipalManager` (Tomcat)
 - `void addPrincipal(String principal, String keyTabLocation)`: Add a principal with keytab path

@@ -257,7 +257,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
                     }
                     if (spnegoClient == null) {
                         if (log.isDebugEnabled()) {
-                            log.debug("Failed to extract SPN and no default principal configured");
+                            log.debug("Failed to extract SPN and no default principal configured", e);
                         }
                         response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
                         response.sendError(HttpServletResponse.SC_UNAUTHORIZED);

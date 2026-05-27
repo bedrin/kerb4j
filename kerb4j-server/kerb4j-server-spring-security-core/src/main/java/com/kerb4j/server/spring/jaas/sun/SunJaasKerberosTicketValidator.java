@@ -93,7 +93,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
                         LOG.debug("Using default single principal client for SPN: " + targetSPN);
                     }
                 } catch (Kerb4JException e) {
-                    LOG.warn("Failed to extract SPN from token, using default principal", e);
+                    LOG.debug("Failed to extract SPN from token, using default principal", e);
                     if (spnegoClient == null) {
                         throw new BadCredentialsException("Failed to extract SPN and no default principal configured", e);
                     }

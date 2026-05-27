@@ -42,7 +42,7 @@ public class TomcatMultiPrincipalManager implements MultiPrincipalManager {
             SpnegoClient client = SpnegoClient.loginWithKeyTab(principal, keyTabLocation, true);
             spnegoClients.put(principal, client);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize principal: " + principal, e);
+            throw new RuntimeException("Failed to initialize principal: " + principal + " with keytab: " + keyTabLocation, e);
         }
     }
     

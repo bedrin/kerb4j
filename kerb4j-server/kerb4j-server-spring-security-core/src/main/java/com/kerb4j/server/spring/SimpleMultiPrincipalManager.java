@@ -40,15 +40,16 @@ public class SimpleMultiPrincipalManager implements MultiPrincipalManager {
      * @param acceptOnly whether this principal is accept-only
      */
     public void addPrincipal(String principal, Resource keyTabLocation, boolean acceptOnly) {
+        String keyTabPath = null;
         try {
-            String keyTabPath = keyTabLocation.getURL().toExternalForm();
+            keyTabPath = keyTabLocation.getURL().toExternalForm();
             if (keyTabPath.startsWith("file:")) {
                 keyTabPath = keyTabPath.substring(5);
             }
             SpnegoClient client = SpnegoClient.loginWithKeyTab(principal, keyTabPath, acceptOnly);
             spnegoClients.put(principal, client);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize principal: " + principal, e);
+            throw new RuntimeException("Failed to initialize principal: " + principal + " with keytab: " + keyTabPath, e);
         }
     }
     
