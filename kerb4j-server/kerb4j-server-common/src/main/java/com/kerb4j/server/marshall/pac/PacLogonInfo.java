@@ -5,8 +5,13 @@ import com.kerb4j.server.marshall.Kerb4JException;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.LinkedHashSet;
 
+/**
+ * Parsed PAC KERB_VALIDATION_INFO.
+ */
 public class PacLogonInfo {
 
     private Date logonTime;
@@ -298,16 +303,45 @@ public class PacLogonInfo {
         return groupSid;
     }
 
+    /**
+     * Returns account-domain group SIDs as full SIDs.
+     * Values are derived as {@code LogonDomainId + GroupIds.RelativeId}.
+     *
+     * @return account-domain group SIDs
+     */
     public PacSid[] getGroupSids() {
         return groupSids;
     }
 
+    /**
+     * Returns resource-domain/domain-local group SIDs as full SIDs.
+     * Values are derived as {@code ResourceGroupDomainSid + ResourceGroupIds.RelativeId}.
+     *
+     * @return resource-domain/domain-local group SIDs
+     */
     public PacSid[] getResourceGroupSids() {
         return resourceGroupSids;
     }
 
+    /**
+     * Returns extra SIDs exactly as provided by the PAC.
+     * These values are already full SIDs and are not expanded with a domain SID.
+     *
+     * @return extra SIDs
+     */
     public PacSid[] getExtraSids() {
         return extraSids;
+    }
+
+    /**
+     * Returns all group-like authorization SIDs from the PAC, in stable order:
+     * account-domain group SIDs, then resource-domain/domain-local group SIDs, then extra SIDs.
+     * Duplicate SIDs are removed while preserving first appearance order.
+     *
+     * @return all authorization group SIDs
+     */
+    public PacSid[] getAllGroupSids() {
+        return mergeGroupSids(groupSids, resourceGroupSids, extraSids);
     }
 
     public int getUserAccountControl() {
@@ -336,6 +370,14 @@ public class PacLogonInfo {
             groupSids[i] = PacSid.append(domainId, groups[i].getId());
         }
         return groupSids;
+    }
+
+    static PacSid[] mergeGroupSids(PacSid[] groupSids, PacSid[] resourceGroupSids, PacSid[] extraSids) {
+        LinkedHashSet<PacSid> merged = new LinkedHashSet<>();
+        merged.addAll(Arrays.asList(groupSids));
+        merged.addAll(Arrays.asList(resourceGroupSids));
+        merged.addAll(Arrays.asList(extraSids));
+        return merged.toArray(new PacSid[0]);
     }
 
 }

@@ -37,6 +37,23 @@ class PacLogonInfoTest {
         Assertions.assertEquals("S-1-5-21-111-222-333-513", groupSids[0].toHumanReadableString());
     }
 
+    @Test
+    void allGroupSidsAreMergedInOrderWithoutDuplicates() throws Kerb4JException {
+        PacSid accountDomainGroup = sidWithSubs(21, 111, 222, 333, 513);
+        PacSid resourceDomainGroup = sidWithSubs(21, 444, 555, 666, 777);
+        PacSid extraSid = sidWithSubs(21, 999, 888, 777, 1001);
+
+        PacSid[] allGroupSids = PacLogonInfo.mergeGroupSids(
+                new PacSid[]{accountDomainGroup, resourceDomainGroup},
+                new PacSid[]{resourceDomainGroup},
+                new PacSid[]{extraSid, accountDomainGroup});
+
+        Assertions.assertEquals(3, allGroupSids.length);
+        Assertions.assertEquals(accountDomainGroup, allGroupSids[0]);
+        Assertions.assertEquals(resourceDomainGroup, allGroupSids[1]);
+        Assertions.assertEquals(extraSid, allGroupSids[2]);
+    }
+
     private static PacSid sidWithSubs(int... subAuthorities) throws Kerb4JException {
         ByteBuffer buffer = ByteBuffer.allocate(subAuthorities.length * 4).order(ByteOrder.LITTLE_ENDIAN);
         for (int subAuthority : subAuthorities) {
