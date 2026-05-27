@@ -20,6 +20,7 @@ import com.kerb4j.server.spring.SpnegoRequestToken;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -39,6 +40,10 @@ import java.util.Base64;
  * and creates a {@link SpnegoRequestToken} out of it. It will then
  * call the {@link ReactiveAuthenticationManager}.</p>
  *
+ * <p>Basic authentication fallback is <strong>disabled</strong> by default. Enable it explicitly
+ * via the constructor or {@link #setSupportBasicAuthentication(boolean)} if your use case
+ * requires mixed Kerberos/password environments.</p>
+ *
  * @author Mike Wiesner (original SpnegoAuthenticationProcessingFilter)
  * @author GitHub Copilot (WebFlux adaptation)
  * @see com.kerb4j.server.spring.SpnegoAuthenticationProcessingFilter
@@ -48,14 +53,21 @@ public class SpnegoServerAuthenticationConverter implements ServerAuthentication
 
     private static final Log LOG = LogFactory.getLog(SpnegoServerAuthenticationConverter.class);
 
-    private boolean supportBasicAuthentication = true;
+    /** Negotiate scheme prefix including the mandatory trailing space. */
+    private static final String NEGOTIATE_PREFIX = Constants.NEGOTIATE_HEADER + " ";
+
+    /** Basic scheme prefix including the mandatory trailing space. */
+    private static final String BASIC_PREFIX = Constants.BASIC_HEADER + " ";
+
+    private boolean supportBasicAuthentication = false;
     private boolean skipIfAlreadyAuthenticated = true;
 
     /**
      * Instantiates a new SPNEGO authentication converter.
+     * Basic authentication fallback is disabled by default.
      */
     public SpnegoServerAuthenticationConverter() {
-        this(true);
+        this(false);
     }
 
     /**
@@ -69,13 +81,12 @@ public class SpnegoServerAuthenticationConverter implements ServerAuthentication
 
     @Override
     public Mono<Authentication> convert(ServerWebExchange exchange) {
-        // Check if already authenticated and skip if configured to do so
         if (skipIfAlreadyAuthenticated) {
             return ReactiveSecurityContextHolder.getContext()
                     .map(SecurityContext::getAuthentication)
-                    .filter(auth -> auth != null && auth.isAuthenticated() && 
+                    .filter(auth -> auth != null && auth.isAuthenticated() &&
                             !(auth instanceof AnonymousAuthenticationToken))
-                    .flatMap(auth -> Mono.<Authentication>empty()) // Skip processing if already authenticated
+                    .flatMap(auth -> Mono.<Authentication>empty())
                     .switchIfEmpty(Mono.defer(() -> processAuthenticationHeader(exchange)));
         } else {
             return processAuthenticationHeader(exchange);
@@ -89,32 +100,43 @@ public class SpnegoServerAuthenticationConverter implements ServerAuthentication
             return Mono.empty();
         }
 
-        if (header.startsWith(Constants.NEGOTIATE_HEADER)) {
+        if (header.startsWith(NEGOTIATE_PREFIX)) {
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Received Negotiate Header for request " + exchange.getRequest().getURI() + ": " + header);
+                LOG.debug("Received Negotiate Authorization header for request " + exchange.getRequest().getURI());
             }
-            
-            String base64Token = header.substring(Constants.NEGOTIATE_HEADER.length());
-            byte[] kerberosTicket = Base64.getDecoder().decode(base64Token);
+
+            String base64Token = header.substring(NEGOTIATE_PREFIX.length()).trim();
+            if (base64Token.isEmpty()) {
+                return Mono.empty();
+            }
+            byte[] kerberosTicket;
+            try {
+                kerberosTicket = Base64.getDecoder().decode(base64Token);
+            } catch (IllegalArgumentException e) {
+                return Mono.error(new BadCredentialsException("Failed to decode Negotiate token", e));
+            }
             return Mono.just(new SpnegoRequestToken(kerberosTicket));
-            
-        } else if (supportBasicAuthentication && header.startsWith(Constants.BASIC_HEADER)) {
+
+        } else if (supportBasicAuthentication && header.startsWith(BASIC_PREFIX)) {
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Received Basic Header for request " + exchange.getRequest().getURI() + ": " + header);
+                LOG.debug("Received Basic Authorization header for request " + exchange.getRequest().getURI());
             }
-            
-            String base64Token = header.substring(Constants.BASIC_HEADER.length());
-            String token = new String(Base64.getDecoder().decode(base64Token), StandardCharsets.UTF_8);
 
-            String username = "";
-            String password = "";
+            String base64Token = header.substring(BASIC_PREFIX.length()).trim();
+            String token;
+            try {
+                token = new String(Base64.getDecoder().decode(base64Token), StandardCharsets.UTF_8);
+            } catch (IllegalArgumentException e) {
+                return Mono.error(new BadCredentialsException("Failed to decode Basic authentication token", e));
+            }
+
             int delimiter = token.indexOf(":");
-
-            if (delimiter != -1) {
-                username = token.substring(0, delimiter);
-                password = token.substring(delimiter + 1);
+            if (delimiter == -1) {
+                return Mono.error(new BadCredentialsException("Invalid Basic authentication token"));
             }
 
+            String username = token.substring(0, delimiter);
+            String password = token.substring(delimiter + 1);
             return Mono.just(new UsernamePasswordAuthenticationToken(username, password));
         }
 
@@ -123,6 +145,8 @@ public class SpnegoServerAuthenticationConverter implements ServerAuthentication
 
     /**
      * Sets whether to support basic authentication as fallback.
+     * Defaults to {@code false}; set to {@code true} only when mixed
+     * Kerberos/password environments require it.
      *
      * @param supportBasicAuthentication whether to support basic authentication
      */

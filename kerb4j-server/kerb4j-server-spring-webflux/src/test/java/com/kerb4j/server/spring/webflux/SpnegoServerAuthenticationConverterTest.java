@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import reactor.core.publisher.Mono;
@@ -47,10 +48,29 @@ class SpnegoServerAuthenticationConverterTest {
     }
 
     @Test
+    void testDefaultBasicAuthIsDisabled() {
+        SpnegoServerAuthenticationConverter defaultConverter = new SpnegoServerAuthenticationConverter();
+
+        String credentials = "user:password";
+        String base64Credentials = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+        String basicHeader = Constants.BASIC_HEADER + " " + base64Credentials;
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/test")
+                        .header(Constants.AUTHZ_HEADER, basicHeader)
+        );
+
+        StepVerifier.create(defaultConverter.convert(exchange))
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
     void testConvertWithNegotiateHeader() {
-        String testToken = "VGVzdFRva2Vu"; // Base64 for "TestToken"
-        String negotiateHeader = Constants.NEGOTIATE_HEADER + testToken;
-        
+        byte[] tokenBytes = "TestToken".getBytes(StandardCharsets.UTF_8);
+        String base64Token = Base64.getEncoder().encodeToString(tokenBytes);
+        String negotiateHeader = Constants.NEGOTIATE_HEADER + " " + base64Token;
+
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/test")
                         .header(Constants.AUTHZ_HEADER, negotiateHeader)
@@ -62,7 +82,7 @@ class SpnegoServerAuthenticationConverterTest {
                 .assertNext(auth -> {
                     assertThat(auth).isInstanceOf(SpnegoRequestToken.class);
                     SpnegoRequestToken spnegoToken = (SpnegoRequestToken) auth;
-                    assertThat(spnegoToken.getToken()).isNotNull();
+                    assertThat(spnegoToken.getToken()).isEqualTo(tokenBytes);
                 })
                 .expectComplete()
                 .verify();
@@ -70,10 +90,12 @@ class SpnegoServerAuthenticationConverterTest {
 
     @Test
     void testConvertWithBasicAuthenticationHeader() {
+        converter.setSupportBasicAuthentication(true);
+
         String credentials = "user:password";
         String base64Credentials = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
-        String basicHeader = Constants.BASIC_HEADER + base64Credentials;
-        
+        String basicHeader = Constants.BASIC_HEADER + " " + base64Credentials;
+
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/test")
                         .header(Constants.AUTHZ_HEADER, basicHeader)
@@ -93,12 +115,10 @@ class SpnegoServerAuthenticationConverterTest {
 
     @Test
     void testConvertWithBasicAuthenticationDisabled() {
-        converter.setSupportBasicAuthentication(false);
-        
         String credentials = "user:password";
         String base64Credentials = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
-        String basicHeader = Constants.BASIC_HEADER + base64Credentials;
-        
+        String basicHeader = Constants.BASIC_HEADER + " " + base64Credentials;
+
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/test")
                         .header(Constants.AUTHZ_HEADER, basicHeader)
@@ -126,12 +146,71 @@ class SpnegoServerAuthenticationConverterTest {
     void testConvertWithUnsupportedAuthorizationHeader() {
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/test")
-                        .header(Constants.AUTHZ_HEADER, "Bearer token")
+                        .header(Constants.AUTHZ_HEADER, "******")
         );
 
         Mono<Authentication> result = converter.convert(exchange);
 
         StepVerifier.create(result)
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
+    void testConvertWithMalformedNegotiateTokenReturnsBadCredentials() {
+        String negotiateHeader = Constants.NEGOTIATE_HEADER + " not-valid-base64!!!";
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/test")
+                        .header(Constants.AUTHZ_HEADER, negotiateHeader)
+        );
+
+        StepVerifier.create(converter.convert(exchange))
+                .expectError(BadCredentialsException.class)
+                .verify();
+    }
+
+    @Test
+    void testConvertWithMalformedBasicTokenReturnsBadCredentials() {
+        converter.setSupportBasicAuthentication(true);
+        String basicHeader = Constants.BASIC_HEADER + " not-valid-base64!!!";
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/test")
+                        .header(Constants.AUTHZ_HEADER, basicHeader)
+        );
+
+        StepVerifier.create(converter.convert(exchange))
+                .expectError(BadCredentialsException.class)
+                .verify();
+    }
+
+    @Test
+    void testConvertWithBasicMissingDelimiterReturnsBadCredentials() {
+        converter.setSupportBasicAuthentication(true);
+        String base64 = Base64.getEncoder().encodeToString("usernameonly".getBytes(StandardCharsets.UTF_8));
+        String basicHeader = Constants.BASIC_HEADER + " " + base64;
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/test")
+                        .header(Constants.AUTHZ_HEADER, basicHeader)
+        );
+
+        StepVerifier.create(converter.convert(exchange))
+                .expectError(BadCredentialsException.class)
+                .verify();
+    }
+
+    @Test
+    void testConvertWithEmptyNegotiateTokenReturnsEmpty() {
+        String negotiateHeader = Constants.NEGOTIATE_HEADER + "  ";
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/test")
+                        .header(Constants.AUTHZ_HEADER, negotiateHeader)
+        );
+
+        StepVerifier.create(converter.convert(exchange))
                 .expectComplete()
                 .verify();
     }

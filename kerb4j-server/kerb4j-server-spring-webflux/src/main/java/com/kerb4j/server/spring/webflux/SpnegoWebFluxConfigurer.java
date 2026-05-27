@@ -34,6 +34,7 @@ public class SpnegoWebFluxConfigurer {
 
     /**
      * Creates an authentication web filter configured for SPNEGO authentication.
+     * Basic authentication fallback is disabled by default.
      *
      * @param authenticationManager the authentication manager to use
      * @return configured authentication web filter
@@ -46,13 +47,14 @@ public class SpnegoWebFluxConfigurer {
 
     /**
      * Creates an authentication web filter configured for SPNEGO authentication.
+     * Basic authentication fallback is disabled by default.
      *
      * @param reactiveAuthenticationManager the reactive authentication manager to use
      * @return configured authentication web filter
      */
     public static AuthenticationWebFilter createSpnegoAuthenticationWebFilter(
             ReactiveAuthenticationManager reactiveAuthenticationManager) {
-        return createSpnegoAuthenticationWebFilter(reactiveAuthenticationManager, true);
+        return createSpnegoAuthenticationWebFilter(reactiveAuthenticationManager, false);
     }
 
     /**

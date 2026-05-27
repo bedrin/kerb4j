@@ -24,6 +24,7 @@ import org.springframework.security.core.AuthenticationException;
 import reactor.test.StepVerifier;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -49,7 +50,7 @@ class ReactiveAuthenticationManagerAdapterTest {
     void testSuccessfulAuthentication() {
         TestingAuthenticationToken inputAuth = new TestingAuthenticationToken("user", "password");
         TestingAuthenticationToken outputAuth = new TestingAuthenticationToken("user", "password", "ROLE_USER");
-        
+
         when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(outputAuth);
 
         StepVerifier.create(adapter.authenticate(inputAuth))
@@ -62,9 +63,9 @@ class ReactiveAuthenticationManagerAdapterTest {
     }
 
     @Test
-    void testAuthenticationFailure() {
+    void testAuthenticationFailurePropagatesError() {
         TestingAuthenticationToken inputAuth = new TestingAuthenticationToken("user", "wrongpassword");
-        
+
         when(authenticationManager.authenticate(any(Authentication.class)))
                 .thenThrow(new AuthenticationException("Authentication failed") {});
 
@@ -75,10 +76,8 @@ class ReactiveAuthenticationManagerAdapterTest {
 
     @Test
     void testConstructorWithNullThrowsException() {
-        try {
-            new ReactiveAuthenticationManagerAdapter(null);
-        } catch (IllegalArgumentException e) {
-            assertThat(e.getMessage()).contains("AuthenticationManager cannot be null");
-        }
+        assertThatThrownBy(() -> new ReactiveAuthenticationManagerAdapter(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("AuthenticationManager cannot be null");
     }
 }
