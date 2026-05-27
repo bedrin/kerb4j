@@ -34,7 +34,6 @@ import org.springframework.security.kerberos.web.authentication.ResponseHeaderSe
 import org.springframework.security.kerberos.web.authentication.SpnegoAuthenticationProcessingFilter;
 import org.springframework.security.kerberos.web.authentication.SpnegoEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
 @Configuration

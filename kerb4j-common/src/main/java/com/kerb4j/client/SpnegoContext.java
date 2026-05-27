@@ -1,6 +1,5 @@
 package com.kerb4j.client;
 
-import com.kerb4j.common.util.base64.Base64Codec;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 import org.ietf.jgss.GSSName;
@@ -10,6 +9,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.util.Base64;
 
 public class SpnegoContext implements Closeable {
 
@@ -33,7 +33,7 @@ public class SpnegoContext implements Closeable {
     }
 
     public String createTokenAsAuthroizationHeader() throws PrivilegedActionException {
-        return "Negotiate " + Base64Codec.encode(createToken());
+        return "Negotiate " + Base64.getEncoder().encodeToString(createToken());
     }
 
     public byte[] processMutualAuthorization(final byte[] data, final int offset, final int length) throws PrivilegedActionException {
