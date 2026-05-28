@@ -110,13 +110,21 @@ public class SpnegoKerberosMechToken {
     }
 
     /**
-     * Get the server principal name (SPN) from the ticket.
-     * This method extracts the server name from the unencrypted part of the ticket.
-     * 
-     * @return the server principal name as a string
+     * Get the canonical server principal name (SPN) from the unencrypted ticket metadata.
+     * The name is built from the ticket's sname components and the ticket-level realm,
+     * in the format {@code service/host@REALM} (e.g. {@code HTTP/www.example.com@EXAMPLE.COM}).
+     * This is the same format users must use when configuring principals in
+     * {@link com.kerb4j.server.MultiPrincipalManager}.
+     *
+     * @return the canonical server principal name including realm
      */
     public String getServerPrincipalName() {
-        return getApRequest().getTicket().getSname().getName();
+        String name = getApRequest().getTicket().getSname().getName();
+        String realm = getApRequest().getTicket().getRealm();
+        if (realm != null && !realm.isEmpty() && !name.contains("@")) {
+            return name + "@" + realm;
+        }
+        return name;
     }
 
     public Pac getPac(KerberosKey[] kerberosKeys) throws KrbException, Kerb4JException {

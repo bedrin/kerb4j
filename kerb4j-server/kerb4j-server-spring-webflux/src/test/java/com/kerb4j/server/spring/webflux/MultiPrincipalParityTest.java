@@ -22,7 +22,14 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
+/**
+ * Verifies that the multi-principal building blocks available to the reactive
+ * (WebFlux) stack are the same shared-core classes used by the servlet stack.
+ */
 class MultiPrincipalParityTest {
 
     @Test
@@ -33,4 +40,14 @@ class MultiPrincipalParityTest {
         assertThat(manager).isInstanceOf(MultiPrincipalManager.class);
         assertDoesNotThrow(() -> validator.setMultiPrincipalManager(manager));
     }
+
+    @Test
+    void simpleMultiPrincipalManagerExposesCorrectApiForReactiveStack() {
+        SimpleMultiPrincipalManager manager = new SimpleMultiPrincipalManager();
+
+        assertEquals(0, manager.getConfiguredSpns().length);
+        assertFalse(manager.hasPrincipalForSpn("HTTP/host@REALM"));
+        assertNull(manager.getSpnegoClientForSpn("HTTP/host@REALM"));
+    }
 }
+

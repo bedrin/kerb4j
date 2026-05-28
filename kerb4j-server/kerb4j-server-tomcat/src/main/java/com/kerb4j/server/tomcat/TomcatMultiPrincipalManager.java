@@ -22,59 +22,58 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Simple multi-principal manager for Tomcat that manages multiple service principals
- * each with their own keytab files.
- * 
+ * Simple {@link MultiPrincipalManager} implementation for Tomcat that manages
+ * multiple service principals, each backed by its own keytab file path.
+ *
+ * <p>Keytab locations must be absolute paths to local files.
+ *
  * @since 2.0.0
  */
 public class TomcatMultiPrincipalManager implements MultiPrincipalManager {
-    
+
     private final Map<String, SpnegoClient> spnegoClients = new ConcurrentHashMap<>();
-    
+
     /**
-     * Add a principal with its keytab location.
-     * 
-     * @param principal the service principal name
-     * @param keyTabLocation the path to the keytab file
+     * Add a principal with its keytab file path.
+     *
+     * @param principal      the canonical service principal name (e.g. {@code HTTP/host@REALM})
+     * @param keyTabLocation the absolute path to the keytab file
+     * @throws IllegalArgumentException if the principal or keytab path is null or empty
      */
     public void addPrincipal(String principal, String keyTabLocation) {
+        if (principal == null || principal.trim().isEmpty()) {
+            throw new IllegalArgumentException("Principal name must not be null or empty");
+        }
+        if (keyTabLocation == null || keyTabLocation.trim().isEmpty()) {
+            throw new IllegalArgumentException("Key tab location must not be null or empty");
+        }
         try {
             SpnegoClient client = SpnegoClient.loginWithKeyTab(principal, keyTabLocation, true);
             spnegoClients.put(principal, client);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize principal: " + principal + " with keytab: " + keyTabLocation, e);
+            throw new RuntimeException(
+                    "Failed to initialize principal: " + principal + " with keytab: " + keyTabLocation, e);
         }
     }
-    
-    /**
-     * Get the SpnegoClient for the specified service principal name.
-     * 
-     * @param spn the service principal name
-     * @return the SpnegoClient configured for this principal, or null if not found
-     */
+
     @Override
-    public SpnegoClient getSpnegoClientForSPN(String spn) {
+    public SpnegoClient getSpnegoClientForSpn(String spn) {
+        if (spn == null) {
+            return null;
+        }
         return spnegoClients.get(spn);
     }
-    
-    /**
-     * Check if this manager has a principal configured for the given SPN.
-     * 
-     * @param spn the service principal name
-     * @return true if a principal is configured for this SPN
-     */
+
     @Override
-    public boolean hasPrincipalForSPN(String spn) {
+    public boolean hasPrincipalForSpn(String spn) {
+        if (spn == null) {
+            return false;
+        }
         return spnegoClients.containsKey(spn);
     }
-    
-    /**
-     * Get all configured service principal names.
-     * 
-     * @return array of configured SPNs
-     */
+
     @Override
-    public String[] getConfiguredSPNs() {
+    public String[] getConfiguredSpns() {
         return spnegoClients.keySet().toArray(new String[0]);
     }
 }

@@ -145,9 +145,14 @@ public AuthenticationWebFilter spnegoAuthenticationWebFilter() {
 ### Multi-Principal Configuration (Reactive)
 
 ```java
+import com.kerb4j.server.spring.SimpleMultiPrincipalManager;
+import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
+
 @Bean
 public SimpleMultiPrincipalManager multiPrincipalManager() {
     SimpleMultiPrincipalManager manager = new SimpleMultiPrincipalManager();
+    // SPNs must be in canonical form: service/host@REALM (case-sensitive, exact match).
+    // Keytab resources must be local files; classpath resources inside JARs are not supported.
     manager.addPrincipal("HTTP/www1.server.com@EXAMPLE.COM",
             new FileSystemResource("/etc/keytabs/www1.keytab"));
     manager.addPrincipal("HTTP/www2.server.com@EXAMPLE.COM",
@@ -159,6 +164,9 @@ public SimpleMultiPrincipalManager multiPrincipalManager() {
 public SunJaasKerberosTicketValidator sunJaasKerberosTicketValidator() {
     SunJaasKerberosTicketValidator ticketValidator = new SunJaasKerberosTicketValidator();
     ticketValidator.setMultiPrincipalManager(multiPrincipalManager());
+    // Pure multi-principal mode: tokens for unknown SPNs are rejected with 401.
+    // To add a fallback, also call ticketValidator.setServicePrincipal() and
+    // ticketValidator.setKeyTabLocation() — see MULTI_PRINCIPAL_SUPPORT.md for details.
     return ticketValidator;
 }
 ```

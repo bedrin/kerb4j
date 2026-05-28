@@ -1,27 +1,66 @@
 # Multi-Principal SPNEGO Support
 
-This document describes the multi-principal support feature added to kerb4j, which allows a single server to handle SPNEGO authentication for multiple service principal names (SPNs).
+This document describes the multi-principal support feature added to kerb4j, which allows a
+single server to handle SPNEGO authentication for multiple service principal names (SPNs).
 
 ## Overview
 
-Previously, kerb4j only supported a single Kerberos principal per server. This limitation meant that servers with multiple DNS aliases or services couldn't handle SPNEGO tokens for different SPNs without separate configurations.
+Previously, kerb4j only supported a single Kerberos principal per server. This limitation
+meant that servers with multiple DNS aliases or services couldn't handle SPNEGO tokens for
+different SPNs without separate configurations.
 
 The multi-principal support feature allows a server to:
-- Handle SPNEGO tokens for multiple service principals (e.g., `HTTP/www1.server.com@REALM` and `HTTP/www2.server.com@REALM`)
-- Automatically extract the target SPN from incoming SPNEGO tokens
+- Handle SPNEGO tokens for multiple service principals (e.g., `HTTP/www1.server.com@REALM`
+  and `HTTP/www2.server.com@REALM`)
+- Automatically extract the target SPN from the unencrypted metadata of incoming SPNEGO tokens
 - Select the appropriate principal/keytab based on the target SPN
-- Maintain full backward compatibility with existing single-principal configurations
+- Optionally fall back to a configured default principal when the token SPN is unknown
 
-## How It Works
+## Supported Modes
 
-1. When a SPNEGO token is received, the library extracts the target service principal name from the unencrypted part of the Kerberos ticket
-2. The multi-principal manager looks up the appropriate `SpnegoClient` for that SPN
-3. The selected `SpnegoClient` is used to validate the token
-4. If no specific principal is found, the system can fall back to a default principal (if configured)
+### Single-Principal Mode (existing behavior, unchanged)
+
+Configure `servicePrincipal` and `keyTabLocation` (or `servicePassword`) on the validator.
+Multi-principal selection is not performed.
+
+### Pure Multi-Principal Mode
+
+Configure only a `MultiPrincipalManager` with at least one SPN. Tokens targeting an unknown
+or unextractable SPN are **rejected** with `BadCredentialsException` / HTTP 401.  There is no
+implicit fallback to a broader principal.
+
+### Hybrid Mode (multi-principal with default fallback)
+
+Configure **both** a `MultiPrincipalManager` (with at least one SPN) **and**
+`servicePrincipal`+`keyTabLocation`. The validator initializes both. When a token arrives:
+1. If the token SPN matches a configured SPN in the manager → the matching client is used.
+2. If the token SPN is unknown or unextractable **and** a default principal is configured →
+   the default principal is used as a fallback.
+3. If the token SPN is unknown or unextractable and there is **no** default principal →
+   the request is rejected.
+
+⚠ Use hybrid mode deliberately. Falling back to a default principal means that a broad
+service account may validate tokens that were intended for a specific SPN.
+
+## How SPN Extraction Works
+
+When a SPNEGO token is received, `SpnegoInitToken.getServerPrincipalName()` extracts the
+target service principal from the unencrypted metadata of the Kerberos ticket (the ticket's
+`sname` and realm fields, which are outside the encrypted `EncTicketPart`). The returned
+string is in canonical form: `service/host@REALM`, e.g. `HTTP/www.example.com@EXAMPLE.COM`.
+
+SPN matching is **exact and case-sensitive**. The string used as the map key in your
+`MultiPrincipalManager` must match this canonical form precisely.
 
 ## Usage Examples
 
-### Spring Security Configuration
+### Spring Security (Servlet / WebMVC)
+
+```java
+import com.kerb4j.server.MultiPrincipalManager;
+import com.kerb4j.server.spring.SimpleMultiPrincipalManager;
+import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
+```
 
 #### Single Principal (Backward Compatible)
 ```java
@@ -34,20 +73,19 @@ public SunJaasKerberosTicketValidator kerberosTicketValidator() {
 }
 ```
 
-#### Multi-Principal Configuration
+#### Pure Multi-Principal Configuration
 ```java
 @Bean
 public SimpleMultiPrincipalManager multiPrincipalManager() {
     SimpleMultiPrincipalManager manager = new SimpleMultiPrincipalManager();
-    
-    // Add multiple principals with their respective keytabs
-    manager.addPrincipal("HTTP/www1.server.com@EXAMPLE.COM", 
+    // SPNs must be exact canonical strings including realm (case-sensitive).
+    // Keytab resources must resolve to local files; classpath resources inside JARs are not supported.
+    manager.addPrincipal("HTTP/www1.server.com@EXAMPLE.COM",
                          new FileSystemResource("/etc/keytabs/www1.keytab"));
-    manager.addPrincipal("HTTP/www2.server.com@EXAMPLE.COM", 
+    manager.addPrincipal("HTTP/www2.server.com@EXAMPLE.COM",
                          new FileSystemResource("/etc/keytabs/www2.keytab"));
-    manager.addPrincipal("HTTP/api.server.com@EXAMPLE.COM", 
+    manager.addPrincipal("HTTP/api.server.com@EXAMPLE.COM",
                          new FileSystemResource("/etc/keytabs/api.keytab"));
-    
     return manager;
 }
 
@@ -55,30 +93,38 @@ public SimpleMultiPrincipalManager multiPrincipalManager() {
 public SunJaasKerberosTicketValidator kerberosTicketValidator() {
     SunJaasKerberosTicketValidator validator = new SunJaasKerberosTicketValidator();
     validator.setMultiPrincipalManager(multiPrincipalManager());
+    // Tokens for unknown SPNs are rejected (no fallback).
     return validator;
 }
 ```
 
-#### Hybrid Configuration (Multi-Principal with Fallback)
+#### Hybrid Configuration (Multi-Principal with Default Fallback)
 ```java
 @Bean
 public SunJaasKerberosTicketValidator kerberosTicketValidator() {
     SunJaasKerberosTicketValidator validator = new SunJaasKerberosTicketValidator();
-    
+
     // Configure multi-principal support
     validator.setMultiPrincipalManager(multiPrincipalManager());
-    
-    // Also configure a default principal as fallback
+
+    // Also configure a default principal as explicit fallback.
+    // This initializes a second SpnegoClient used only when the token SPN is unknown.
     validator.setServicePrincipal("HTTP/default.server.com@EXAMPLE.COM");
     validator.setKeyTabLocation(new FileSystemResource("/etc/keytabs/default.keytab"));
-    
+
     return validator;
 }
 ```
 
 ### Spring WebFlux Configuration
 
+The same `SunJaasKerberosTicketValidator` and `SimpleMultiPrincipalManager` classes from
+`kerb4j-server-spring-security-core` are used for both servlet and reactive stacks:
+
 ```java
+import com.kerb4j.server.spring.SimpleMultiPrincipalManager;
+import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
+
 @Bean
 public SimpleMultiPrincipalManager multiPrincipalManager() {
     SimpleMultiPrincipalManager manager = new SimpleMultiPrincipalManager();
@@ -97,109 +143,113 @@ public SunJaasKerberosTicketValidator kerberosTicketValidator() {
 }
 ```
 
-The same `SunJaasKerberosTicketValidator` and `SimpleMultiPrincipalManager` APIs are shared by
-both Spring Security servlet and Spring WebFlux configurations.
+See `kerb4j-server-spring-webflux/README.md` for the full reactive filter-chain setup.
 
 ### Tomcat Configuration
 
-#### Multi-Principal Tomcat Authenticator
+Use `TomcatMultiPrincipalManager` (Tomcat-specific) and configure it programmatically.
+Standard Tomcat XML (`<Valve>`) only supports simple string properties; Spring-style bean
+references (`#{bean}`) are **not** available in plain Tomcat XML configuration.
+
 ```java
-// In your Tomcat context configuration
+import com.kerb4j.server.tomcat.TomcatMultiPrincipalManager;
+import com.kerb4j.server.tomcat.SpnegoAuthenticator;
+
 TomcatMultiPrincipalManager multiPrincipalManager = new TomcatMultiPrincipalManager();
+// Keytab locations must be absolute paths to local files.
 multiPrincipalManager.addPrincipal("HTTP/www1.server.com@EXAMPLE.COM", "/etc/keytabs/www1.keytab");
 multiPrincipalManager.addPrincipal("HTTP/www2.server.com@EXAMPLE.COM", "/etc/keytabs/www2.keytab");
 
 SpnegoAuthenticator authenticator = new SpnegoAuthenticator();
 authenticator.setMultiPrincipalManager(multiPrincipalManager);
+// Optionally set a fallback (hybrid mode):
+// authenticator.setPrincipalName("HTTP/default@EXAMPLE.COM");
+// authenticator.setKeyTab("/etc/keytabs/default.keytab");
 ```
 
-#### XML Configuration for Tomcat
-```xml
-<Context>
-    <Valve className="com.kerb4j.server.tomcat.SpnegoAuthenticator"
-           multiPrincipalManager="#{multiPrincipalManager}" />
-</Context>
-```
+## API Reference
+
+### `MultiPrincipalManager` (Interface — `com.kerb4j.server`)
+- `SpnegoClient getSpnegoClientForSpn(String spn)` — Get the client for a specific SPN;
+  returns `null` if not configured
+- `boolean hasPrincipalForSpn(String spn)` — Check if an SPN is configured
+- `String[] getConfiguredSpns()` — Get all configured SPNs; never `null`
+
+### `SimpleMultiPrincipalManager` (`com.kerb4j.server.spring` in `kerb4j-server-spring-security-core`)
+- `void addPrincipal(String principal, Resource keyTabLocation)` — Add a principal; keytab
+  must be a local file resource
+- `void addPrincipal(String principal, Resource keyTabLocation, boolean acceptOnly)` — Add
+  with explicit accept-only flag
+
+### `TomcatMultiPrincipalManager` (`com.kerb4j.server.tomcat`)
+- `void addPrincipal(String principal, String keyTabLocation)` — Add a principal by keytab path
+
+### `SunJaasKerberosTicketValidator` (`com.kerb4j.server.spring.jaas.sun`)
+- `void setMultiPrincipalManager(MultiPrincipalManager manager)` — Enable multi-principal mode
+
+### `SpnegoInitToken` / `SpnegoKerberosMechToken` (`com.kerb4j.server.marshall.spnego`)
+- `String getServerPrincipalName()` — Extract the canonical target SPN from token metadata
 
 ## Migration Guide
 
 ### From Single Principal to Multi-Principal
 
-1. **Identify your current configuration**: Find where you set `servicePrincipal` and `keyTabLocation`
-2. **Create a multi-principal manager**: Instantiate `SimpleMultiPrincipalManager` (Spring) or `TomcatMultiPrincipalManager` (Tomcat)
-3. **Add your principals**: Use `addPrincipal()` to configure each SPN with its keytab
-4. **Update the validator**: Set the multi-principal manager instead of individual principal properties
-5. **Test**: Verify that all your services still work correctly
+1. **Identify** your current `servicePrincipal` and `keyTabLocation` settings
+2. **Create** a `SimpleMultiPrincipalManager` (Spring) or `TomcatMultiPrincipalManager` (Tomcat)
+3. **Add** each SPN with its keytab using `addPrincipal()`; use the exact canonical SPN string
+   including realm (e.g. `HTTP/host.example.com@EXAMPLE.COM`)
+4. **Set** the multi-principal manager on the validator/authenticator
+5. **Remove** `servicePrincipal` / `keyTabLocation` (pure mode) or keep them as fallback (hybrid mode)
+6. **Test** with `klist -kt /path/to.keytab` to verify keytab principal names match exactly
 
 ### Backward Compatibility
 
-The changes are fully backward compatible. Existing configurations will continue to work without any modifications. You only need to update your configuration if you want to take advantage of multi-principal support.
+Existing single-principal configurations continue to work without modification.
 
-## API Reference
+## Limitations
 
-### Core Classes
-
-#### `MultiPrincipalManager` (Interface)
-- `SpnegoClient getSpnegoClientForSPN(String spn)`: Get client for specific SPN
-- `boolean hasPrincipalForSPN(String spn)`: Check if SPN is configured
-- `String[] getConfiguredSPNs()`: Get all configured SPNs
-
-#### `SimpleMultiPrincipalManager` (Spring Security / WebFlux)
-- `void addPrincipal(String principal, Resource keyTabLocation)`: Add a principal with keytab
-- `void addPrincipal(String principal, Resource keyTabLocation, boolean acceptOnly)`: Add with accept-only option
-- Provided by `kerb4j-server-spring-security-core` so both servlet and reactive integrations can use it
-
-#### `TomcatMultiPrincipalManager` (Tomcat)
-- `void addPrincipal(String principal, String keyTabLocation)`: Add a principal with keytab path
-
-### Enhanced Classes
-
-#### `SunJaasKerberosTicketValidator`
-- `void setMultiPrincipalManager(MultiPrincipalManager manager)`: Enable multi-principal mode
-
-#### `SpnegoAuthenticator` (Tomcat)
-- `void setMultiPrincipalManager(TomcatMultiPrincipalManager manager)`: Enable multi-principal mode
-
-#### `SpnegoInitToken`
-- `String getServerPrincipalName()`: Extract target SPN from token
-
-#### `SpnegoKerberosMechToken`
-- `String getServerPrincipalName()`: Extract target SPN from ticket
+- Keytab resources must resolve to **local files**. Classpath resources embedded inside JAR
+  files are not supported by `SimpleMultiPrincipalManager` (an `IllegalArgumentException` is
+  thrown at configuration time).
+- SPN matching is exact and case-sensitive. The SPN string extracted from the token must
+  exactly match the key used in `addPrincipal()`.
+- Standard Tomcat XML `<Valve>` configuration only supports simple string properties; bean
+  references require a custom Tomcat lifecycle listener or Spring-embedded Tomcat.
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **"No principal configured for SPN"**: Ensure the SPN in the token matches exactly what you configured
-2. **Keytab errors**: Verify keytab files exist and contain the correct principals
-3. **Permission errors**: Ensure the application has read access to keytab files
-4. **Principal name mismatches**: SPNs are case-sensitive and must match exactly
+1. **"No principal configured for SPN: ..."** — The SPN in the token does not match any
+   configured principal. Check with `klist -kt` that the keytab contains the right SPN and
+   that the format (including realm) is identical.
+2. **Keytab errors** — Verify keytab files exist, are readable, and contain the correct
+   principal entries.
+3. **IllegalArgumentException on non-file resource** — Classpath resources inside JARs cannot
+   be resolved to a local file path. Use `FileSystemResource` with an absolute path instead.
 
 ### Debugging
 
-Enable debug logging to see which SPN is extracted and which principal is selected:
+Enable DEBUG logging to see which SPN is extracted and which principal is selected:
 ```properties
 logging.level.com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator=DEBUG
 logging.level.com.kerb4j.server.tomcat.SpnegoAuthenticator=DEBUG
 ```
 
-### Testing
+### Verifying Keytab Contents
 
-Use the `klist` command to verify your keytab contents:
 ```bash
 klist -kt /etc/keytabs/www1.keytab
 ```
 
-## Performance Considerations
-
-- Principal lookup is O(1) using hash maps
-- No performance impact for single-principal configurations
-- Minimal overhead for SPN extraction from tokens
-- Consider using accept-only mode (`acceptOnly=true`) for server-side principals to avoid unnecessary KDC communication
+The output shows exactly which principal names are in the keytab. These must match what you
+pass to `addPrincipal()`.
 
 ## Security Considerations
 
 - Store keytab files securely with appropriate file permissions (600 or 640)
 - Keep keytab files outside the application classpath
-- Regularly rotate service account passwords and update keytabs
-- Monitor for authentication failures that might indicate misconfiguration or attacks
+- In pure multi-principal mode the server fails closed (401) for unknown SPNs
+- In hybrid mode the default principal acts as a catch-all; consider whether that is appropriate
+  for your threat model
+- Monitor authentication failures that might indicate misconfiguration or probing

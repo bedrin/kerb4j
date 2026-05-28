@@ -118,21 +118,32 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
     protected void initInternal() throws LifecycleException {
         super.initInternal();
 
-        // Multi-principal mode
-        if (multiPrincipalManager != null) {
-            String[] spns = multiPrincipalManager.getConfiguredSPNs();
+        boolean hasMultiPrincipal = multiPrincipalManager != null;
+        boolean hasSinglePrincipal = principalName != null && keyTab != null;
+
+        if (!hasMultiPrincipal && !hasSinglePrincipal) {
+            throw new LifecycleException("Either multiPrincipalManager or principalName+keyTab must be configured");
+        }
+
+        if (hasMultiPrincipal) {
+            String[] spns = multiPrincipalManager.getConfiguredSpns();
             if (spns.length == 0) {
                 throw new LifecycleException("At least one principal must be configured in multiPrincipalManager");
             }
             log.info("SpnegoAuthenticator initialized with multi-principal support for " + spns.length + " principals");
-            return;
         }
-        
-        // Single principal mode (backward compatibility)
-        try {
-            spnegoClient = SpnegoClient.loginWithKeyTab(principalName, keyTab);
-        } catch (Exception e) {
-            throw new LifecycleException(e);
+
+        if (hasSinglePrincipal) {
+            // In hybrid mode (multiPrincipalManager also set) this client acts as fallback
+            // when the token SPN does not match any entry in the multiPrincipalManager.
+            if (hasMultiPrincipal) {
+                log.info("SpnegoAuthenticator configuring default fallback principal: " + principalName);
+            }
+            try {
+                spnegoClient = SpnegoClient.loginWithKeyTab(principalName, keyTab);
+            } catch (Exception e) {
+                throw new LifecycleException(e);
+            }
         }
 
     }
@@ -222,40 +233,46 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
 
         try {
             SpnegoClient clientToUse = spnegoClient;
-            
+
             // If multi-principal manager is configured, use it to select the appropriate client
             if (multiPrincipalManager != null) {
                 try {
                     SpnegoInitToken spnegoInitToken = new SpnegoInitToken(decoded);
-                    String targetSPN = spnegoInitToken.getServerPrincipalName();
-                    
+                    String targetSpn = spnegoInitToken.getServerPrincipalName();
+
                     if (log.isDebugEnabled()) {
-                        log.debug("Extracted target SPN from token: " + targetSPN);
+                        log.debug("Extracted target SPN from token: " + targetSpn);
                     }
-                    
-                    SpnegoClient multiClient = multiPrincipalManager.getSpnegoClientForSPN(targetSPN);
+
+                    SpnegoClient multiClient = multiPrincipalManager.getSpnegoClientForSpn(targetSpn);
                     if (multiClient != null) {
                         clientToUse = multiClient;
                         if (log.isDebugEnabled()) {
-                            log.debug("Using multi-principal client for SPN: " + targetSPN);
+                            log.debug("Using multi-principal client for SPN: " + targetSpn);
                         }
-                    } else if (spnegoClient == null) {
+                    } else if (spnegoClient != null) {
                         if (log.isDebugEnabled()) {
-                            log.debug("No principal configured for SPN: " + targetSPN);
+                            log.debug("No dedicated principal for SPN: " + targetSpn + ", falling back to default principal");
+                        }
+                        clientToUse = spnegoClient;
+                    } else {
+                        if (log.isDebugEnabled()) {
+                            log.debug("No principal configured for SPN: " + targetSpn);
                         }
                         response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
                         response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
                         return false;
-                    } else {
-                        if (log.isDebugEnabled()) {
-                            log.debug("Using default single principal client for SPN: " + targetSPN);
-                        }
                     }
                 } catch (Kerb4JException e) {
                     if (log.isDebugEnabled()) {
-                        log.debug("Failed to extract SPN from token, using default principal", e);
+                        log.debug("Failed to extract SPN from token", e);
                     }
-                    if (spnegoClient == null) {
+                    if (spnegoClient != null) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Using default principal as fallback after SPN extraction failure");
+                        }
+                        clientToUse = spnegoClient;
+                    } else {
                         if (log.isDebugEnabled()) {
                             log.debug("Failed to extract SPN and no default principal configured", e);
                         }
