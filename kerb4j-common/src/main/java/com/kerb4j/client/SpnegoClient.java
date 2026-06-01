@@ -274,7 +274,7 @@ public final class SpnegoClient {
             @Override
             public GSSContext run() throws Exception {
 
-                // IBM JDK only understands indefinite lifetime
+                // IBM JDK only understands indefinite lifetime - TODO: validate this statement
                 final int credentialLifetime;
                 if (JreVendor.IS_IBM_JVM) {
                     credentialLifetime = GSSCredential.INDEFINITE_LIFETIME;
