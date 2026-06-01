@@ -165,8 +165,7 @@ public SunJaasKerberosTicketValidator sunJaasKerberosTicketValidator() {
     SunJaasKerberosTicketValidator ticketValidator = new SunJaasKerberosTicketValidator();
     ticketValidator.setMultiPrincipalManager(multiPrincipalManager());
     // Pure multi-principal mode: tokens for unknown SPNs are rejected with 401.
-    // To add a fallback, also call ticketValidator.setServicePrincipal() and
-    // ticketValidator.setKeyTabLocation() — see MULTI_PRINCIPAL_SUPPORT.md for details.
+    // To add fallback, configure manager.addDefaultPrincipal(...).
     return ticketValidator;
 }
 ```

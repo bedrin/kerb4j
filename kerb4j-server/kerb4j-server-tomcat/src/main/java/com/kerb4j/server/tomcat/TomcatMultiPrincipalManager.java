@@ -2,7 +2,11 @@ package com.kerb4j.server.tomcat;
 
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.server.MultiPrincipalManager;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -12,9 +16,11 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>Keytab locations must be absolute paths to local files.
  */
+@NullMarked
 public class TomcatMultiPrincipalManager implements MultiPrincipalManager {
 
     private final Map<String, SpnegoClient> spnegoClients = new ConcurrentHashMap<>();
+    private volatile @Nullable SpnegoClient defaultSpnegoClient;
 
     /**
      * Add a principal with its keytab file path.
@@ -24,6 +30,44 @@ public class TomcatMultiPrincipalManager implements MultiPrincipalManager {
      * @throws IllegalArgumentException if the principal or keytab path is null or empty
      */
     public void addPrincipal(String principal, String keyTabLocation) {
+        spnegoClients.put(principal, createSpnegoClient(principal, keyTabLocation));
+    }
+
+    /**
+     * Configure an explicit default/fallback principal.
+     *
+     * @param principal      the fallback service principal name
+     * @param keyTabLocation the absolute path to the fallback keytab file
+     */
+    public void addDefaultPrincipal(String principal, String keyTabLocation) {
+        defaultSpnegoClient = createSpnegoClient(principal, keyTabLocation);
+    }
+
+    @Override
+    public @Nullable SpnegoClient getSpnegoClientForSpn(@Nullable String spn) {
+        if (spn == null) {
+            return defaultSpnegoClient;
+        }
+        SpnegoClient spnegoClient = spnegoClients.get(spn);
+        return spnegoClient == null ? defaultSpnegoClient : spnegoClient;
+    }
+
+    @Override
+    public boolean hasPrincipalForSpn(String spn) {
+        return spnegoClients.containsKey(spn);
+    }
+
+    @Override
+    public Collection<String> getConfiguredSpns() {
+        return Collections.unmodifiableSet(spnegoClients.keySet());
+    }
+
+    @Override
+    public @Nullable SpnegoClient getDefaultSpnegoClient() {
+        return defaultSpnegoClient;
+    }
+
+    private static SpnegoClient createSpnegoClient(String principal, String keyTabLocation) {
         if (principal == null || principal.trim().isEmpty()) {
             throw new IllegalArgumentException("Principal name must not be null or empty");
         }
@@ -31,32 +75,10 @@ public class TomcatMultiPrincipalManager implements MultiPrincipalManager {
             throw new IllegalArgumentException("Key tab location must not be null or empty");
         }
         try {
-            SpnegoClient client = SpnegoClient.loginWithKeyTab(principal, keyTabLocation, true);
-            spnegoClients.put(principal, client);
+            return SpnegoClient.loginWithKeyTab(principal, keyTabLocation, true);
         } catch (Exception e) {
             throw new RuntimeException(
                     "Failed to initialize principal: " + principal + " with keytab: " + keyTabLocation, e);
         }
-    }
-
-    @Override
-    public SpnegoClient getSpnegoClientForSpn(String spn) {
-        if (spn == null) {
-            return null;
-        }
-        return spnegoClients.get(spn);
-    }
-
-    @Override
-    public boolean hasPrincipalForSpn(String spn) {
-        if (spn == null) {
-            return false;
-        }
-        return spnegoClients.containsKey(spn);
-    }
-
-    @Override
-    public String[] getConfiguredSpns() {
-        return spnegoClients.keySet().toArray(new String[0]);
     }
 }

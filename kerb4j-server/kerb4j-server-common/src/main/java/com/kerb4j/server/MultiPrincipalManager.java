@@ -4,6 +4,8 @@ import com.kerb4j.client.SpnegoClient;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Collection;
+
 /**
  * Interface for managing multiple service principals. This allows the server
  * to handle SPNEGO tokens for different service principals (SPNs) and select
@@ -14,11 +16,6 @@ import org.jspecify.annotations.Nullable;
  * case-sensitive; the string must match what
  * {@link com.kerb4j.server.marshall.spnego.SpnegoKerberosMechToken#getServerPrincipalName()}
  * returns for incoming tokens.
- *
- * <p>Implementations must reject null or blank principal names with
- * {@link IllegalArgumentException}.
- *
- * TODO: support fallback as well and configuration whether to use it
  */
 @NullMarked
 public interface MultiPrincipalManager {
@@ -26,15 +23,20 @@ public interface MultiPrincipalManager {
     /**
      * Get the {@link SpnegoClient} for the specified service principal name.
      *
-     * @param spn the canonical service principal name (e.g. {@code HTTP/host@REALM}); must not be null
-     * @return the {@link SpnegoClient} configured for this SPN, or {@code null} if not found
+     * <p>Implementations may return a configured fallback/default client when no exact match
+     * exists for the provided SPN.
+     *
+     * @param spn the canonical service principal name (e.g. {@code HTTP/host@REALM}); may be
+     *            {@code null} when SPN extraction failed
+     * @return the {@link SpnegoClient} selected for this SPN, or {@code null} if no principal
+     * is configured for it
      */
-    @Nullable SpnegoClient getSpnegoClientForSpn(String spn);
+    @Nullable SpnegoClient getSpnegoClientForSpn(@Nullable String spn);
 
     /**
      * Check whether this manager has a principal configured for the given SPN.
      *
-     * @param spn the canonical service principal name; must not be null
+     * @param spn the canonical service principal name
      * @return {@code true} if a principal is configured for this SPN
      */
     boolean hasPrincipalForSpn(String spn);
@@ -42,7 +44,14 @@ public interface MultiPrincipalManager {
     /**
      * Get all configured service principal names.
      *
-     * @return array of configured SPNs; never {@code null}
+     * @return configured exact-match SPNs; never {@code null}
      */
-    String[] getConfiguredSpns();
+    Collection<String> getConfiguredSpns();
+
+    /**
+     * Get the configured default/fallback client, if any.
+     *
+     * @return the configured default/fallback client, or {@code null} if fallback is disabled
+     */
+    @Nullable SpnegoClient getDefaultSpnegoClient();
 }

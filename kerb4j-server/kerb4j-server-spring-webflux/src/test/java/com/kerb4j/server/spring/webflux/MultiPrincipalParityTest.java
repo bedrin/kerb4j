@@ -6,7 +6,11 @@ import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Verifies that the multi-principal building blocks available to the reactive
@@ -27,9 +31,10 @@ class MultiPrincipalParityTest {
     void simpleMultiPrincipalManagerExposesCorrectApiForReactiveStack() {
         SimpleMultiPrincipalManager manager = new SimpleMultiPrincipalManager();
 
-        assertEquals(0, manager.getConfiguredSpns().length);
+        assertEquals(0, manager.getConfiguredSpns().size());
         assertFalse(manager.hasPrincipalForSpn("HTTP/host@REALM"));
+        assertNull(manager.getDefaultSpnegoClient());
         assertNull(manager.getSpnegoClientForSpn("HTTP/host@REALM"));
+        assertNotNull(manager.getConfiguredSpns());
     }
 }
-

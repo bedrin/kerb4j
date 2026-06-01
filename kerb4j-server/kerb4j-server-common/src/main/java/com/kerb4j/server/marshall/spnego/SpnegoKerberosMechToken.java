@@ -25,6 +25,7 @@ import org.jspecify.annotations.Nullable;
 import javax.security.auth.kerberos.KerberosKey;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -136,7 +137,10 @@ public class SpnegoKerberosMechToken {
             if (null == sName) {
                 return null;
             } else {
-                String name = sName.getName();
+                String name = buildPrincipalName(sName);
+                if (name.isEmpty()) {
+                    return null;
+                }
                 String realm = ticket.getRealm();
                 if (realm != null && !realm.isEmpty() && !name.contains("@")) {
                     return name + "@" + realm;
@@ -144,6 +148,26 @@ public class SpnegoKerberosMechToken {
                 return name;
             }
         }
+    }
+
+    private static String buildPrincipalName(PrincipalName principalName) {
+        List<String> nameStrings = principalName.getNameStrings();
+        if (nameStrings == null || nameStrings.isEmpty()) {
+            String fallback = principalName.getName();
+            return fallback == null ? "" : fallback;
+        }
+
+        List<String> sanitizedComponents = new ArrayList<>(nameStrings.size());
+        for (String nameString : nameStrings) {
+            if (nameString != null && !nameString.isEmpty()) {
+                sanitizedComponents.add(nameString);
+            }
+        }
+        if (sanitizedComponents.isEmpty()) {
+            String fallback = principalName.getName();
+            return fallback == null ? "" : fallback;
+        }
+        return String.join("/", sanitizedComponents);
     }
 
     public @Nullable Pac getPac(KerberosKey[] kerberosKeys) throws KrbException, Kerb4JException {

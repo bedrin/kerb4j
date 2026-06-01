@@ -15,6 +15,8 @@ import org.apache.kerby.kerberos.kerb.type.base.EncryptionType;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 import org.ietf.jgss.GSSName;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
@@ -33,20 +35,21 @@ import java.security.PrivilegedActionException;
  * @author Mike Wiesner
  * @author Jeremy Stone
  */
+@NullMarked
 public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, InitializingBean {
 
     private static final Log LOG = LogFactory.getLog(SunJaasKerberosTicketValidator.class);
 
-    private String servicePrincipal;
-    private String servicePassword;
-    private Resource keyTabLocation;
+    private @Nullable String servicePrincipal;
+    private @Nullable String servicePassword;
+    private @Nullable Resource keyTabLocation;
 
     private boolean acceptOnly;
 
-    private SpnegoClient spnegoClient;
+    private @Nullable SpnegoClient spnegoClient;
     
     // Multi-principal support
-    private MultiPrincipalManager multiPrincipalManager;
+    private @Nullable MultiPrincipalManager multiPrincipalManager;
 
     private boolean holdOnToGSSContext;
 
@@ -57,40 +60,9 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
         SpnegoTokenFixer.fix(token);
 
         try {
-            SpnegoClient clientToUse = spnegoClient;
-
-            // If multi-principal manager is configured, use it to select the appropriate client
-            if (multiPrincipalManager != null) {
-                try {
-                    SpnegoInitToken spnegoInitToken = new SpnegoInitToken(token);
-                    String targetSpn = spnegoInitToken.getServerPrincipalName();
-
-                    LOG.debug("Extracted target SPN from token: " + targetSpn);
-
-
-                    if (null != targetSpn) {
-                        SpnegoClient multiClient = multiPrincipalManager.getSpnegoClientForSpn(targetSpn);
-                        if (multiClient != null) {
-                            clientToUse = multiClient;
-                            LOG.debug("Using multi-principal client for SPN: " + targetSpn);
-                        }
-                    }
-
-                    if (null == clientToUse && spnegoClient != null) {
-                        LOG.debug("No dedicated principal for SPN: " + targetSpn + ", falling back to default principal");
-                        clientToUse = spnegoClient;
-                    } else {
-                        throw new BadCredentialsException("No principal configured for SPN: " + targetSpn);
-                    }
-                } catch (Kerb4JException e) {
-                    LOG.debug("Failed to extract SPN from token", e);
-                    if (spnegoClient != null) {
-                        LOG.debug("Using default principal as fallback after SPN extraction failure");
-                        clientToUse = spnegoClient;
-                    } else {
-                        throw new BadCredentialsException("Failed to extract SPN and no default principal configured", e);
-                    }
-                }
+            SpnegoClient clientToUse = resolveSpnegoClient(token);
+            if (clientToUse == null) {
+                throw new BadCredentialsException("Kerberos validation not successful");
             }
 
             SpnegoContext acceptContext = clientToUse.createAcceptContext();
@@ -141,18 +113,17 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
                 "Either multiPrincipalManager or servicePrincipal (with keyTabLocation or servicePassword) must be configured");
 
         if (hasMultiPrincipal) {
-            String[] spns = multiPrincipalManager.getConfiguredSpns();
-            Assert.state(spns.length > 0, "At least one principal must be configured in multiPrincipalManager");
-            LOG.info("Ticket validator initialized with multi-principal support for " + spns.length + " principals");
-        }
-
-        if (hasSinglePrincipal) {
-            // Initialize the default/fallback single-principal client.
-            // In hybrid mode (multiPrincipalManager also set) this client acts as fallback
-            // when the token SPN does not match any entry in the multiPrincipalManager.
-            if (hasMultiPrincipal) {
-                LOG.info("Configuring default fallback principal: " + servicePrincipal);
+            int configuredPrincipalCount = multiPrincipalManager.getConfiguredSpns().size();
+            Assert.state(configuredPrincipalCount > 0, "At least one principal must be configured in multiPrincipalManager");
+            LOG.info("Ticket validator initialized with multi-principal support for "
+                    + configuredPrincipalCount + " principals");
+            if (hasSinglePrincipal) {
+                LOG.warn("servicePrincipal/keyTabLocation configuration is ignored when multiPrincipalManager is set. "
+                        + "Configure fallback via MultiPrincipalManager instead.");
             }
+        } else if (hasSinglePrincipal) {
+            String configuredServicePrincipal = this.servicePrincipal;
+            Assert.state(configuredServicePrincipal != null, "servicePrincipal must be specified");
             Assert.state(null != this.keyTabLocation || null != this.servicePassword,
                     "Either servicePassword or keyTabLocation must be specified");
             if (null != this.keyTabLocation) {
@@ -166,9 +137,11 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
                     keyTabLocationAsString = keyTabLocationAsString.substring(5);
                 }
 
-                spnegoClient = SpnegoClient.loginWithKeyTab(servicePrincipal, keyTabLocationAsString, acceptOnly);
+                spnegoClient = SpnegoClient.loginWithKeyTab(configuredServicePrincipal, keyTabLocationAsString, acceptOnly);
             } else {
-                spnegoClient = SpnegoClient.loginWithUsernamePassword(servicePrincipal, servicePassword);
+                String configuredServicePassword = this.servicePassword;
+                Assert.state(configuredServicePassword != null, "servicePassword must be specified");
+                spnegoClient = SpnegoClient.loginWithUsernamePassword(configuredServicePrincipal, configuredServicePassword);
             }
         }
     }
@@ -182,7 +155,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
      * @param servicePrincipal service principal to use
      * @see #setKeyTabLocation(Resource)
      */
-    public void setServicePrincipal(String servicePrincipal) {
+    public void setServicePrincipal(@Nullable String servicePrincipal) {
         this.servicePrincipal = servicePrincipal;
     }
 
@@ -199,11 +172,11 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
      *
      * @param keyTabLocation The location where the keytab resides
      */
-    public void setKeyTabLocation(Resource keyTabLocation) {
+    public void setKeyTabLocation(@Nullable Resource keyTabLocation) {
         this.keyTabLocation = keyTabLocation;
     }
 
-    public void setServicePassword(String servicePassword) {
+    public void setServicePassword(@Nullable String servicePassword) {
         this.servicePassword = servicePassword;
     }
 
@@ -233,7 +206,36 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
      * 
      * @param multiPrincipalManager the multi-principal manager
      */
-    public void setMultiPrincipalManager(MultiPrincipalManager multiPrincipalManager) {
+    public void setMultiPrincipalManager(@Nullable MultiPrincipalManager multiPrincipalManager) {
         this.multiPrincipalManager = multiPrincipalManager;
+    }
+
+    private @Nullable SpnegoClient resolveSpnegoClient(byte[] token) {
+        MultiPrincipalManager configuredManager = multiPrincipalManager;
+        if (configuredManager == null) {
+            return spnegoClient;
+        }
+        String targetSpn = extractTargetSpn(token);
+        SpnegoClient selectedClient = configuredManager.getSpnegoClientForSpn(targetSpn);
+        if (selectedClient == null) {
+            if (targetSpn == null) {
+                throw new BadCredentialsException(
+                        "Failed to extract SPN from token and no matching/fallback principal is configured");
+            }
+            throw new BadCredentialsException("No principal configured for SPN: " + targetSpn);
+        }
+        return selectedClient;
+    }
+
+    private @Nullable String extractTargetSpn(byte[] token) {
+        try {
+            SpnegoInitToken spnegoInitToken = new SpnegoInitToken(token);
+            String targetSpn = spnegoInitToken.getServerPrincipalName();
+            LOG.debug("Extracted target SPN from token: " + targetSpn);
+            return targetSpn;
+        } catch (Kerb4JException e) {
+            LOG.debug("Failed to extract SPN from token", e);
+            return null;
+        }
     }
 }

@@ -31,12 +31,11 @@ implicit fallback to a broader principal.
 
 ### Hybrid Mode (multi-principal with default fallback)
 
-Configure **both** a `MultiPrincipalManager` (with at least one SPN) **and**
-`servicePrincipal`+`keyTabLocation`. The validator initializes both. When a token arrives:
+Configure a `MultiPrincipalManager` with explicit fallback/default principal. When a token arrives:
 1. If the token SPN matches a configured SPN in the manager → the matching client is used.
-2. If the token SPN is unknown or unextractable **and** a default principal is configured →
+2. If the token SPN is unknown or unextractable **and** a fallback principal is configured in the manager →
    the default principal is used as a fallback.
-3. If the token SPN is unknown or unextractable and there is **no** default principal →
+3. If the token SPN is unknown or unextractable and there is **no** fallback principal →
    the request is rejected.
 
 ⚠ Use hybrid mode deliberately. Falling back to a default principal means that a broad
@@ -101,17 +100,21 @@ public SunJaasKerberosTicketValidator kerberosTicketValidator() {
 #### Hybrid Configuration (Multi-Principal with Default Fallback)
 ```java
 @Bean
+public SimpleMultiPrincipalManager multiPrincipalManager() {
+    SimpleMultiPrincipalManager manager = new SimpleMultiPrincipalManager();
+    manager.addPrincipal("HTTP/www1.server.com@EXAMPLE.COM",
+                         new FileSystemResource("/etc/keytabs/www1.keytab"));
+    manager.addPrincipal("HTTP/www2.server.com@EXAMPLE.COM",
+                         new FileSystemResource("/etc/keytabs/www2.keytab"));
+    manager.addDefaultPrincipal("HTTP/default.server.com@EXAMPLE.COM",
+                                new FileSystemResource("/etc/keytabs/default.keytab"));
+    return manager;
+}
+
+@Bean
 public SunJaasKerberosTicketValidator kerberosTicketValidator() {
     SunJaasKerberosTicketValidator validator = new SunJaasKerberosTicketValidator();
-
-    // Configure multi-principal support
     validator.setMultiPrincipalManager(multiPrincipalManager());
-
-    // Also configure a default principal as explicit fallback.
-    // This initializes a second SpnegoClient used only when the token SPN is unknown.
-    validator.setServicePrincipal("HTTP/default.server.com@EXAMPLE.COM");
-    validator.setKeyTabLocation(new FileSystemResource("/etc/keytabs/default.keytab"));
-
     return validator;
 }
 ```
@@ -162,27 +165,30 @@ multiPrincipalManager.addPrincipal("HTTP/www2.server.com@EXAMPLE.COM", "/etc/key
 
 SpnegoAuthenticator authenticator = new SpnegoAuthenticator();
 authenticator.setMultiPrincipalManager(multiPrincipalManager);
-// Optionally set a fallback (hybrid mode):
-// authenticator.setPrincipalName("HTTP/default@EXAMPLE.COM");
-// authenticator.setKeyTab("/etc/keytabs/default.keytab");
+// Optionally set explicit fallback:
+// multiPrincipalManager.addDefaultPrincipal("HTTP/default@EXAMPLE.COM", "/etc/keytabs/default.keytab");
 ```
 
 ## API Reference
 
 ### `MultiPrincipalManager` (Interface — `com.kerb4j.server`)
 - `SpnegoClient getSpnegoClientForSpn(String spn)` — Get the client for a specific SPN;
-  returns `null` if not configured
+  returns `null` if not configured and fallback is disabled
 - `boolean hasPrincipalForSpn(String spn)` — Check if an SPN is configured
-- `String[] getConfiguredSpns()` — Get all configured SPNs; never `null`
+- `Collection<String> getConfiguredSpns()` — Get all configured exact-match SPNs; never `null`
+- `SpnegoClient getDefaultSpnegoClient()` — Get explicit fallback client, if configured
 
 ### `SimpleMultiPrincipalManager` (`com.kerb4j.server.spring` in `kerb4j-server-spring-security-core`)
 - `void addPrincipal(String principal, Resource keyTabLocation)` — Add a principal; keytab
   must be a local file resource
 - `void addPrincipal(String principal, Resource keyTabLocation, boolean acceptOnly)` — Add
   with explicit accept-only flag
+- `void addDefaultPrincipal(String principal, Resource keyTabLocation)` — Configure fallback principal
+- `void addDefaultPrincipal(String principal, Resource keyTabLocation, boolean acceptOnly)` — Configure fallback principal with explicit accept-only flag
 
 ### `TomcatMultiPrincipalManager` (`com.kerb4j.server.tomcat`)
 - `void addPrincipal(String principal, String keyTabLocation)` — Add a principal by keytab path
+- `void addDefaultPrincipal(String principal, String keyTabLocation)` — Configure fallback principal
 
 ### `SunJaasKerberosTicketValidator` (`com.kerb4j.server.spring.jaas.sun`)
 - `void setMultiPrincipalManager(MultiPrincipalManager manager)` — Enable multi-principal mode
@@ -199,7 +205,7 @@ authenticator.setMultiPrincipalManager(multiPrincipalManager);
 3. **Add** each SPN with its keytab using `addPrincipal()`; use the exact canonical SPN string
    including realm (e.g. `HTTP/host.example.com@EXAMPLE.COM`)
 4. **Set** the multi-principal manager on the validator/authenticator
-5. **Remove** `servicePrincipal` / `keyTabLocation` (pure mode) or keep them as fallback (hybrid mode)
+5. **Configure fallback on the manager** with `addDefaultPrincipal(...)` only if needed
 6. **Test** with `klist -kt /path/to.keytab` to verify keytab principal names match exactly
 
 ### Backward Compatibility
@@ -250,6 +256,6 @@ pass to `addPrincipal()`.
 - Store keytab files securely with appropriate file permissions (600 or 640)
 - Keep keytab files outside the application classpath
 - In pure multi-principal mode the server fails closed (401) for unknown SPNs
-- In hybrid mode the default principal acts as a catch-all; consider whether that is appropriate
+- In hybrid mode the manager fallback principal acts as a catch-all; consider whether that is appropriate
   for your threat model
 - Monitor authentication failures that might indicate misconfiguration or probing

@@ -2,10 +2,13 @@ package com.kerb4j.server.spring;
 
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.server.MultiPrincipalManager;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.io.Resource;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -21,9 +24,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * that both the servlet (Spring Security MVC) and reactive (Spring WebFlux)
  * stacks can share the same multi-principal configuration building blocks.
  */
+@NullMarked
 public class SimpleMultiPrincipalManager implements MultiPrincipalManager {
 
     private final Map<String, SpnegoClient> spnegoClients = new ConcurrentHashMap<>();
+    private volatile @Nullable SpnegoClient defaultSpnegoClient;
 
     /**
      * Add a principal with its keytab resource.
@@ -35,6 +40,65 @@ public class SimpleMultiPrincipalManager implements MultiPrincipalManager {
      *                                  or if the resource cannot be resolved to a local file
      */
     public void addPrincipal(String principal, Resource keyTabLocation, boolean acceptOnly) {
+        spnegoClients.put(principal, createSpnegoClient(principal, keyTabLocation, acceptOnly));
+    }
+
+    /**
+     * Add a principal with its keytab resource using accept-only mode.
+     *
+     * @param principal      the canonical service principal name
+     * @param keyTabLocation a Spring {@link Resource} pointing to a local keytab file
+     */
+    public void addPrincipal(String principal, Resource keyTabLocation) {
+        addPrincipal(principal, keyTabLocation, true);
+    }
+
+    /**
+     * Configure an explicit default/fallback principal.
+     *
+     * @param principal      the fallback service principal name
+     * @param keyTabLocation a Spring {@link Resource} pointing to a local keytab file
+     * @param acceptOnly     {@code true} to configure the client in accept-only mode
+     */
+    public void addDefaultPrincipal(String principal, Resource keyTabLocation, boolean acceptOnly) {
+        defaultSpnegoClient = createSpnegoClient(principal, keyTabLocation, acceptOnly);
+    }
+
+    /**
+     * Configure an explicit default/fallback principal in accept-only mode.
+     *
+     * @param principal      the fallback service principal name
+     * @param keyTabLocation a Spring {@link Resource} pointing to a local keytab file
+     */
+    public void addDefaultPrincipal(String principal, Resource keyTabLocation) {
+        addDefaultPrincipal(principal, keyTabLocation, true);
+    }
+
+    @Override
+    public @Nullable SpnegoClient getSpnegoClientForSpn(@Nullable String spn) {
+        if (null == spn) {
+            return defaultSpnegoClient;
+        }
+        SpnegoClient spnegoClient = spnegoClients.get(spn);
+        return null == spnegoClient ? defaultSpnegoClient : spnegoClient;
+    }
+
+    @Override
+    public boolean hasPrincipalForSpn(String spn) {
+        return spnegoClients.containsKey(spn);
+    }
+
+    @Override
+    public Collection<String> getConfiguredSpns() {
+        return Collections.unmodifiableSet(spnegoClients.keySet());
+    }
+
+    @Override
+    public @Nullable SpnegoClient getDefaultSpnegoClient() {
+        return defaultSpnegoClient;
+    }
+
+    private static SpnegoClient createSpnegoClient(String principal, Resource keyTabLocation, boolean acceptOnly) {
         if (principal == null || principal.trim().isEmpty()) {
             throw new IllegalArgumentException("Principal name must not be null or empty");
         }
@@ -50,38 +114,10 @@ public class SimpleMultiPrincipalManager implements MultiPrincipalManager {
                             + keyTabLocation, e);
         }
         try {
-            SpnegoClient client = SpnegoClient.loginWithKeyTab(principal, keyTabPath, acceptOnly);
-            spnegoClients.put(principal, client);
+            return SpnegoClient.loginWithKeyTab(principal, keyTabPath, acceptOnly);
         } catch (Exception e) {
             throw new RuntimeException(
                     "Failed to initialize principal: " + principal + " with keytab: " + keyTabPath, e);
         }
-    }
-
-    /**
-     * Add a principal with its keytab resource using accept-only mode.
-     *
-     * @param principal      the canonical service principal name
-     * @param keyTabLocation a Spring {@link Resource} pointing to a local keytab file
-     */
-    public void addPrincipal(String principal, Resource keyTabLocation) {
-        addPrincipal(principal, keyTabLocation, true);
-    }
-
-    @Override
-    public @Nullable SpnegoClient getSpnegoClientForSpn(@Nullable String spn) {
-        if (null == spn) return null;
-        return spnegoClients.get(spn);
-    }
-
-    @Override
-    public boolean hasPrincipalForSpn(@Nullable String spn) {
-        if (null == spn) return false;
-        return spnegoClients.containsKey(spn);
-    }
-
-    @Override
-    public String[] getConfiguredSpns() {
-        return spnegoClients.keySet().toArray(new String[0]);
     }
 }

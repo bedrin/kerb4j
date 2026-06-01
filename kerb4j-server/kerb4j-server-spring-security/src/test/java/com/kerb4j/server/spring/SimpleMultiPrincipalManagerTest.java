@@ -1,105 +1,91 @@
 package com.kerb4j.server.spring;
 
+import com.kerb4j.client.SpnegoClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Collection;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Unit tests for {@link SimpleMultiPrincipalManager}.
- */
-public class SimpleMultiPrincipalManagerTest {
+class SimpleMultiPrincipalManagerTest {
 
     private SimpleMultiPrincipalManager manager;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         manager = new SimpleMultiPrincipalManager();
     }
 
     @Test
-    public void testEmptyManagerReturnsNullAndFalse() {
-        assertEquals(0, manager.getConfiguredSpns().length);
-        assertFalse(manager.hasPrincipalForSpn("HTTP/host@REALM"));
-        assertNull(manager.getSpnegoClientForSpn("HTTP/host@REALM"));
-    }
-
-    @Test
-    public void testNullSpnLookupReturnsSafeDefaults() {
+    void emptyManagerFailsClosedWithoutFallback() {
+        Collection<String> configuredSpns = manager.getConfiguredSpns();
+        assertEquals(0, configuredSpns.size());
+        assertFalse(manager.hasPrincipalForSpn("HTTP/host@EXAMPLE.COM"));
+        assertNull(manager.getDefaultSpnegoClient());
+        assertNull(manager.getSpnegoClientForSpn("HTTP/host@EXAMPLE.COM"));
         assertNull(manager.getSpnegoClientForSpn(null));
-        assertFalse(manager.hasPrincipalForSpn(null));
     }
 
     @Test
-    public void testAddPrincipalWithNullNameThrows() {
+    void addPrincipalStoresExactCaseSensitiveSpn() throws IOException {
+        File keytab = File.createTempFile("server", ".keytab");
+        keytab.deleteOnExit();
+
+        String spn = "HTTP/Host.EXAMPLE.COM@EXAMPLE.COM";
+        manager.addPrincipal(spn, new FileSystemResource(keytab));
+
+        SpnegoClient resolvedClient = manager.getSpnegoClientForSpn(spn);
+        assertNotNull(resolvedClient);
+        assertTrue(manager.hasPrincipalForSpn(spn));
+        assertFalse(manager.hasPrincipalForSpn("HTTP/host.example.com@EXAMPLE.COM"));
+        assertNull(manager.getSpnegoClientForSpn("HTTP/host.example.com@EXAMPLE.COM"));
+    }
+
+    @Test
+    void unknownOrNullSpnUsesExplicitFallbackWhenConfigured() throws IOException {
+        File serviceKeytab = File.createTempFile("service", ".keytab");
+        File defaultKeytab = File.createTempFile("default", ".keytab");
+        serviceKeytab.deleteOnExit();
+        defaultKeytab.deleteOnExit();
+
+        manager.addPrincipal("HTTP/service.example.com@EXAMPLE.COM", new FileSystemResource(serviceKeytab));
+        manager.addDefaultPrincipal("HTTP/default.example.com@EXAMPLE.COM", new FileSystemResource(defaultKeytab));
+
+        SpnegoClient fallbackClient = manager.getDefaultSpnegoClient();
+        assertNotNull(fallbackClient);
+        assertSame(fallbackClient, manager.getSpnegoClientForSpn("HTTP/unknown.example.com@EXAMPLE.COM"));
+        assertSame(fallbackClient, manager.getSpnegoClientForSpn(null));
+    }
+
+    @Test
+    void addPrincipalRejectsInvalidInputs() {
         assertThrows(IllegalArgumentException.class,
                 () -> manager.addPrincipal(null, new FileSystemResource("/tmp/dummy.keytab")));
-    }
-
-    @Test
-    public void testAddPrincipalWithBlankNameThrows() {
         assertThrows(IllegalArgumentException.class,
-                () -> manager.addPrincipal("  ", new FileSystemResource("/tmp/dummy.keytab")));
-    }
-
-    @Test
-    public void testAddPrincipalWithNullResourceThrows() {
+                () -> manager.addPrincipal("   ", new FileSystemResource("/tmp/dummy.keytab")));
         assertThrows(IllegalArgumentException.class,
-                () -> manager.addPrincipal("HTTP/host@REALM", null));
-    }
-
-    @Test
-    public void testAddPrincipalWithNonFileResourceThrows() {
-        // A classpath resource inside a JAR cannot be resolved to a File
-        org.springframework.core.io.ClassPathResource jar = new org.springframework.core.io.ClassPathResource("nonexistent/path.keytab");
+                () -> manager.addPrincipal("HTTP/host@EXAMPLE.COM", null));
         assertThrows(IllegalArgumentException.class,
-                () -> manager.addPrincipal("HTTP/host@REALM", jar));
+                () -> manager.addPrincipal("HTTP/host@EXAMPLE.COM", new ClassPathResource("inside-jar.keytab")));
     }
 
     @Test
-    public void testPathWithSpaceIsHandledCorrectly() throws IOException {
-        // Regression: the old implementation used URL.toExternalForm() and stripped "file:",
-        // which left URL-encoded paths like "/tmp/kerb4j%20test%20dir/my%20keytab..." that
-        // JAAS cannot open. Using getFile().getAbsolutePath() returns the real FS path.
-        File dir = Files.createTempDirectory("kerb4j test dir").toFile();
-        File keytab = File.createTempFile("my keytab", ".keytab", dir);
+    void keytabPathResolutionSupportsSpaces() throws IOException {
+        File directoryWithSpace = Files.createTempDirectory("kerb4j keytabs").toFile();
+        File keytab = File.createTempFile("server keytab", ".keytab", directoryWithSpace);
+        directoryWithSpace.deleteOnExit();
         keytab.deleteOnExit();
-        dir.deleteOnExit();
 
-        FileSystemResource resource = new FileSystemResource(keytab);
+        String resolvedPath = new FileSystemResource(keytab).getFile().getAbsolutePath();
+        assertTrue(resolvedPath.contains(" "));
+        assertFalse(resolvedPath.contains("%20"));
 
-        // Verify the resolved path preserves spaces (not URL-encoded)
-        String resolvedPath = resource.getFile().getAbsolutePath();
-        assertTrue(resolvedPath.contains(" "),
-                "Resolved path should contain space characters, not URL-encoded %20");
-        assertFalse(resolvedPath.contains("%20"),
-                "Resolved path must not contain URL-encoded spaces");
-
-        // addPrincipal must not throw IllegalArgumentException for a valid file resource.
-        // loginWithKeyTab is lazy so no Kerberos exception occurs at construction time.
-        assertDoesNotThrow(() -> manager.addPrincipal("HTTP/host@REALM", resource),
-                "addPrincipal must not throw for a valid local file resource");
-    }
-
-    @Test
-    public void testGetConfiguredSpnsReturnsAllAdded() throws IOException {
-        // Create two temp keytab files; login will fail but we test the lookup behavior
-        // by catching the RuntimeException from loginWithKeyTab
-        File kt1 = File.createTempFile("kt1", ".keytab");
-        File kt2 = File.createTempFile("kt2", ".keytab");
-        kt1.deleteOnExit();
-        kt2.deleteOnExit();
-
-        // Try to add - will throw RuntimeException because keytabs are empty (not valid)
-        // but we only need to know that the method was attempted
-        // Verify that before any addition, queries return empty
-        assertEquals(0, manager.getConfiguredSpns().length);
-        assertFalse(manager.hasPrincipalForSpn("HTTP/host1@REALM"));
-        assertFalse(manager.hasPrincipalForSpn("HTTP/host2@REALM"));
+        assertDoesNotThrow(() -> manager.addPrincipal("HTTP/space.example.com@EXAMPLE.COM", new FileSystemResource(keytab)));
     }
 }
