@@ -2,6 +2,7 @@ package com.kerb4j.server.spring;
 
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.server.MultiPrincipalManager;
+import org.jspecify.annotations.Nullable;
 import org.springframework.core.io.Resource;
 
 import java.io.IOException;
@@ -68,12 +69,14 @@ public class SimpleMultiPrincipalManager implements MultiPrincipalManager {
     }
 
     @Override
-    public SpnegoClient getSpnegoClientForSpn(String spn) {
+    public @Nullable SpnegoClient getSpnegoClientForSpn(@Nullable String spn) {
+        if (null == spn) return null;
         return spnegoClients.get(spn);
     }
 
     @Override
-    public boolean hasPrincipalForSpn(String spn) {
+    public boolean hasPrincipalForSpn(@Nullable String spn) {
+        if (null == spn) return false;
         return spnegoClients.containsKey(spn);
     }
 
