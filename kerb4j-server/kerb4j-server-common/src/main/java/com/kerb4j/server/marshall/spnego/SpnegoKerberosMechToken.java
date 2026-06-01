@@ -16,7 +16,11 @@ import org.apache.kerby.kerberos.kerb.type.ap.ApReq;
 import org.apache.kerby.kerberos.kerb.type.base.EncryptedData;
 import org.apache.kerby.kerberos.kerb.type.base.EncryptionType;
 import org.apache.kerby.kerberos.kerb.type.base.KeyUsage;
+import org.apache.kerby.kerberos.kerb.type.base.PrincipalName;
 import org.apache.kerby.kerberos.kerb.type.ticket.EncTicketPart;
+import org.apache.kerby.kerberos.kerb.type.ticket.Ticket;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 import javax.security.auth.kerberos.KerberosKey;
 import java.io.IOException;
@@ -24,7 +28,6 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
- * https://tools.ietf.org/html/rfc1964
  * <p>
  * Per RFC-1508, Appendix B, the initial context establishment token
  * will be enclosed within framing as follows:
@@ -39,19 +42,23 @@ import java.util.List;
  * -- ASN.1 usage within innerContextToken
  * -- is not required
  * }
+ * <a href="https://tools.ietf.org/html/rfc1964">rfc1964</a>
  */
+@NullMarked
 public class SpnegoKerberosMechToken {
 
-    private ApReq apRequest;
+    private final ApReq apRequest;
 
     public SpnegoKerberosMechToken(byte[] token) throws Kerb4JException {
 
-        if (token.length <= 0)
+        if (token.length == 0)
             throw new Kerb4JException("kerberos.token.empty", null, null);
 
         try {
 
             Asn1ParseResult asn1ParseResult = Asn1Parser.parse(ByteBuffer.wrap(token));
+
+            // TODO: add null and boundaries checks below !
 
             Asn1ParseResult item1 = ((Asn1Container) asn1ParseResult).getChildren().get(0);
             Asn1ObjectIdentifier asn1ObjectIdentifier = new Asn1ObjectIdentifier();
@@ -85,13 +92,15 @@ public class SpnegoKerberosMechToken {
         return apRequest;
     }
 
-    public KerberosKey getKerberosKey(EncryptionType eType, KerberosKey[] kerberosKeys) throws KrbException {
+    public @Nullable KerberosKey getKerberosKey(EncryptionType eType, KerberosKey[] kerberosKeys) {
 
         for (KerberosKey kerberosKey : kerberosKeys) {
             if (kerberosKey.getKeyType() == eType.getValue()) {
                 return kerberosKey;
             }
         }
+
+        // TODO: add logging here - it might be useful; and a test for it
 
         return null;
 
@@ -118,31 +127,60 @@ public class SpnegoKerberosMechToken {
      *
      * @return the canonical server principal name including realm
      */
-    public String getServerPrincipalName() {
-        String name = getApRequest().getTicket().getSname().getName();
-        String realm = getApRequest().getTicket().getRealm();
-        if (realm != null && !realm.isEmpty() && !name.contains("@")) {
-            return name + "@" + realm;
+    public @Nullable String getServerPrincipalName() {
+        @SuppressWarnings("NullableProblems") @Nullable Ticket ticket = getApRequest().getTicket();
+        if (null == ticket) {
+            return null;
+        } else {
+            @SuppressWarnings("NullableProblems") @Nullable PrincipalName sName = ticket.getSname();
+            if (null == sName) {
+                return null;
+            } else {
+                String name = sName.getName();
+                String realm = ticket.getRealm();
+                if (realm != null && !realm.isEmpty() && !name.contains("@")) {
+                    return name + "@" + realm;
+                }
+                return name;
+            }
         }
-        return name;
     }
 
-    public Pac getPac(KerberosKey[] kerberosKeys) throws KrbException, Kerb4JException {
+    public @Nullable Pac getPac(KerberosKey[] kerberosKeys) throws KrbException, Kerb4JException {
 
-        EncryptedData encryptedData = getApRequest().getTicket().getEncryptedEncPart();
-        KerberosKey kerberosKey = getKerberosKey(encryptedData.getEType(), kerberosKeys);
-        EncTicketPart tgsRep = getEncryptedTicketPart(encryptedData.getCipher(), kerberosKey);
+        @SuppressWarnings("NullableProblems") @Nullable Ticket ticket = getApRequest().getTicket();
 
-        AuthorizationData authorizationData = tgsRep.getAuthorizationData();
-        if (null == authorizationData) return null;
+        if (null == ticket) {
+            return null;
+        } else {
+            @SuppressWarnings("NullableProblems") @Nullable EncryptedData encryptedData = ticket.getEncryptedEncPart();
 
-        List<AuthorizationDataEntry> authorizationDataEntries = authorizationData.getElements();
+            if (null == encryptedData) {
+                return null;
+            } else {
+                KerberosKey kerberosKey = getKerberosKey(encryptedData.getEType(), kerberosKeys);
 
-        return extractPac(authorizationDataEntries, kerberosKey);
+                if (null == kerberosKey) {
+                    return null; // TODO: maybe add logging here there and everywhere
+                } else {
+                    EncTicketPart tgsRep = getEncryptedTicketPart(encryptedData.getCipher(), kerberosKey);
+
+                    @SuppressWarnings("NullableProblems") @Nullable AuthorizationData authorizationData = tgsRep.getAuthorizationData();
+                    if (null == authorizationData) {
+                        return null;
+                    } else {
+                        List<AuthorizationDataEntry> authorizationDataEntries = authorizationData.getElements();
+                        return extractPac(authorizationDataEntries, kerberosKey);
+                    }
+                }
+
+            }
+
+        }
 
     }
 
-    private Pac extractPac(List<AuthorizationDataEntry> authorizationDataEntries, KerberosKey kerberosKey) throws Kerb4JException {
+    private @Nullable Pac extractPac(List<AuthorizationDataEntry> authorizationDataEntries, KerberosKey kerberosKey) throws Kerb4JException {
 
         for (AuthorizationDataEntry authorizationDataEntry : authorizationDataEntries) {
             switch (authorizationDataEntry.getAuthzType()) {

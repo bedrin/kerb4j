@@ -1,6 +1,8 @@
 package com.kerb4j.server;
 
 import com.kerb4j.client.SpnegoClient;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Interface for managing multiple service principals. This allows the server
@@ -16,8 +18,9 @@ import com.kerb4j.client.SpnegoClient;
  * <p>Implementations must reject null or blank principal names with
  * {@link IllegalArgumentException}.
  *
- * @since 2.0.0
+ * TODO: support fallback as well and configuration whether to use it
  */
+@NullMarked
 public interface MultiPrincipalManager {
 
     /**
@@ -26,7 +29,7 @@ public interface MultiPrincipalManager {
      * @param spn the canonical service principal name (e.g. {@code HTTP/host@REALM}); must not be null
      * @return the {@link SpnegoClient} configured for this SPN, or {@code null} if not found
      */
-    SpnegoClient getSpnegoClientForSpn(String spn);
+    @Nullable SpnegoClient getSpnegoClientForSpn(String spn);
 
     /**
      * Check whether this manager has a principal configured for the given SPN.

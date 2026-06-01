@@ -19,8 +19,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>This class is provided in {@code kerb4j-server-spring-security-core} so
  * that both the servlet (Spring Security MVC) and reactive (Spring WebFlux)
  * stacks can share the same multi-principal configuration building blocks.
- *
- * @since 2.0.0
  */
 public class SimpleMultiPrincipalManager implements MultiPrincipalManager {
 
@@ -71,17 +69,11 @@ public class SimpleMultiPrincipalManager implements MultiPrincipalManager {
 
     @Override
     public SpnegoClient getSpnegoClientForSpn(String spn) {
-        if (spn == null) {
-            return null;
-        }
         return spnegoClients.get(spn);
     }
 
     @Override
     public boolean hasPrincipalForSpn(String spn) {
-        if (spn == null) {
-            return false;
-        }
         return spnegoClients.containsKey(spn);
     }
 
