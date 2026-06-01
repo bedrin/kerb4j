@@ -1,16 +1,12 @@
 package com.kerb4j.server.spring.webflux;
 
 import com.kerb4j.server.MultiPrincipalManager;
-import com.kerb4j.server.spring.SimpleMultiPrincipalManager;
+import com.kerb4j.server.SimpleMultiPrincipalManager;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Verifies that the multi-principal building blocks available to the reactive

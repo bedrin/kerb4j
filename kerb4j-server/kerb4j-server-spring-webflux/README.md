@@ -145,18 +145,18 @@ public AuthenticationWebFilter spnegoAuthenticationWebFilter() {
 ### Multi-Principal Configuration (Reactive)
 
 ```java
-import com.kerb4j.server.spring.SimpleMultiPrincipalManager;
+import com.kerb4j.server.SimpleMultiPrincipalManager;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 
 @Bean
 public SimpleMultiPrincipalManager multiPrincipalManager() {
     SimpleMultiPrincipalManager manager = new SimpleMultiPrincipalManager();
     // SPNs must be in canonical form: service/host@REALM (case-sensitive, exact match).
-    // Keytab resources must be local files; classpath resources inside JARs are not supported.
+    // Keytabs must be local files; classpath resources inside JARs are not supported.
     manager.addPrincipal("HTTP/www1.server.com@EXAMPLE.COM",
-            new FileSystemResource("/etc/keytabs/www1.keytab"));
+            "/etc/keytabs/www1.keytab");
     manager.addPrincipal("HTTP/www2.server.com@EXAMPLE.COM",
-            new FileSystemResource("/etc/keytabs/www2.keytab"));
+            "/etc/keytabs/www2.keytab");
     return manager;
 }
 
@@ -170,8 +170,8 @@ public SunJaasKerberosTicketValidator sunJaasKerberosTicketValidator() {
 }
 ```
 
-`SimpleMultiPrincipalManager` is provided by `kerb4j-server-spring-security-core`, so the same
-configuration style works in both servlet and reactive stacks.
+`SimpleMultiPrincipalManager` is provided by `kerb4j-server-common`, so the same
+configuration style works in Tomcat, servlet Spring Security, and reactive Spring Security.
 
 ### Custom Authentication Matching
 

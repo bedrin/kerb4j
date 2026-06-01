@@ -2,7 +2,7 @@ package com.kerb4j.server.spring.integration;
 
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.client.SpnegoClient;
-import com.kerb4j.server.spring.SimpleMultiPrincipalManager;
+import com.kerb4j.server.SimpleMultiPrincipalManager;
 import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
@@ -15,9 +15,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.util.Base64;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class MultiPrincipalKerberosIntegrationTest extends KerberosSecurityTestcase {
 
@@ -102,10 +100,10 @@ class MultiPrincipalKerberosIntegrationTest extends KerberosSecurityTestcase {
 
     private SunJaasKerberosTicketValidator createMultiPrincipalValidator(boolean withFallback) throws Exception {
         SimpleMultiPrincipalManager manager = new SimpleMultiPrincipalManager();
-        manager.addPrincipal(SERVER_A_SPN, new FileSystemResource(keytabA));
-        manager.addPrincipal(SERVER_B_SPN, new FileSystemResource(keytabB));
+        manager.addPrincipal(SERVER_A_SPN, keytabA);
+        manager.addPrincipal(SERVER_B_SPN, keytabB);
         if (withFallback) {
-            manager.addDefaultPrincipal(SERVER_DEFAULT_SPN, new FileSystemResource(keytabDefault));
+            manager.addDefaultPrincipal(SERVER_DEFAULT_SPN, keytabDefault);
         }
 
         SunJaasKerberosTicketValidator validator = new SunJaasKerberosTicketValidator();

@@ -3,6 +3,7 @@ package com.kerb4j.server.tomcat;
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;
 import com.kerb4j.common.util.Constants;
+import com.kerb4j.server.MultiPrincipalManager;
 import com.kerb4j.server.marshall.Kerb4JException;
 import com.kerb4j.server.marshall.pac.Pac;
 import com.kerb4j.server.marshall.pac.PacLogonInfo;
@@ -60,7 +61,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
     private @Nullable SpnegoClient spnegoClient;
 
     // Multi-principal support
-    private @Nullable TomcatMultiPrincipalManager multiPrincipalManager;
+    private @Nullable MultiPrincipalManager multiPrincipalManager;
 
     // ------ proprietes - permet de configurer la valve depuis la configuration de tomcat
     private String keyTab = null;
@@ -109,7 +110,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
      * 
      * @param multiPrincipalManager the multi-principal manager
      */
-    public void setMultiPrincipalManager(@Nullable TomcatMultiPrincipalManager multiPrincipalManager) {
+    public void setMultiPrincipalManager(@Nullable MultiPrincipalManager multiPrincipalManager) {
         this.multiPrincipalManager = multiPrincipalManager;
     }
 
@@ -133,7 +134,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
                     + configuredPrincipalCount + " principals");
             if (hasSinglePrincipal) {
                 log.warn("principalName/keyTab configuration is ignored when multiPrincipalManager is set. "
-                        + "Configure fallback via TomcatMultiPrincipalManager instead.");
+                        + "Configure fallback via MultiPrincipalManager instead.");
             }
         } else if (hasSinglePrincipal) {
             try {
@@ -339,7 +340,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
     }
 
     private @Nullable SpnegoClient resolveSpnegoClient(byte[] token) {
-        TomcatMultiPrincipalManager configuredManager = multiPrincipalManager;
+        MultiPrincipalManager configuredManager = multiPrincipalManager;
         if (configuredManager == null) {
             return spnegoClient;
         }
