@@ -12,7 +12,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
  * {@link AuthenticationProvider} for kerberos.
  *
  * @author Mike Wiesner
- * @since 1.0
  */
 public class KerberosAuthenticationProvider implements AuthenticationProvider {
 

@@ -23,7 +23,6 @@ import static org.mockito.Mockito.when;
  * Test class for {@link com.kerb4j.server.spring.KerberosAuthenticationProvider}
  *
  * @author Mike Wiesner
- * @since 1.0
  */
 public class KerberosAuthenticationProviderTest extends KerberosSecurityTestcase {
 

@@ -16,9 +16,6 @@ import reactor.core.scheduler.Schedulers;
  * {@link reactor.core.scheduler.Schedulers#boundedElastic() boundedElastic} scheduler,
  * meaning that authentication work is <strong>not</strong> fully non-blocking — it runs
  * on a thread-pool-backed scheduler designed for blocking I/O.</p>
- *
- * @author GitHub Copilot
- * @since 1.0
  */
 public class ReactiveAuthenticationManagerAdapter implements ReactiveAuthenticationManager {
 

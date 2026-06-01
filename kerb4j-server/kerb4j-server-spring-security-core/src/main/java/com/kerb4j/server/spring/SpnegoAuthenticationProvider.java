@@ -40,7 +40,6 @@ import java.util.Set;
  * @author Jeremy Stone
  * @see KerberosTicketValidator
  * @see UserDetailsService
- * @since 1.0
  */
 public class SpnegoAuthenticationProvider implements AuthenticationProvider, InitializingBean {
 

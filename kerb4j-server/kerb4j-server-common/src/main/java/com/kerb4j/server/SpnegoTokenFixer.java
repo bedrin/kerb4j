@@ -19,6 +19,7 @@ public class SpnegoTokenFixer {
 
     private final byte[] token;
     private int pos = 0;
+
     private SpnegoTokenFixer(byte[] token) {
         this.token = token;
     }

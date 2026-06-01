@@ -87,7 +87,6 @@ import java.util.Base64;
  * @author Jeremy Stone
  * @see SpnegoAuthenticationProvider
  * @see SpnegoEntryPoint
- * @since 1.0
  */
 public class SpnegoAuthenticationProcessingFilter extends OncePerRequestFilter {
 

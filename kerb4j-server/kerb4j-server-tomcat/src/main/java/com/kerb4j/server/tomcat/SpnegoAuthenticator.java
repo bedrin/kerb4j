@@ -9,6 +9,10 @@ import com.kerb4j.server.marshall.pac.PacLogonInfo;
 import com.kerb4j.server.marshall.pac.PacSid;
 import com.kerb4j.server.marshall.spnego.SpnegoInitToken;
 import com.kerb4j.server.marshall.spnego.SpnegoKerberosMechToken;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.authenticator.AuthenticatorBase;
 import org.apache.catalina.connector.Request;
@@ -21,14 +25,7 @@ import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 
 import javax.security.auth.Subject;
-
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.security.Principal;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
@@ -108,7 +105,6 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
      * and select the appropriate principal for validation.
      * 
      * @param multiPrincipalManager the multi-principal manager
-     * @since 2.0.0
      */
     public void setMultiPrincipalManager(TomcatMultiPrincipalManager multiPrincipalManager) {
         this.multiPrincipalManager = multiPrincipalManager;

@@ -32,7 +32,6 @@ import java.security.PrivilegedActionException;
  *
  * @author Mike Wiesner
  * @author Jeremy Stone
- * @since 1.0
  */
 public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, InitializingBean {
 
@@ -68,11 +67,16 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
 
                     LOG.debug("Extracted target SPN from token: " + targetSpn);
 
-                    SpnegoClient multiClient = multiPrincipalManager.getSpnegoClientForSpn(targetSpn);
-                    if (multiClient != null) {
-                        clientToUse = multiClient;
-                        LOG.debug("Using multi-principal client for SPN: " + targetSpn);
-                    } else if (spnegoClient != null) {
+
+                    if (null != targetSpn) {
+                        SpnegoClient multiClient = multiPrincipalManager.getSpnegoClientForSpn(targetSpn);
+                        if (multiClient != null) {
+                            clientToUse = multiClient;
+                            LOG.debug("Using multi-principal client for SPN: " + targetSpn);
+                        }
+                    }
+
+                    if (null == clientToUse && spnegoClient != null) {
                         LOG.debug("No dedicated principal for SPN: " + targetSpn + ", falling back to default principal");
                         clientToUse = spnegoClient;
                     } else {
@@ -228,7 +232,6 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
      * and select the appropriate principal for validation.
      * 
      * @param multiPrincipalManager the multi-principal manager
-     * @since 2.0.0
      */
     public void setMultiPrincipalManager(MultiPrincipalManager multiPrincipalManager) {
         this.multiPrincipalManager = multiPrincipalManager;

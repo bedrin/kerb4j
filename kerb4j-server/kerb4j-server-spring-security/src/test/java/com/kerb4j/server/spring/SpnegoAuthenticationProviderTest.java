@@ -29,7 +29,6 @@ import static org.mockito.Mockito.when;
  * Test class for {@link KerberosAuthenticationProvider}
  *
  * @author Mike Wiesner
- * @since 1.0
  */
 public class SpnegoAuthenticationProviderTest extends KerberosSecurityTestcase {
 

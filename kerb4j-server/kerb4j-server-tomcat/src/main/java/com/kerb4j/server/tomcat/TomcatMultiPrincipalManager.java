@@ -11,8 +11,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * multiple service principals, each backed by its own keytab file path.
  *
  * <p>Keytab locations must be absolute paths to local files.
- *
- * @since 2.0.0
  */
 public class TomcatMultiPrincipalManager implements MultiPrincipalManager {
 

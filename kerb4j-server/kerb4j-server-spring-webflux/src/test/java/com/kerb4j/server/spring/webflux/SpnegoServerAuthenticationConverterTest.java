@@ -19,9 +19,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Test class for {@link SpnegoServerAuthenticationConverter}
- *
- * @author GitHub Copilot
- * @since 1.0
  */
 class SpnegoServerAuthenticationConverterTest {
 

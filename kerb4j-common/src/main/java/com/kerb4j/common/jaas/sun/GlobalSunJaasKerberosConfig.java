@@ -4,7 +4,6 @@ package com.kerb4j.common.jaas.sun;
  * Config for global jaas.
  *
  * @author Mike Wiesner
- * @since 1.0
  */
 public class GlobalSunJaasKerberosConfig {
 

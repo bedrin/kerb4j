@@ -12,9 +12,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Test class for {@link SpnegoServerAuthenticationEntryPoint}
- *
- * @author GitHub Copilot
- * @since 1.0
  */
 class SpnegoServerAuthenticationEntryPointTest {
 

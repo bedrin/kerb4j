@@ -33,7 +33,6 @@ import java.io.IOException;
  * @author Mike Wiesner
  * @author Andre Schaefer, Namics AG
  * @see SpnegoAuthenticationProcessingFilter
- * @since 1.0
  */
 public class SpnegoEntryPoint implements AuthenticationEntryPoint {
 

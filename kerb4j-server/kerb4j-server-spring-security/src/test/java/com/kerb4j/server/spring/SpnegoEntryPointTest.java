@@ -14,7 +14,6 @@ import static org.mockito.Mockito.*;
  * @author Mike Wiesner
  * @author Janne Valkealahti
  * @author Andre Schaefer, Namics AG
- * @since 1.0
  */
 class SpnegoEntryPointTest {
 

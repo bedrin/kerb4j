@@ -30,8 +30,6 @@ import java.util.Base64;
  * requires mixed Kerberos/password environments.</p>
  *
  * @author Mike Wiesner (original SpnegoAuthenticationProcessingFilter)
- * @author GitHub Copilot (WebFlux adaptation)
- * @since 1.0
  */
 public class SpnegoServerAuthenticationConverter implements ServerAuthenticationConverter {
 

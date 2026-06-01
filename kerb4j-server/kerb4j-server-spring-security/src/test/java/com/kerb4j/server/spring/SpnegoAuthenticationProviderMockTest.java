@@ -20,7 +20,6 @@ import static org.mockito.Mockito.*;
  *
  * @author Mike Wiesner
  * @author Jeremy Stone
- * @since 1.0
  */
 class SpnegoAuthenticationProviderMockTest {
 

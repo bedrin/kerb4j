@@ -17,8 +17,6 @@ import reactor.core.publisher.Mono;
  * <p>This is the reactive WebFlux equivalent of Kerb4J's servlet SPNEGO entry point.</p>
  *
  * @author Mike Wiesner (original SpnegoEntryPoint)
- * @author GitHub Copilot (WebFlux adaptation)
- * @since 1.0
  */
 public class SpnegoServerAuthenticationEntryPoint implements ServerAuthenticationEntryPoint {
 

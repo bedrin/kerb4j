@@ -12,9 +12,6 @@ import org.springframework.util.Assert;
  * 
  * <p>This class provides helper methods to create and configure WebFlux authentication
  * components for SPNEGO/Kerberos authentication.</p>
- *
- * @author GitHub Copilot
- * @since 1.0
  */
 public final class SpnegoWebFluxConfigurer {
 

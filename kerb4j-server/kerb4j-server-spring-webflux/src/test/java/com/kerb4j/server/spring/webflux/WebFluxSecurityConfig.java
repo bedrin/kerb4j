@@ -24,9 +24,6 @@ import org.springframework.security.web.server.authentication.AuthenticationWebF
  * 
  * <p>This configuration demonstrates how to set up Kerberos/SPNEGO authentication
  * in a Spring WebFlux application using the kerb4j WebFlux components.</p>
- *
- * @author GitHub Copilot
- * @since 1.0
  */
 @Configuration
 @EnableWebFluxSecurity

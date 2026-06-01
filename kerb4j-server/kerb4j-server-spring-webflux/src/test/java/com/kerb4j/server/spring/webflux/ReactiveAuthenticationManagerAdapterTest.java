@@ -16,9 +16,6 @@ import static org.mockito.Mockito.when;
 
 /**
  * Test class for {@link ReactiveAuthenticationManagerAdapter}
- *
- * @author GitHub Copilot
- * @since 1.0
  */
 class ReactiveAuthenticationManagerAdapterTest {
 

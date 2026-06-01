@@ -21,7 +21,6 @@ import java.util.Collections;
  * @author Mike Wiesner
  * @author Jeremy Stone
  * @see SpnegoAuthenticationProvider
- * @since 1.0
  */
 public class SpnegoRequestToken extends AbstractAuthenticationToken {
 
