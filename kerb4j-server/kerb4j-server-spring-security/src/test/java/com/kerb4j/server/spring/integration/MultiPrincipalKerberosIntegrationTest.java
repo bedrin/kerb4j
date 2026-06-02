@@ -2,7 +2,7 @@ package com.kerb4j.server.spring.integration;
 
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.client.SpnegoClient;
-import com.kerb4j.server.SimpleMultiPrincipalManager;
+import com.kerb4j.server.spring.SimpleMultiPrincipalManager;
 import com.kerb4j.server.spring.SpnegoAuthenticationToken;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
@@ -100,10 +100,10 @@ class MultiPrincipalKerberosIntegrationTest extends KerberosSecurityTestcase {
 
     private SunJaasKerberosTicketValidator createMultiPrincipalValidator(boolean withFallback) throws Exception {
         SimpleMultiPrincipalManager manager = new SimpleMultiPrincipalManager();
-        manager.addPrincipal(SERVER_A_SPN, keytabA);
-        manager.addPrincipal(SERVER_B_SPN, keytabB);
+        manager.addPrincipal(SERVER_A_SPN, new FileSystemResource(keytabA));
+        manager.addPrincipal(SERVER_B_SPN, new FileSystemResource(keytabB));
         if (withFallback) {
-            manager.addDefaultPrincipal(SERVER_DEFAULT_SPN, keytabDefault);
+            manager.addDefaultPrincipal(SERVER_DEFAULT_SPN, new FileSystemResource(keytabDefault));
         }
 
         SunJaasKerberosTicketValidator validator = new SunJaasKerberosTicketValidator();

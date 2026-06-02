@@ -145,7 +145,7 @@ public AuthenticationWebFilter spnegoAuthenticationWebFilter() {
 ### Multi-Principal Configuration (Reactive)
 
 ```java
-import com.kerb4j.server.SimpleMultiPrincipalManager;
+import com.kerb4j.server.spring.SimpleMultiPrincipalManager;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 
 @Bean
@@ -170,7 +170,7 @@ public SunJaasKerberosTicketValidator sunJaasKerberosTicketValidator() {
 }
 ```
 
-`SimpleMultiPrincipalManager` is provided by `kerb4j-server-common`, so the same
+`SimpleMultiPrincipalManager` is provided by `kerb4j-server-spring-security-core`, so the same
 configuration style works in Tomcat, servlet Spring Security, and reactive Spring Security.
 
 ### Custom Authentication Matching
