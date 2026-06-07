@@ -12,6 +12,9 @@ import org.apache.kerby.asn1.type.Asn1BitString;
 import org.apache.kerby.asn1.type.Asn1ObjectIdentifier;
 import org.apache.kerby.asn1.type.Asn1OctetString;
 import org.apache.kerby.kerberos.kerb.type.KrbSequenceType;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.NullUnmarked;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -20,12 +23,13 @@ import java.util.List;
 
 import static com.kerb4j.server.marshall.spnego.SpnegoInitToken.AuthorizationDataEntryField.*;
 
+@NullMarked
 public class SpnegoInitToken extends KrbSequenceType {
 
     /**
      * The AuthorizationDataEntry's fields
      */
-    private static Asn1FieldInfo[] fieldInfos = new Asn1FieldInfo[]{
+    private static final Asn1FieldInfo[] fieldInfos = new Asn1FieldInfo[]{
             new ExplicitField(MECH_TYPES, KrbObjectIds.class),
             new ExplicitField(REQ_FLAGS, Asn1BitString.class),
             new ExplicitField(MECH_TOKEN, Asn1OctetString.class),
@@ -46,18 +50,43 @@ public class SpnegoInitToken extends KrbSequenceType {
                 throw new Kerb4JException("spnego.token.invalid", new Object[]{token[0]}, null);
             }
 
-            Asn1ParseResult asn1ParseResult = Asn1Parser.parse(ByteBuffer.wrap(token));
+            @Nullable Asn1ParseResult asn1ParseResult = Asn1Parser.parse(ByteBuffer.wrap(token));
 
-            Asn1ParseResult item1 = ((Asn1Container) asn1ParseResult).getChildren().get(0);
+            if (null == asn1ParseResult) {
+                throw new Kerb4JException("spnego.token.malformed", null, null);
+            }
+
+            if (!(asn1ParseResult instanceof Asn1Container)) {
+                throw new Kerb4JException("spnego.token.invalid", null, null); // TODO: refactor and simplify this bullshit around malformed vs invalid
+            }
+
+            List<Asn1ParseResult> children = ((Asn1Container) asn1ParseResult).getChildren();
+            if (children.isEmpty()) {
+                throw new Kerb4JException("spnego.token.malformed", null, null);
+            }
+
+            Asn1ParseResult item1 = children.get(0);
             Asn1ObjectIdentifier asn1ObjectIdentifier = new Asn1ObjectIdentifier();
             asn1ObjectIdentifier.decode(item1);
 
             if (!asn1ObjectIdentifier.getValue().equals(SpnegoProvider.SPNEGO_MECHANISM))
                 throw new Kerb4JException("spnego.token.invalid", null, null);
 
-            Asn1ParseResult item2 = ((Asn1Container) asn1ParseResult).getChildren().get(1);
+            if (children.size() > 1) {
 
-            decode(((Asn1Container) item2).getChildren().get(0));
+                Asn1ParseResult item2 = children.get(1);
+
+                if (!(item2 instanceof Asn1Container)) {
+                    throw new Kerb4JException("spnego.token.invalid", null, null); // TODO: refactor and simplify this bullshit around malformed vs invalid
+                }
+
+                List<Asn1ParseResult> children2 = ((Asn1Container) item2).getChildren();
+                if (children.isEmpty()) {
+                    throw new Kerb4JException("spnego.token.malformed", null, null);
+                }
+
+                decode(children2.get(0));
+            }
 
         } catch (IOException e) {
             throw new Kerb4JException("spnego.token.malformed", null, e);
@@ -68,29 +97,41 @@ public class SpnegoInitToken extends KrbSequenceType {
         return new SpnegoKerberosMechToken(getMechToken());
     }
 
+    /**
+     * Get the server principal name (SPN) from the SPNEGO token.
+     * This extracts the target service principal from the unencrypted part of the token.
+     * 
+     * @return the server principal name as a string
+     * @throws Kerb4JException if the token cannot be parsed
+     */
+    public @Nullable String getServerPrincipalName() throws Kerb4JException {
+        return getSpnegoKerberosMechToken().getServerPrincipalName();
+    }
+
     public List<String> getMechTypes() {
-        List<String> mechTypes = new ArrayList<String>();
+        List<String> mechTypes = new ArrayList<>();
         for (Asn1ObjectIdentifier objId : getFieldAs(MECH_TYPES, KrbObjectIds.class).getElements()) {
             mechTypes.add(objId.getValue());
         }
         return mechTypes;
     }
 
-    public String getMechanism() {
+    public @Nullable String getMechanism() {
         List<String> mechTypes = getMechTypes();
-        return null == mechTypes || mechTypes.isEmpty() ? null : mechTypes.get(0);
+        return mechTypes.isEmpty() ? null : mechTypes.get(0);
     }
 
+    @NullUnmarked
     public int getReqFlags() {
         Asn1BitString reqFlags = getFieldAs(REQ_FLAGS, Asn1BitString.class);
         return null == reqFlags ? 0 : reqFlags.tagFlags();
     }
 
-    public byte[] getMechToken() {
+    public @Nullable byte[] getMechToken() {
         return getFieldAsOctets(MECH_TOKEN);
     }
 
-    public byte[] getMechListMIC() {
+    public @Nullable byte[] getMechListMIC() {
         return getFieldAsOctets(MECH_LIST_MIC);
     }
 

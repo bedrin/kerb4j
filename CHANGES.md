@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### New Functionality
 - Reactive Spring Security support via `[kerb4j-server-spring-webflux](kerb4j-server/kerb4j-server-spring-webflux)` module
+- Multi-principal SPNEGO support is now shared in `kerb4j-server-spring-security-core` for feature parity between servlet and reactive Spring stacks
+- Multi-principal fallback policy is now owned by `MultiPrincipalManager` (including explicit default principal support) so servlet Spring and Tomcat authenticator paths delegate principal resolution consistently
 
 ### Bug fixes
 - Fixed PAC resource-domain group SID expansion in `PacLogonInfo`:

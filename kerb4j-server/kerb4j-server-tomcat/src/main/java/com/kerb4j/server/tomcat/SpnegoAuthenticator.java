@@ -3,12 +3,17 @@ package com.kerb4j.server.tomcat;
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;
 import com.kerb4j.common.util.Constants;
+import com.kerb4j.server.MultiPrincipalManager;
 import com.kerb4j.server.marshall.Kerb4JException;
 import com.kerb4j.server.marshall.pac.Pac;
 import com.kerb4j.server.marshall.pac.PacLogonInfo;
 import com.kerb4j.server.marshall.pac.PacSid;
 import com.kerb4j.server.marshall.spnego.SpnegoInitToken;
 import com.kerb4j.server.marshall.spnego.SpnegoKerberosMechToken;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.authenticator.AuthenticatorBase;
 import org.apache.catalina.connector.Request;
@@ -19,16 +24,11 @@ import org.apache.tomcat.util.buf.ByteChunk;
 import org.apache.tomcat.util.buf.MessageBytes;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 import javax.security.auth.Subject;
-
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.security.Principal;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
@@ -48,6 +48,7 @@ import java.util.List;
  *
  * @author damien
  */
+@NullMarked
 public class SpnegoAuthenticator extends AuthenticatorBase {
 
     private static final Log log = LogFactory.getLog(SpnegoAuthenticator.class);
@@ -57,7 +58,10 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
     private static final String HTTP_NTLM = "NTLM";
     private static final String HTTP_BASIC = "Basic";
 
-    private SpnegoClient spnegoClient;
+    private @Nullable SpnegoClient spnegoClient;
+
+    // Multi-principal support
+    private @Nullable MultiPrincipalManager multiPrincipalManager;
 
     // ------ proprietes - permet de configurer la valve depuis la configuration de tomcat
     private String keyTab = null;
@@ -69,7 +73,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
         return keyTab;
     }
 
-    public void setKeyTab(String keyTab) {
+    public void setKeyTab(@Nullable String keyTab) {
         this.keyTab = keyTab;
         log.info("Using keytab : " + principalName);
     }
@@ -78,7 +82,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
         return principalName;
     }
 
-    public void setPrincipalName(String principalName) {
+    public void setPrincipalName(@Nullable String principalName) {
         this.principalName = principalName;
         log.info("Using principal name : " + principalName);
     }
@@ -99,14 +103,45 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
         this.applyJava8u40Fix = applyJava8u40Fix;
     }
 
+    /**
+     * Set the multi-principal manager for handling multiple service principals.
+     * When this is set, the authenticator will extract the target SPN from incoming tokens
+     * and select the appropriate principal for validation.
+     * 
+     * @param multiPrincipalManager the multi-principal manager
+     */
+    public void setMultiPrincipalManager(@Nullable MultiPrincipalManager multiPrincipalManager) {
+        this.multiPrincipalManager = multiPrincipalManager;
+    }
+
     @Override
     protected void initInternal() throws LifecycleException {
         super.initInternal();
 
-        try {
-            spnegoClient = SpnegoClient.loginWithKeyTab(principalName, keyTab);
-        } catch (Exception e) {
-            throw new LifecycleException(e);
+        boolean hasMultiPrincipal = multiPrincipalManager != null;
+        boolean hasSinglePrincipal = principalName != null && keyTab != null;
+
+        if (!hasMultiPrincipal && !hasSinglePrincipal) {
+            throw new LifecycleException("Either multiPrincipalManager or principalName+keyTab must be configured");
+        }
+
+        if (hasMultiPrincipal) {
+            int configuredPrincipalCount = multiPrincipalManager.getConfiguredSpns().size();
+            if (configuredPrincipalCount == 0) {
+                throw new LifecycleException("At least one principal must be configured in multiPrincipalManager");
+            }
+            log.info("SpnegoAuthenticator initialized with multi-principal support for "
+                    + configuredPrincipalCount + " principals");
+            if (hasSinglePrincipal) {
+                log.warn("principalName/keyTab configuration is ignored when multiPrincipalManager is set. "
+                        + "Configure fallback via MultiPrincipalManager instead.");
+            }
+        } else if (hasSinglePrincipal) {
+            try {
+                spnegoClient = SpnegoClient.loginWithKeyTab(principalName, keyTab);
+            } catch (Exception e) {
+                throw new LifecycleException(e);
+            }
         }
 
     }
@@ -195,8 +230,14 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
         byte[] outToken;
 
         try {
+            SpnegoClient clientToUse = resolveSpnegoClient(decoded);
+            if (clientToUse == null) {
+                response.setHeader(AUTH_HEADER_NAME, Constants.NEGOTIATE_HEADER);
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                return false;
+            }
 
-            acceptContext = spnegoClient.createAcceptContext();
+            acceptContext = clientToUse.createAcceptContext();
             outToken = acceptContext.acceptToken(decoded);
 
             if (outToken == null) {
@@ -209,12 +250,12 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
                 return false;
             }
 
-            Subject subject = spnegoClient.getSubject();
+            Subject subject = clientToUse.getSubject();
 
             try {
                 SpnegoInitToken spnegoInitToken = new SpnegoInitToken(decoded);
                 SpnegoKerberosMechToken spnegoKerberosMechToken = spnegoInitToken.getSpnegoKerberosMechToken();
-                Pac pac = spnegoKerberosMechToken.getPac(spnegoClient.getKerberosKeys());
+                Pac pac = spnegoKerberosMechToken.getPac(clientToUse.getKerberosKeys());
 
                 if (null != pac) {
                     PacLogonInfo logonInfo = pac.getLogonInfo();
@@ -298,4 +339,36 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
 
     }
 
+    private @Nullable SpnegoClient resolveSpnegoClient(byte[] token) {
+        MultiPrincipalManager configuredManager = multiPrincipalManager;
+        if (configuredManager == null) {
+            return spnegoClient;
+        }
+        String targetSpn = extractTargetSpn(token);
+        SpnegoClient selectedClient = configuredManager.getSpnegoClientForSpn(targetSpn);
+        if (selectedClient == null && log.isDebugEnabled()) {
+            if (targetSpn == null) {
+                log.debug("Failed to extract SPN from token and no matching/fallback principal is configured");
+            } else {
+                log.debug("No principal configured for SPN: " + targetSpn);
+            }
+        }
+        return selectedClient;
+    }
+
+    private @Nullable String extractTargetSpn(byte[] token) {
+        try {
+            SpnegoInitToken spnegoInitToken = new SpnegoInitToken(token);
+            String targetSpn = spnegoInitToken.getServerPrincipalName();
+            if (log.isDebugEnabled()) {
+                log.debug("Extracted target SPN from token: " + targetSpn);
+            }
+            return targetSpn;
+        } catch (Kerb4JException e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Failed to extract SPN from token", e);
+            }
+            return null;
+        }
+    }
 }

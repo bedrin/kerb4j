@@ -30,6 +30,7 @@
         <hamcrest.version>3.0</hamcrest.version>
         <mokito.version>5.23.0</mokito.version>
         <slf4j.version>2.0.18</slf4j.version>
+        <jspecify.version>1.0.0</jspecify.version>
     </properties>
 
     <licenses>
@@ -96,7 +97,12 @@
     </dependencyManagement>
 
     <dependencies>
-
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>${jspecify.version}</version>
+            <scope>compile</scope>
+        </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>

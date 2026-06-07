@@ -1,22 +1,8 @@
-/*
- * Copyright 2009-2015 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.kerb4j.server.spring.jaas.sun;
 
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;
+import com.kerb4j.server.MultiPrincipalManager;
 import com.kerb4j.server.SpnegoTokenFixer;
 import com.kerb4j.server.marshall.Kerb4JException;
 import com.kerb4j.server.marshall.spnego.SpnegoInitToken;
@@ -29,6 +15,8 @@ import org.apache.kerby.kerberos.kerb.type.base.EncryptionType;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 import org.ietf.jgss.GSSName;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
@@ -46,19 +34,22 @@ import java.security.PrivilegedActionException;
  *
  * @author Mike Wiesner
  * @author Jeremy Stone
- * @since 1.0
  */
+@NullMarked
 public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, InitializingBean {
 
     private static final Log LOG = LogFactory.getLog(SunJaasKerberosTicketValidator.class);
 
-    private String servicePrincipal;
-    private String servicePassword;
-    private Resource keyTabLocation;
+    private @Nullable String servicePrincipal;
+    private @Nullable String servicePassword;
+    private @Nullable Resource keyTabLocation;
 
     private boolean acceptOnly;
 
-    private SpnegoClient spnegoClient;
+    private @Nullable SpnegoClient spnegoClient;
+    
+    // Multi-principal support
+    private @Nullable MultiPrincipalManager multiPrincipalManager;
 
     private boolean holdOnToGSSContext;
 
@@ -69,7 +60,12 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
         SpnegoTokenFixer.fix(token);
 
         try {
-            SpnegoContext acceptContext = spnegoClient.createAcceptContext();
+            SpnegoClient clientToUse = resolveSpnegoClient(token);
+            if (clientToUse == null) {
+                throw new BadCredentialsException("Kerberos validation not successful");
+            }
+
+            SpnegoContext acceptContext = clientToUse.createAcceptContext();
             byte[] responseToken = acceptContext.acceptToken(token);
             GSSName srcName = acceptContext.getSrcName();
 
@@ -95,8 +91,8 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
                     token,
                     srcName.toString(),
                     responseToken,
-                    spnegoClient.getSubject(),
-                    spnegoClient.getKerberosKeys(),
+                    clientToUse.getSubject(),
+                    clientToUse.getKerberosKeys(),
                     null == encryptionType ? null : encryptionType.getName()
             );
             // TODO: check that it doesn't involve network
@@ -109,22 +105,44 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        Assert.notNull(this.servicePrincipal, "servicePrincipal must be specified");
-        Assert.state(null != this.keyTabLocation || null != this.servicePassword, "Either password or keyTab must be specified");
-        if (null != this.keyTabLocation) {
-            if (keyTabLocation instanceof ClassPathResource) {
-                LOG.warn("Your keytab is in the classpath. This file needs special protection and shouldn't be in the classpath. JAAS may also not be able to load this file from classpath.");
-            }
-            String keyTabLocationAsString = this.keyTabLocation.getURL().toExternalForm();
-            // We need to remove the file prefix (if there is one), as it is not supported in Java 7 anymore.
-            // As Java 6 accepts it with and without the prefix, we don't need to check for Java 7
-            if (keyTabLocationAsString.startsWith("file:")) {
-                keyTabLocationAsString = keyTabLocationAsString.substring(5);
-            }
+        boolean hasMultiPrincipal = multiPrincipalManager != null;
+        boolean hasSinglePrincipal = this.servicePrincipal != null
+                && (this.keyTabLocation != null || this.servicePassword != null);
 
-            spnegoClient = SpnegoClient.loginWithKeyTab(servicePrincipal, keyTabLocationAsString, acceptOnly);
-        } else {
-            spnegoClient = SpnegoClient.loginWithUsernamePassword(servicePrincipal, servicePassword);
+        Assert.state(hasMultiPrincipal || hasSinglePrincipal,
+                "Either multiPrincipalManager or servicePrincipal (with keyTabLocation or servicePassword) must be configured");
+
+        if (hasMultiPrincipal) {
+            int configuredPrincipalCount = multiPrincipalManager.getConfiguredSpns().size();
+            Assert.state(configuredPrincipalCount > 0, "At least one principal must be configured in multiPrincipalManager");
+            LOG.info("Ticket validator initialized with multi-principal support for "
+                    + configuredPrincipalCount + " principals");
+            if (hasSinglePrincipal) {
+                LOG.warn("servicePrincipal/keyTabLocation configuration is ignored when multiPrincipalManager is set. "
+                        + "Configure fallback via MultiPrincipalManager instead.");
+            }
+        } else if (hasSinglePrincipal) {
+            String configuredServicePrincipal = this.servicePrincipal;
+            Assert.state(configuredServicePrincipal != null, "servicePrincipal must be specified");
+            Assert.state(null != this.keyTabLocation || null != this.servicePassword,
+                    "Either servicePassword or keyTabLocation must be specified");
+            if (null != this.keyTabLocation) {
+                if (keyTabLocation instanceof ClassPathResource) {
+                    LOG.warn("Your keytab is in the classpath. This file needs special protection and shouldn't be in the classpath. JAAS may also not be able to load this file from classpath.");
+                }
+                String keyTabLocationAsString = this.keyTabLocation.getURL().toExternalForm();
+                // We need to remove the file prefix (if there is one), as it is not supported in Java 7 anymore.
+                // As Java 6 accepts it with and without the prefix, we don't need to check for Java 7
+                if (keyTabLocationAsString.startsWith("file:")) {
+                    keyTabLocationAsString = keyTabLocationAsString.substring(5);
+                }
+
+                spnegoClient = SpnegoClient.loginWithKeyTab(configuredServicePrincipal, keyTabLocationAsString, acceptOnly);
+            } else {
+                String configuredServicePassword = this.servicePassword;
+                Assert.state(configuredServicePassword != null, "servicePassword must be specified");
+                spnegoClient = SpnegoClient.loginWithUsernamePassword(configuredServicePrincipal, configuredServicePassword);
+            }
         }
     }
 
@@ -137,7 +155,7 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
      * @param servicePrincipal service principal to use
      * @see #setKeyTabLocation(Resource)
      */
-    public void setServicePrincipal(String servicePrincipal) {
+    public void setServicePrincipal(@Nullable String servicePrincipal) {
         this.servicePrincipal = servicePrincipal;
     }
 
@@ -154,11 +172,11 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
      *
      * @param keyTabLocation The location where the keytab resides
      */
-    public void setKeyTabLocation(Resource keyTabLocation) {
+    public void setKeyTabLocation(@Nullable Resource keyTabLocation) {
         this.keyTabLocation = keyTabLocation;
     }
 
-    public void setServicePassword(String servicePassword) {
+    public void setServicePassword(@Nullable String servicePassword) {
         this.servicePassword = servicePassword;
     }
 
@@ -179,5 +197,45 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
      */
     public void setAcceptOnly(boolean acceptOnly) {
         this.acceptOnly = acceptOnly;
+    }
+    
+    /**
+     * Set the multi-principal manager for handling multiple service principals.
+     * When this is set, the validator will extract the target SPN from incoming tokens
+     * and select the appropriate principal for validation.
+     * 
+     * @param multiPrincipalManager the multi-principal manager
+     */
+    public void setMultiPrincipalManager(@Nullable MultiPrincipalManager multiPrincipalManager) {
+        this.multiPrincipalManager = multiPrincipalManager;
+    }
+
+    private @Nullable SpnegoClient resolveSpnegoClient(byte[] token) {
+        MultiPrincipalManager configuredManager = multiPrincipalManager;
+        if (configuredManager == null) {
+            return spnegoClient;
+        }
+        String targetSpn = extractTargetSpn(token);
+        SpnegoClient selectedClient = configuredManager.getSpnegoClientForSpn(targetSpn);
+        if (selectedClient == null) {
+            if (targetSpn == null) {
+                throw new BadCredentialsException(
+                        "Failed to extract SPN from token and no matching/fallback principal is configured");
+            }
+            throw new BadCredentialsException("No principal configured for SPN: " + targetSpn);
+        }
+        return selectedClient;
+    }
+
+    private @Nullable String extractTargetSpn(byte[] token) {
+        try {
+            SpnegoInitToken spnegoInitToken = new SpnegoInitToken(token);
+            String targetSpn = spnegoInitToken.getServerPrincipalName();
+            LOG.debug("Extracted target SPN from token: " + targetSpn);
+            return targetSpn;
+        } catch (Kerb4JException e) {
+            LOG.debug("Failed to extract SPN from token", e);
+            return null;
+        }
     }
 }
