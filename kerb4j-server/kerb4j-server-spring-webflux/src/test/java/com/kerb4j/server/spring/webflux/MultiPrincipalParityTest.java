@@ -1,7 +1,7 @@
 package com.kerb4j.server.spring.webflux;
 
 import com.kerb4j.server.MultiPrincipalManager;
-import com.kerb4j.server.SimpleMultiPrincipalManager;
+import com.kerb4j.server.spring.SimpleMultiPrincipalManager;
 import com.kerb4j.server.spring.jaas.sun.SunJaasKerberosTicketValidator;
 import org.junit.jupiter.api.Test;
 
