@@ -16,10 +16,16 @@ public class SpnegoContext implements Closeable {
     private static final byte[] EMPTY_BYTE = new byte[0];
 
     private final SpnegoClient spnegoClient;
+    private final Subject subject;
     private final GSSContext gssContext; // TODO: how it should be renewed ?
 
     public SpnegoContext(SpnegoClient spnegoClient, GSSContext gssContext) {
+        this(spnegoClient, spnegoClient.getSubject(), gssContext);
+    }
+
+    public SpnegoContext(SpnegoClient spnegoClient, Subject subject, GSSContext gssContext) {
         this.spnegoClient = spnegoClient;
+        this.subject = subject;
         this.gssContext = gssContext;
     }
 
@@ -28,7 +34,7 @@ public class SpnegoContext implements Closeable {
     }
 
     public byte[] createToken() throws PrivilegedActionException {
-        return Subject.doAs(spnegoClient.getSubject(), (PrivilegedExceptionAction<byte[]>) () -> gssContext.initSecContext(EMPTY_BYTE, 0, 0)
+        return Subject.doAs(subject, (PrivilegedExceptionAction<byte[]>) () -> gssContext.initSecContext(EMPTY_BYTE, 0, 0)
         );
     }
 
@@ -37,15 +43,13 @@ public class SpnegoContext implements Closeable {
     }
 
     public byte[] processMutualAuthorization(final byte[] data, final int offset, final int length) throws PrivilegedActionException {
-        return Subject.doAs(spnegoClient.getSubject(), (PrivilegedExceptionAction<byte[]>) () -> gssContext.initSecContext(data, offset, length)
+        return Subject.doAs(subject, (PrivilegedExceptionAction<byte[]>) () -> gssContext.initSecContext(data, offset, length)
         );
     }
 
     public byte[] acceptToken(byte[] token) throws GSSException {
         return this.gssContext.acceptSecContext(token, 0, token.length);
     }
-
-    //
 
     public GSSName getSrcName() throws GSSException {
         return gssContext.getSrcName();
@@ -55,6 +59,9 @@ public class SpnegoContext implements Closeable {
         return gssContext;
     }
 
+    public SpnegoClient getSpnegoClient() {
+        return spnegoClient;
+    }
 
     public boolean isEstablished() {
         return gssContext.isEstablished();
@@ -67,6 +74,4 @@ public class SpnegoContext implements Closeable {
             throw new IOException(e);
         }
     }
-
-
 }

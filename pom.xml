@@ -10,6 +10,8 @@
 
     <modules>
         <module>kerb4j-common</module>
+        <module>kerb4j-client-jdk</module>
+        <module>kerb4j-client-kerby</module>
         <module>kerb4j-client</module>
         <module>kerb4j-server</module>
     </modules>

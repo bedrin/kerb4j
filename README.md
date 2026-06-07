@@ -64,6 +64,15 @@ and `SpnegoContext`
 
 `SpnegoClient` supports authentication using name and password, keytab file or ticket cache.
 
+**Client implementation modules**
+
+The public `SpnegoClient` API lives in `kerb4j-common`; runtime behavior is provided by implementation modules:
+
+- `kerb4j-client-kerby` uses Apache Kerby for active TGT/TGS acquisition and then builds SPNEGO tokens from Kerby-acquired tickets.
+- `kerb4j-client-jdk` uses the JDK JAAS/JGSS Kerberos stack and is the fallback implementation.
+
+Provider selection is classpath based. If `kerb4j-client-kerby` is present, `SpnegoClient` uses it. Otherwise, it falls back to `kerb4j-client-jdk`. Existing `kerb4j-client` HTTP helpers depend on `kerb4j-client-jdk`, so their default behavior remains JDK/JGSS unless applications add the Kerby module.
+
 Example usage:
 
 ```java
