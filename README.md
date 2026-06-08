@@ -62,7 +62,8 @@ and `SpnegoContext`
 - `SpnegoContext` is responsible for accessing downstream systems, creating and validating appropriate security HTTP
   headers.
 
-`SpnegoClient` supports authentication using name and password, keytab file or ticket cache.
+`SpnegoClient` supports authentication using name and password, enterprise principal name and password, keytab file or
+ticket cache.
 
 **Client implementation modules**
 
@@ -80,6 +81,16 @@ Example usage:
 ```java
 SpnegoClient spnegoClient = SpnegoClient.loginWithKeyTab("svc_consumer", "/opt/myapp/consumer.keytab");
 ```
+
+Enterprise principal names, such as Active Directory UPNs, are supported by the Kerby client implementation:
+
+```java
+SpnegoClient spnegoClient = SpnegoClient.loginWithEnterprisePrincipal("dmitry.bedrin@db.com", password);
+```
+
+Use `loginWithEnterprisePrincipal` when the `@` suffix is the enterprise login name and not the Kerberos realm. The
+Kerby provider sends the client name as Kerberos `NT_ENTERPRISE` to the configured default realm. The JDK provider does
+not expose the required low-level request control and throws `UnsupportedOperationException` for this factory.
 
 `SpnegoContext` allows creating 'Authorization: Negotiate XXXXX' header and optionally validating `WWW-Authenticate`
 response header for SPNEGO mutual authentication. A `SpnegoContext` is stateful, short-lived, and not thread-safe.
