@@ -113,6 +113,52 @@ public final class SpnegoClient {
     }
 
     /**
+     * Creates an instance where authentication is done using an enterprise principal name and password.
+     *
+     * <p>Enterprise principal names are user principal names such as {@code user@example.com}. They are sent as
+     * Kerberos {@code NT_ENTERPRISE} client names to the configured realm, not parsed as {@code user@REALM}.
+     * This is currently supported by the Kerby provider.</p>
+     *
+     * @param enterprisePrincipal enterprise principal name, for example {@code dmitry.bedrin@db.com}
+     * @param password password
+     */
+    public static SpnegoClient loginWithEnterprisePrincipal(final String enterprisePrincipal, final String password) {
+        return loginWithEnterprisePrincipal(enterprisePrincipal, password, false);
+    }
+
+    /**
+     * Creates an instance where authentication is done using an enterprise principal name and password.
+     *
+     * @param enterprisePrincipal enterprise principal name, for example {@code dmitry.bedrin@db.com}
+     * @param password password
+     * @param useCache if true, reuse a cached {@link SpnegoClient} for the same provider and credentials
+     */
+    public static SpnegoClient loginWithEnterprisePrincipal(final String enterprisePrincipal,
+                                                           final String password,
+                                                           final boolean useCache) {
+        SpnegoClientProvider provider = SpnegoClientProviderRegistry.getPreferredProvider();
+        if (!useCache) {
+            return loginWithEnterprisePrincipalImpl(provider, enterprisePrincipal, password);
+        }
+        CacheKey entry = CacheKey.enterprisePrincipal(provider.getName(), enterprisePrincipal, password);
+        SpnegoClient spnegoClient;
+        synchronized (SPNEGO_CLIENT_CACHE) {
+            spnegoClient = SPNEGO_CLIENT_CACHE.get(entry);
+            if (null == spnegoClient) {
+                spnegoClient = loginWithEnterprisePrincipalImpl(provider, enterprisePrincipal, password);
+                SPNEGO_CLIENT_CACHE.put(entry, spnegoClient);
+            }
+        }
+        return spnegoClient;
+    }
+
+    private static SpnegoClient loginWithEnterprisePrincipalImpl(SpnegoClientProvider provider,
+                                                                final String enterprisePrincipal,
+                                                                final String password) {
+        return new SpnegoClient(provider.loginWithEnterprisePrincipal(enterprisePrincipal, password));
+    }
+
+    /**
      * Creates an instance where authentication is done using keytab file.
      *
      * @param principal      principal
@@ -276,25 +322,36 @@ public final class SpnegoClient {
     }
 
     private static final class CacheKey extends AbstractMap.SimpleEntry<String, String> {
+        private final String type;
         private final String provider;
 
-        private CacheKey(String provider, String key, String value) {
+        private CacheKey(String type, String provider, String key, String value) {
             super(key, value);
+            this.type = type;
             this.provider = provider;
         }
 
         private static CacheKey usernamePassword(String provider, String username, String password) {
-            return new CacheKey(provider, username, password);
+            return new CacheKey("username-password", provider, username, password);
+        }
+
+        private static CacheKey enterprisePrincipal(String provider, String enterprisePrincipal, String password) {
+            return new CacheKey("enterprise-principal", provider, enterprisePrincipal, password);
         }
 
         @Override
         public boolean equals(Object obj) {
-            return super.equals(obj) && obj instanceof CacheKey && provider.equals(((CacheKey) obj).provider);
+            return super.equals(obj) && obj instanceof CacheKey
+                    && type.equals(((CacheKey) obj).type)
+                    && provider.equals(((CacheKey) obj).provider);
         }
 
         @Override
         public int hashCode() {
-            return 31 * provider.hashCode() + super.hashCode();
+            int result = type.hashCode();
+            result = 31 * result + provider.hashCode();
+            result = 31 * result + super.hashCode();
+            return result;
         }
     }
 }

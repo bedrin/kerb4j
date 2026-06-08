@@ -7,9 +7,16 @@ import com.kerb4j.client.spi.SpnegoClientBackend;
 import com.kerb4j.client.spi.SpnegoClientProvider;
 import com.kerb4j.client.spi.SubjectBasedSpnegoClientBackend;
 import com.kerb4j.common.util.SpnegoProvider;
+import org.apache.kerby.KOptions;
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.kerby.kerberos.kerb.client.KrbClient;
+import org.apache.kerby.kerberos.kerb.client.KrbOption;
+import org.apache.kerby.kerberos.kerb.client.KrbSetting;
+import org.apache.kerby.kerberos.kerb.client.impl.DefaultInternalKrbClient;
+import org.apache.kerby.kerberos.kerb.client.request.AsRequestWithPasswd;
+import org.apache.kerby.kerberos.kerb.common.KrbUtil;
 import org.apache.kerby.kerberos.kerb.type.KerberosTime;
+import org.apache.kerby.kerberos.kerb.type.base.NameType;
 import org.apache.kerby.kerberos.kerb.type.base.PrincipalName;
 import org.apache.kerby.kerberos.kerb.type.kdc.EncKdcRepPart;
 import org.apache.kerby.kerberos.kerb.type.ticket.*;
@@ -25,10 +32,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.Principal;
 import java.security.PrivilegedActionException;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -45,6 +49,12 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
     @Override
     public SpnegoClientBackend loginWithUsernamePassword(String username, String password) {
         KerbyCredentials credentials = KerbyCredentials.withPassword(username, password);
+        return new KerbySpnegoClientBackend(credentials);
+    }
+
+    @Override
+    public SpnegoClientBackend loginWithEnterprisePrincipal(String enterprisePrincipal, String password) {
+        KerbyCredentials credentials = KerbyCredentials.withEnterprisePrincipal(enterprisePrincipal, password);
         return new KerbySpnegoClientBackend(credentials);
     }
 
@@ -130,6 +140,20 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             });
         }
 
+        private static KerbyCredentials withEnterprisePrincipal(String enterprisePrincipal, String password) {
+            return new KerbyCredentials(() -> {
+                if (isBlank(enterprisePrincipal)) {
+                    throw new IllegalArgumentException("Enterprise principal must not be blank");
+                }
+                KrbClient client = createClient();
+                String realm = requiredKerberosRealm(client, enterprisePrincipal);
+                validateKdcConfig(client, realm);
+                EnterpriseInternalKrbClient enterpriseClient = new EnterpriseInternalKrbClient(client.getSetting());
+                enterpriseClient.init();
+                return enterpriseClient.requestEnterpriseTgt(enterprisePrincipal.trim(), realm, password);
+            });
+        }
+
         private static KerbyCredentials withKeyTab(String principal, File keyTabFile) {
             return new KerbyCredentials(() -> {
                 KrbClient client = createClient();
@@ -190,11 +214,37 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
 
         private static String toKerberosPrincipalName(PrincipalName principalName) {
             List<String> nameStrings = principalName.getNameStrings();
-            String name = nameStrings == null || nameStrings.isEmpty()
-                    ? principalName.getName()
-                    : String.join("/", nameStrings);
+            if (nameStrings == null || nameStrings.isEmpty()) {
+                String name = principalName.getName();
+                String realm = principalName.getRealm();
+                return realm == null || realm.isEmpty() || name.contains("@") ? name : name + "@" + realm;
+            }
+            String name = joinKerberosPrincipalComponents(nameStrings);
             String realm = principalName.getRealm();
-            return realm == null || realm.isEmpty() || name.contains("@") ? name : name + "@" + realm;
+            return realm == null || realm.isEmpty() ? name : name + "@" + realm;
+        }
+
+        private static String joinKerberosPrincipalComponents(List<String> nameStrings) {
+            StringBuilder name = new StringBuilder();
+            for (String nameString : nameStrings) {
+                if (name.length() > 0) {
+                    name.append('/');
+                }
+                name.append(escapeKerberosPrincipalComponent(nameString));
+            }
+            return name.toString();
+        }
+
+        private static String escapeKerberosPrincipalComponent(String value) {
+            StringBuilder escaped = new StringBuilder(value.length());
+            for (int i = 0; i < value.length(); i++) {
+                char ch = value.charAt(i);
+                if (ch == '\\' || ch == '/' || ch == '@') {
+                    escaped.append('\\');
+                }
+                escaped.append(ch);
+            }
+            return escaped.toString();
         }
 
         private static boolean[] toBooleanFlags(TicketFlags ticketFlags) {
@@ -226,6 +276,15 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             }
             validateKdcConfig(client, realm);
             return principal + "@" + realm;
+        }
+
+        private static String requiredKerberosRealm(KrbClient client, String principal) {
+            String realm = kerberosRealm(client);
+            if (realm == null || realm.isEmpty()) {
+                throw new IllegalStateException("Kerby SPNEGO provider cannot request an enterprise TGT for '"
+                        + principal + "'. Configure java.security.krb5.conf with default_realm.");
+            }
+            return realm;
         }
 
         private static KrbClient createClient() throws KrbException {
@@ -281,6 +340,31 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             return tgtTicket.getEncKdcRepPart().getEndTime().lessThan(System.currentTimeMillis());
         }
 
+    }
+
+    private static class EnterpriseInternalKrbClient extends DefaultInternalKrbClient {
+        private EnterpriseInternalKrbClient(KrbSetting krbSetting) {
+            super(krbSetting);
+        }
+
+        private TgtTicket requestEnterpriseTgt(String enterprisePrincipal, String realm, String password)
+                throws KrbException {
+            KOptions requestOptions = new KOptions();
+            requestOptions.add(KrbOption.AS_ENTERPRISE_PN, true);
+            requestOptions.add(KrbOption.USE_PASSWD, true);
+            requestOptions.add(KrbOption.USER_PASSWD, password);
+
+            PrincipalName clientPrincipal = new PrincipalName(
+                    Collections.singletonList(enterprisePrincipal),
+                    NameType.NT_ENTERPRISE);
+            clientPrincipal.setRealm(realm);
+
+            AsRequestWithPasswd asRequest = new AsRequestWithPasswd(getContext());
+            asRequest.setClientPrincipal(clientPrincipal);
+            asRequest.setServerPrincipal(KrbUtil.makeTgsPrincipal(realm));
+            asRequest.setRequestOptions(requestOptions);
+            return doRequestTgt(asRequest);
+        }
     }
 
     private static class ServiceIdentity {

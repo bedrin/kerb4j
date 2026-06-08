@@ -47,4 +47,13 @@ class JdkSpnegoClientProviderTest extends KerberosSecurityTestcase {
             assertTrue(acceptContext.isEstablished());
         }
     }
+
+    @Test
+    void jdkProviderDoesNotSupportEnterprisePrincipalLogin() {
+        UnsupportedOperationException exception = assertThrows(
+                UnsupportedOperationException.class,
+                () -> SpnegoClient.loginWithEnterprisePrincipal("dmitry.bedrin@db.com", "password"));
+
+        assertTrue(exception.getMessage().contains("Enterprise principal login"));
+    }
 }

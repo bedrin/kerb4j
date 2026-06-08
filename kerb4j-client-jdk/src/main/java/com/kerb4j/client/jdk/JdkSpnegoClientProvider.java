@@ -23,6 +23,11 @@ public class JdkSpnegoClientProvider implements SpnegoClientProvider {
     }
 
     @Override
+    public SpnegoClientBackend loginWithEnterprisePrincipal(String enterprisePrincipal, String password) {
+        throw new UnsupportedOperationException("Enterprise principal login is not supported by the JDK SPNEGO provider");
+    }
+
+    @Override
     public SpnegoClientBackend loginWithKeyTab(String principal, String keyTabLocation, boolean acceptOnly) {
         return new SubjectBasedSpnegoClientBackend(NAME,
                 JaasSubjectSupplier.fromLoginContextSupplier(
