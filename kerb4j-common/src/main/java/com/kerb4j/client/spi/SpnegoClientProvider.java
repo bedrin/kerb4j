@@ -10,7 +10,7 @@ public interface SpnegoClientProvider {
     SpnegoClientBackend loginWithUsernamePassword(String username, String password);
 
     default SpnegoClientBackend loginWithEnterprisePrincipal(String enterprisePrincipal, String password) {
-        throw new UnsupportedOperationException("Enterprise principal login is not supported by this SPNEGO provider");
+        throw new UnsupportedOperationException("Enterprise principal login is not supported by SPNEGO provider '" + getName() + "'.");
     }
 
     SpnegoClientBackend loginWithKeyTab(String principal, String keyTabLocation, boolean acceptOnly);
