@@ -18,37 +18,24 @@
 
 package com.kerb4j.client;
 
-import com.kerb4j.common.jaas.sun.Krb5LoginContext;
-import com.kerb4j.common.util.JreVendor;
+import com.kerb4j.client.spi.JaasSubjectSupplier;
+import com.kerb4j.client.spi.SpnegoClientBackend;
+import com.kerb4j.client.spi.SpnegoClientProvider;
+import com.kerb4j.client.spi.SubjectBasedSpnegoClientBackend;
 import com.kerb4j.common.util.LRUCache;
-import com.kerb4j.common.util.SpnegoProvider;
-import org.ietf.jgss.GSSContext;
-import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
-import org.ietf.jgss.GSSName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosKey;
-import javax.security.auth.kerberos.KerberosPrincipal;
-import javax.security.auth.kerberos.KerberosTicket;
-import javax.security.auth.kerberos.KeyTab;
 import javax.security.auth.login.LoginContext;
-import javax.security.auth.login.LoginException;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
 import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This Class may be used by custom clients as a convenience when connecting
@@ -61,52 +48,31 @@ import java.util.concurrent.locks.ReentrantLock;
  * Also, you must provide a keytab file, or a username and password, or allowtgtsessionkey.
  * </p>
  *
- *
- * <p>
- * To see a working example and instructions on how to use a keytab, take
- * a look at the <a href="http://spnego.sourceforge.net/client_keytab.html"
- * target="_blank">creating a client keytab</a> example.
- * </p>
- *
  * @author Darwin V. Felix
  */
 public final class SpnegoClient {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoClient.class);
-    private static final LRUCache<AbstractMap.SimpleEntry<String, String>, SpnegoClient> SPNEGO_CLIENT_CACHE = new LRUCache<>(1024);
-    private final AtomicReference<SubjectTgtPair> subjectTgtPairReference = new AtomicReference<>();
-    private final AtomicReference<Subject> eternalSubjectReference = new AtomicReference<>();
-    private final Callable<Subject> subjectSupplier;
-    private final Lock authenticateLock = new ReentrantLock();
+    public static final String SPNEGO_PROVIDER_PROPERTY = "kerb4j.spnego.provider";
 
-    /**
-     * Creates an instance with provided LoginContext
-     *
-     * @param loginContextSupplier loginContextSupplier
-     */
-    private SpnegoClient(final Callable<LoginContext> loginContextSupplier) {
-        subjectSupplier = () -> {
-            LoginContext loginContext = loginContextSupplier.call();
-            Subject subject = loginContext.getSubject();
-            if (null == subject) try {
-                loginContext.login();
-                subject = loginContext.getSubject();
-            } catch (LoginException e) {
-                LOGGER.error(e.getMessage(), e);
-                throw new RuntimeException(e);
-            }
-            return subject;
-        };
+    private static final LRUCache<CacheKey, SpnegoClient> SPNEGO_CLIENT_CACHE = new LRUCache<>(1024);
+
+    private final SpnegoClientBackend backend;
+
+    private SpnegoClient(SpnegoClientBackend backend) {
+        this.backend = backend;
     }
 
     public static void resetCache() {
         synchronized (SPNEGO_CLIENT_CACHE) {
             SPNEGO_CLIENT_CACHE.clear();
         }
+        SpnegoClientProviderRegistry.reset();
     }
 
     /**
-     * Creates an instance where authentication is done using username and password
+     * Creates an instance where authentication is done using username and password.
+     * Kerby is used when the Kerby provider module is present; otherwise the JDK/JGSS provider is used. Override with
+     * {@code -Dkerb4j.spnego.provider=jdk}, {@code -Dkerb4j.spnego.provider=kerby}, or a provider class name.
      *
      * @param username username
      * @param password password
@@ -116,33 +82,38 @@ public final class SpnegoClient {
     }
 
     /**
-     * Creates an instance where authentication is done using username and password
+     * Creates an instance where authentication is done using username and password.
+     * Kerby is used when the Kerby provider module is present; otherwise the JDK/JGSS provider is used. Override with
+     * {@code -Dkerb4j.spnego.provider=jdk}, {@code -Dkerb4j.spnego.provider=kerby}, or a provider class name.
      *
      * @param username username
      * @param password password
      */
     public static SpnegoClient loginWithUsernamePassword(final String username, final String password, final boolean useCache) {
-        if (!useCache) return loginWithUsernamePasswordImpl(username, password);
-        AbstractMap.SimpleEntry<String, String> entry = new AbstractMap.SimpleEntry<>(username, password);
+        SpnegoClientProvider provider = SpnegoClientProviderRegistry.getPreferredProvider();
+        if (!useCache) {
+            return loginWithUsernamePasswordImpl(provider, username, password);
+        }
+        CacheKey entry = CacheKey.usernamePassword(provider.getName(), username, password);
         SpnegoClient spnegoClient;
         synchronized (SPNEGO_CLIENT_CACHE) {
             spnegoClient = SPNEGO_CLIENT_CACHE.get(entry);
             if (null == spnegoClient) {
-                spnegoClient = loginWithUsernamePasswordImpl(username, password);
+                spnegoClient = loginWithUsernamePasswordImpl(provider, username, password);
                 SPNEGO_CLIENT_CACHE.put(entry, spnegoClient);
             }
         }
         return spnegoClient;
     }
 
-    private static SpnegoClient loginWithUsernamePasswordImpl(final String username, final String password) {
-        return new SpnegoClient(() -> Krb5LoginContext.loginWithUsernameAndPassword(username, password));
+    private static SpnegoClient loginWithUsernamePasswordImpl(SpnegoClientProvider provider,
+                                                             final String username,
+                                                             final String password) {
+        return new SpnegoClient(provider.loginWithUsernamePassword(username, password));
     }
 
-    // TODO: add factory methods with implicit principal name
-
     /**
-     * Creates an instance where authentication is done using keytab file
+     * Creates an instance where authentication is done using keytab file.
      *
      * @param principal      principal
      * @param keyTabLocation keyTabLocation
@@ -151,11 +122,9 @@ public final class SpnegoClient {
         return loginWithKeyTab(principal, keyTabLocation, false);
     }
 
-    // TODO: add factory methods with implicit principal name
-
     /**
-     * Creates an instance where authentication is done using keytab file
-     * Allows customizing underlying isInitiator parameter by using acceptOnly parameter - see description below
+     * Creates an instance where authentication is done using keytab file.
+     * Allows customizing underlying isInitiator parameter by using acceptOnly parameter - see description below.
      *
      * @param principal      principal
      * @param keyTabLocation keyTabLocation
@@ -163,16 +132,17 @@ public final class SpnegoClient {
      * @since 0.1.3
      */
     public static SpnegoClient loginWithKeyTab(final String principal, final String keyTabLocation, final boolean acceptOnly) {
-        return new SpnegoClient(() -> Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation, acceptOnly));
+        return new SpnegoClient(SpnegoClientProviderRegistry.getPreferredProvider()
+                .loginWithKeyTab(principal, keyTabLocation, acceptOnly));
     }
 
     /**
-     * Creates an instance where authentication is done using ticket cache
+     * Creates an instance where authentication is done using ticket cache.
      *
      * @param principal principal
      */
     public static SpnegoClient loginWithTicketCache(final String principal) {
-        return new SpnegoClient(() -> Krb5LoginContext.loginWithTicketCache(principal));
+        return new SpnegoClient(SpnegoClientProviderRegistry.getPreferredProvider().loginWithTicketCache(principal));
     }
 
     public static SpnegoClient loginWithContext(final LoginContext loginContext) {
@@ -180,75 +150,29 @@ public final class SpnegoClient {
     }
 
     public static SpnegoClient loginWithContextSupplier(final Callable<LoginContext> loginContextSupplier) {
-        return new SpnegoClient(loginContextSupplier);
+        return new SpnegoClient(new SubjectBasedSpnegoClientBackend(
+                "jaas-login-context",
+                JaasSubjectSupplier.fromLoginContextSupplier(loginContextSupplier)));
+    }
+
+    public String getImplementationName() {
+        return backend.getImplementationName();
     }
 
     public Subject getSubject() {
-        Subject eternalSubject = eternalSubjectReference.get();
-        if (null != eternalSubject) {
-            return eternalSubject;
-        }
-        SubjectTgtPair subjectTgtPair = subjectTgtPairReference.get();
-        if (null == subjectTgtPair || subjectTgtPair.isExpired()) {
-            authenticateLock.lock();
-            try {
-                eternalSubject = eternalSubjectReference.get();
-                if (null != eternalSubject) {
-                    return eternalSubject;
-                }
-                subjectTgtPair = subjectTgtPairReference.get();
-                if (null == subjectTgtPair || subjectTgtPair.isExpired()) {
-                    Subject subject = subjectSupplier.call();
-                    for (KerberosTicket ticket : subject.getPrivateCredentials(KerberosTicket.class)) {
-                        if (ticket.getServer().getName().startsWith("krbtgt")) {
-                            subjectTgtPairReference.set(new SubjectTgtPair(ticket, subject));
-                            break;
-                        }
-                    }
-                    subjectTgtPair = subjectTgtPairReference.get();
-                    if (null == subjectTgtPair) {
-                        // isInitiator = false  / acceptOnly client
-                        eternalSubjectReference.set(subject);
-                        return subject;
-                    }
-                }
-            } catch (RuntimeException e) {
-                throw e;
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            } finally {
-                authenticateLock.unlock();
-            }
-        }
-        return subjectTgtPair.subject;
+        return backend.getSubject();
     }
 
     public KerberosKey[] getKerberosKeys() {
-        Set<KerberosKey> kerberosKeys = getSubject().getPrivateCredentials(KerberosKey.class);
-        if (!kerberosKeys.isEmpty()) {
-            return new ArrayList<>(kerberosKeys).toArray(new KerberosKey[kerberosKeys.size()]);
-        } else {
-            Set<KerberosPrincipal> kerberosPrincipals = getSubject().getPrincipals(KerberosPrincipal.class);
-            for (KerberosPrincipal kerberosPrincipal : kerberosPrincipals) {
-                Set<KeyTab> keyTabs = getSubject().getPrivateCredentials(KeyTab.class);
-                for (KeyTab keyTab : keyTabs) {
-                    KerberosKey[] keys = keyTab.getKeys(kerberosPrincipal);
-                    if (null != keys && keys.length > 0) {
-                        return keys;
-                    }
-                }
-            }
-        }
-        return null;
-
+        return backend.getKerberosKeys();
     }
 
     public SpnegoContext createContext(URL url) throws PrivilegedActionException, GSSException {
-        return new SpnegoContext(this, getGSSContext(url));
+        return backend.createContext(this, url);
     }
 
     public SpnegoContext createContextForSPN(String spn) throws PrivilegedActionException, GSSException, MalformedURLException {
-        return new SpnegoContext(this, getGSSContextForSPN(spn));
+        return backend.createContextForSPN(this, spn);
     }
 
     public String createAuthroizationHeader(URL url) throws PrivilegedActionException, GSSException, IOException {
@@ -270,111 +194,107 @@ public final class SpnegoClient {
     }
 
     public SpnegoContext createAcceptContext() throws PrivilegedActionException {
-        return new SpnegoContext(this, Subject.doAs(getSubject(), new PrivilegedExceptionAction<>() {
-            @Override
-            public GSSContext run() throws Exception {
+        return backend.createAcceptContext(this);
+    }
 
-                // IBM JDK only understands indefinite lifetime - TODO: validate this statement
-                final int credentialLifetime;
-                if (JreVendor.IS_IBM_JVM) {
-                    credentialLifetime = GSSCredential.INDEFINITE_LIFETIME;
-                } else {
-                    credentialLifetime = GSSCredential.DEFAULT_LIFETIME;
+    private static final class SpnegoClientProviderRegistry {
+
+        private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoClientProviderRegistry.class);
+        private static final String KERBY_PROVIDER_CLASS = "com.kerb4j.client.kerby.KerbySpnegoClientProvider";
+        private static final String JDK_PROVIDER_CLASS = "com.kerb4j.client.jdk.JdkSpnegoClientProvider";
+        private static final String KERBY_PROVIDER_ALIAS = "kerby";
+        private static final String JDK_PROVIDER_ALIAS = "jdk";
+
+        private static volatile SpnegoClientProvider preferredProvider;
+
+        private SpnegoClientProviderRegistry() {
+        }
+
+        private static void reset() {
+            preferredProvider = null;
+        }
+
+        private static SpnegoClientProvider getPreferredProvider() {
+            SpnegoClientProvider provider = preferredProvider;
+            if (null != provider) {
+                return provider;
+            }
+            synchronized (SpnegoClientProviderRegistry.class) {
+                provider = preferredProvider;
+                if (null == provider) {
+                    String providerOverride = System.getProperty(SPNEGO_PROVIDER_PROPERTY);
+                    if (providerOverride != null && !providerOverride.trim().isEmpty()) {
+                        provider = loadRequiredProvider(toProviderClassName(providerOverride.trim()));
+                    } else {
+                        provider = loadProvider(KERBY_PROVIDER_CLASS);
+                    }
+                    if (null == provider) {
+                        provider = loadProvider(JDK_PROVIDER_CLASS);
+                    }
+                    if (null == provider) {
+                        throw new IllegalStateException("No Kerb4J SPNEGO client implementation is available. "
+                                + "Add kerb4j-client-kerby or kerb4j-client-jdk to the runtime classpath.");
+                    }
+                    preferredProvider = provider;
                 }
-
-                GSSCredential credential = SpnegoProvider.GSS_MANAGER.createCredential(
-                        null
-                        , credentialLifetime
-                        , SpnegoProvider.SUPPORTED_OIDS
-                        , GSSCredential.ACCEPT_ONLY); // TODO should it be INIT and ACCEPT ?
-
-                return SpnegoProvider.GSS_MANAGER.createContext(credential);
-
             }
-        }));
-
-    }
-
-    /**
-     * Returns a GSSContext for the given SPN with a default lifetime.
-     *
-     * @param spn
-     * @return GSSContext for the given url
-     */
-    private GSSContext getGSSContextForSPN(String spn) throws GSSException, PrivilegedActionException {
-        return getGSSContext(SpnegoProvider.createGSSNameForSPN(spn));
-    }
-
-    /**
-     * Returns a GSSContext for the given url with a default lifetime.
-     *
-     * @param url http address
-     * @return GSSContext for the given url
-     */
-    private GSSContext getGSSContext(URL url) throws GSSException, PrivilegedActionException {
-        return getGSSContext(SpnegoProvider.getServerName(url));
-    }
-
-    private GSSContext getGSSContext(final GSSName gssName) throws GSSException, PrivilegedActionException {
-
-        // TODO: is it still a thing?
-        // work-around to GSSContext/AD timestamp vs sequence field replay bug
-        try {
-            Thread.sleep(31);
-        } catch (InterruptedException e) {
-            assert true;
+            return provider;
         }
 
-        return Subject.doAs(getSubject(), new PrivilegedExceptionAction<GSSContext>() {
-            @Override
-            public GSSContext run() throws Exception {
-                GSSCredential credential = SpnegoProvider.GSS_MANAGER.createCredential(
-                        null
-                        , GSSCredential.DEFAULT_LIFETIME
-                        , SpnegoProvider.SUPPORTED_OIDS
-                        , GSSCredential.INITIATE_ONLY);
-
-                GSSContext context = SpnegoProvider.GSS_MANAGER.createContext(gssName
-                        , SpnegoProvider.SPNEGO_OID
-                        , credential
-                        , GSSContext.DEFAULT_LIFETIME);
-
-
-                context.requestMutualAuth(true);
-                context.requestConf(true);
-                context.requestInteg(true);
-                context.requestReplayDet(true);
-                context.requestSequenceDet(true);
-
-                return context;
-
+        private static String toProviderClassName(String providerOverride) {
+            if (KERBY_PROVIDER_ALIAS.equalsIgnoreCase(providerOverride)) {
+                return KERBY_PROVIDER_CLASS;
             }
-        });
-
-
-    }
-
-    private static class SubjectTgtPair {
-
-        private final KerberosTicket tgt;
-        private final Subject subject;
-
-        private SubjectTgtPair(KerberosTicket tgt, Subject subject) {
-            this.tgt = tgt;
-            this.subject = subject;
+            if (JDK_PROVIDER_ALIAS.equalsIgnoreCase(providerOverride)) {
+                return JDK_PROVIDER_CLASS;
+            }
+            return providerOverride;
         }
 
-        private boolean isExpired() {
+        private static SpnegoClientProvider loadRequiredProvider(String className) {
+            SpnegoClientProvider provider = loadProvider(className);
+            if (provider == null) {
+                throw new IllegalStateException("Configured Kerb4J SPNEGO client provider is not available: "
+                        + className + ". Check " + SPNEGO_PROVIDER_PROPERTY + " and the runtime classpath.");
+            }
+            return provider;
+        }
+
+        private static SpnegoClientProvider loadProvider(String className) {
+            ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
             try {
-                synchronized (tgt) {
-                    return tgt.getEndTime().before(new Date());
-                }
-            } catch (Exception e) {
-                LOGGER.error("Failed to get Kerberos ticket end time", e);
-                return true;
+                Class<?> providerClass = Class.forName(className, true,
+                        contextClassLoader == null ? SpnegoClient.class.getClassLoader() : contextClassLoader);
+                return (SpnegoClientProvider) providerClass.getDeclaredConstructor().newInstance();
+            } catch (ClassNotFoundException e) {
+                return null;
+            } catch (ReflectiveOperationException | LinkageError e) {
+                LOGGER.warn("Unable to load SPNEGO client provider {}", className, e);
+                return null;
             }
         }
-
     }
 
+    private static final class CacheKey extends AbstractMap.SimpleEntry<String, String> {
+        private final String provider;
+
+        private CacheKey(String provider, String key, String value) {
+            super(key, value);
+            this.provider = provider;
+        }
+
+        private static CacheKey usernamePassword(String provider, String username, String password) {
+            return new CacheKey(provider, username, password);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return super.equals(obj) && obj instanceof CacheKey && provider.equals(((CacheKey) obj).provider);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * provider.hashCode() + super.hashCode();
+        }
+    }
 }

@@ -2,9 +2,13 @@ package com.kerb4j.common.jaas.sun;
 
 /**
  * Config for global jaas.
+ * <p>
+ * JDK JAAS support is implemented by the {@code kerb4j-client-jdk} provider module. This compatibility type remains
+ * in {@code kerb4j-common} for existing callers that configure the JDK provider directly.
  *
  * @author Mike Wiesner
  */
+@Deprecated
 public class GlobalSunJaasKerberosConfig {
 
     /**

@@ -9,22 +9,10 @@
         <version>0.4.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>kerb4j-server</artifactId>
-    <name>kerb4j-server</name>
-    <packaging>pom</packaging>
+    <artifactId>kerb4j-client-kerby</artifactId>
 
-    <properties>
-        <servlet.api.version>6.1.0</servlet.api.version>
-    </properties>
-
-    <modules>
-        <module>kerb4j-server-common</module>
-        <module>kerb4j-server-tomcat</module>
-        <module>kerb4j-server-spring-security-core</module>
-        <module>kerb4j-server-spring-security</module>
-        <module>kerb4j-server-spring-security-ldap</module>
-        <module>kerb4j-server-spring-webflux</module>
-    </modules>
+    <name>kerb4j-client-kerby</name>
+    <description>Kerb4J SPNEGO client implementation backed by Apache Kerby ticket acquisition</description>
 
     <dependencies>
         <dependency>
@@ -33,15 +21,14 @@
             <version>${project.parent.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.kerb4j</groupId>
-            <artifactId>kerb4j-client-jdk</artifactId>
-            <version>${project.parent.version}</version>
+            <groupId>org.apache.kerby</groupId>
+            <artifactId>kerb-client</artifactId>
+            <version>${kerby.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.kerb4j</groupId>
-            <artifactId>kerb4j-client</artifactId>
-            <version>${project.parent.version}</version>
-            <scope>test</scope>
+            <groupId>org.apache.kerby</groupId>
+            <artifactId>kerb-util</artifactId>
+            <version>${kerby.version}</version>
         </dependency>
         <dependency>
             <groupId>com.kerb4j</groupId>
@@ -51,9 +38,16 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>com.kerb4j</groupId>
+            <artifactId>kerb4j-client-jdk</artifactId>
+            <version>${project.parent.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.apache.kerby</groupId>
             <artifactId>kerb-simplekdc</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
+
 </project>

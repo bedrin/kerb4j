@@ -18,12 +18,17 @@
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-common</artifactId>
-            <version>0.4.0-SNAPSHOT</version>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.kerb4j</groupId>
+            <artifactId>kerb4j-client-jdk</artifactId>
+            <version>${project.parent.version}</version>
         </dependency>
         <dependency>
             <groupId>com.kerb4j</groupId>
             <artifactId>kerb4j-common</artifactId>
-            <version>0.4.0-SNAPSHOT</version>
+            <version>${project.parent.version}</version>
             <classifier>tests</classifier>
             <scope>test</scope>
         </dependency>
