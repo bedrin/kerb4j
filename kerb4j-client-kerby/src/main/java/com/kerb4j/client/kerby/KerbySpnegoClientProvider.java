@@ -6,6 +6,9 @@ import com.kerb4j.client.spi.JaasTicketCacheSubject;
 import com.kerb4j.client.spi.SpnegoClientBackend;
 import com.kerb4j.client.spi.SpnegoClientProvider;
 import com.kerb4j.client.spi.SubjectBasedSpnegoClientBackend;
+import com.kerb4j.common.exception.KerberosFailureAnalyzer;
+import com.kerb4j.common.exception.KerberosFailureCategory;
+import com.kerb4j.common.exception.KerberosFailureCode;
 import com.kerb4j.common.util.SpnegoProvider;
 import org.apache.kerby.KOptions;
 import org.apache.kerby.kerberos.kerb.KrbException;
@@ -76,7 +79,14 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         }
         File cache = cacheName == null || cacheName.isEmpty() ? null : new File(cacheName);
         if (cache == null) {
-            throw new IllegalStateException("Kerby ticket-cache login requires KRB5CCNAME to point to a FILE ccache");
+            throw KerberosFailureAnalyzer.explicit(
+                    "kerberos.login-with-ticket-cache",
+                    KerberosFailureCode.TICKET_CACHE_NOT_FOUND,
+                    KerberosFailureCategory.CREDENTIALS,
+                    "Kerby ticket-cache login requires KRB5CCNAME to point to a FILE credential cache.",
+                    null,
+                    "KRB5CCNAME is unset or points to a cache type Kerby cannot read",
+                    "Run kinit and set KRB5CCNAME to FILE:/path/to/ccache");
         }
         return new SubjectBasedSpnegoClientBackend(NAME + "-ticket-cache",
                 () -> JaasTicketCacheSubject.login(principal, cache));
@@ -271,8 +281,14 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             }
             String realm = kerberosRealm(client);
             if (realm == null || realm.isEmpty()) {
-                throw new IllegalStateException("Kerby SPNEGO provider cannot realm-qualify principal '" + principal
-                        + "'. Configure java.security.krb5.conf with default_realm or use a realm-qualified principal.");
+                throw KerberosFailureAnalyzer.explicit(
+                        "kerberos.realm-qualify-principal",
+                        KerberosFailureCode.REALM_NOT_CONFIGURED,
+                        KerberosFailureCategory.CONFIGURATION,
+                        "Kerby SPNEGO provider cannot realm-qualify principal '" + principal + "'.",
+                        null,
+                        "krb5.conf has no default_realm and the principal is not realm-qualified",
+                        "Configure java.security.krb5.conf with default_realm or use a principal like user@REALM");
             }
             validateKdcConfig(client, realm);
             return principal + "@" + realm;
@@ -281,8 +297,14 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         private static String requiredKerberosRealm(KrbClient client, String principal) {
             String realm = kerberosRealm(client);
             if (realm == null || realm.isEmpty()) {
-                throw new IllegalStateException("Kerby SPNEGO provider cannot request an enterprise TGT for '"
-                        + principal + "'. Configure java.security.krb5.conf with default_realm.");
+                throw KerberosFailureAnalyzer.explicit(
+                        "kerberos.login-with-enterprise-principal",
+                        KerberosFailureCode.REALM_NOT_CONFIGURED,
+                        KerberosFailureCategory.CONFIGURATION,
+                        "Kerby SPNEGO provider cannot request an enterprise TGT for '" + principal + "'.",
+                        null,
+                        "krb5.conf has no default_realm",
+                        "Configure java.security.krb5.conf with default_realm");
             }
             return realm;
         }
@@ -290,8 +312,14 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         private static KrbClient createClient() throws KrbException {
             String krb5Config = System.getProperty("java.security.krb5.conf");
             if (krb5Config != null && !krb5Config.isEmpty() && !new File(krb5Config).isFile()) {
-                throw new IllegalStateException("Kerby SPNEGO provider cannot read java.security.krb5.conf: "
-                        + krb5Config);
+                throw KerberosFailureAnalyzer.explicit(
+                        "kerberos.read-krb5-conf",
+                        KerberosFailureCode.KRB5_CONFIG_NOT_FOUND,
+                        KerberosFailureCategory.CONFIGURATION,
+                        "Kerby SPNEGO provider cannot read java.security.krb5.conf: " + krb5Config,
+                        null,
+                        "The java.security.krb5.conf system property points to a missing or unreadable file",
+                        "Set java.security.krb5.conf to an existing krb5.conf path readable by the JVM");
             }
             KrbClient client = krb5Config == null || krb5Config.isEmpty()
                     ? new KrbClient()
@@ -313,8 +341,14 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         private static void validateKdcConfig(KrbClient client, String realm) {
             if (isBlank(client.getKrbConfig().getKdcHost()) && !hasRealmKdc(client, realm)
                     && !client.getKrbConfig().getDnsLookUpKdc()) {
-                throw new IllegalStateException("Kerby SPNEGO provider requires KDC configuration for realm " + realm
-                        + ". Add a kdc entry to java.security.krb5.conf or enable DNS KDC lookup.");
+                throw KerberosFailureAnalyzer.explicit(
+                        "kerberos.find-kdc",
+                        KerberosFailureCode.KDC_NOT_FOUND,
+                        KerberosFailureCategory.NETWORK,
+                        "Kerby SPNEGO provider requires KDC configuration for realm " + realm + ".",
+                        null,
+                        "No kdc entry exists for the realm and DNS KDC lookup is disabled",
+                        "Add a kdc entry to java.security.krb5.conf or enable DNS KDC lookup");
             }
         }
 
