@@ -13,10 +13,14 @@ import java.util.Map;
 /**
  * Implementation of {@link Configuration} which uses Sun's JAAS
  * Krb5LoginModule.
+ * <p>
+ * JDK JAAS support is implemented by the {@code kerb4j-client-jdk} provider module. This compatibility type remains
+ * in {@code kerb4j-common} for existing callers that configure the JDK provider directly.
  *
  * @author Nelson Rodrigues
  * @author Janne Valkealahti
  */
+@Deprecated
 public class Krb5LoginConfig extends Configuration {
 
     private static final Logger LOG = LoggerFactory.getLogger(Krb5LoginConfig.class);

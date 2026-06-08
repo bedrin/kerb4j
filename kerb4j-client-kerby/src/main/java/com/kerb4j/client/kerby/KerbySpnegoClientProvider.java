@@ -92,15 +92,17 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         @Override
         public SpnegoContext createContext(SpnegoClient spnegoClient, URL url)
                 throws PrivilegedActionException, GSSException {
-            Subject subject = subjectForService("HTTP/" + url.getHost());
-            return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, SpnegoProvider.getServerName(url)));
+            ServiceIdentity serviceIdentity = ServiceIdentity.forUrl(url);
+            Subject subject = subjectForService(serviceIdentity.servicePrincipal);
+            return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, serviceIdentity.gssName));
         }
 
         @Override
         public SpnegoContext createContextForSPN(SpnegoClient spnegoClient, String spn)
                 throws PrivilegedActionException, GSSException, MalformedURLException {
-            Subject subject = subjectForService(spn);
-            return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, SpnegoProvider.createGSSNameForSPN(spn)));
+            ServiceIdentity serviceIdentity = ServiceIdentity.forSpn(spn);
+            Subject subject = subjectForService(serviceIdentity.servicePrincipal);
+            return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, serviceIdentity.gssName));
         }
 
         private Subject subjectForService(String servicePrincipal) throws PrivilegedActionException {
@@ -124,7 +126,7 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         private static KerbyCredentials withPassword(String principal, String password) {
             return new KerbyCredentials(() -> {
                 KrbClient client = createClient();
-                return client.requestTgt(principal, password);
+                return client.requestTgt(realmQualifiedPrincipal(client, principal), password);
             });
         }
 
@@ -214,26 +216,96 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
 
         private static String realmQualifiedPrincipal(KrbClient client, String principal) {
             if (principal.contains("@")) {
+                validateKdcConfig(client, principal.substring(principal.indexOf('@') + 1));
                 return principal;
             }
-            String realm = client.getKrbConfig().getKdcRealm();
-            return realm == null || realm.isEmpty() ? principal : principal + "@" + realm;
+            String realm = kerberosRealm(client);
+            if (realm == null || realm.isEmpty()) {
+                throw new IllegalStateException("Kerby SPNEGO provider cannot realm-qualify principal '" + principal
+                        + "'. Configure java.security.krb5.conf with default_realm or use a realm-qualified principal.");
+            }
+            validateKdcConfig(client, realm);
+            return principal + "@" + realm;
         }
 
         private static KrbClient createClient() throws KrbException {
             String krb5Config = System.getProperty("java.security.krb5.conf");
+            if (krb5Config != null && !krb5Config.isEmpty() && !new File(krb5Config).isFile()) {
+                throw new IllegalStateException("Kerby SPNEGO provider cannot read java.security.krb5.conf: "
+                        + krb5Config);
+            }
             KrbClient client = krb5Config == null || krb5Config.isEmpty()
                     ? new KrbClient()
                     : new KrbClient(new File(krb5Config));
             client.setAllowUdp(false);
             client.setAllowTcp(true);
             client.init();
+            validateConfiguredKdc(client);
             return client;
+        }
+
+        private static void validateConfiguredKdc(KrbClient client) {
+            String realm = kerberosRealm(client);
+            if (realm != null && !realm.isEmpty()) {
+                validateKdcConfig(client, realm);
+            }
+        }
+
+        private static void validateKdcConfig(KrbClient client, String realm) {
+            if (isBlank(client.getKrbConfig().getKdcHost()) && !hasRealmKdc(client, realm)
+                    && !client.getKrbConfig().getDnsLookUpKdc()) {
+                throw new IllegalStateException("Kerby SPNEGO provider requires KDC configuration for realm " + realm
+                        + ". Add a kdc entry to java.security.krb5.conf or enable DNS KDC lookup.");
+            }
+        }
+
+        private static String kerberosRealm(KrbClient client) {
+            String realm = client.getKrbConfig().getKdcRealm();
+            return isBlank(realm) ? client.getKrbConfig().getDefaultRealm() : realm;
+        }
+
+        private static boolean hasRealmKdc(KrbClient client, String realm) {
+            try {
+                List<Object> kdcs = client.getKrbConfig().getRealmSectionItems(realm, "kdc");
+                return kdcs != null && !kdcs.isEmpty();
+            } catch (RuntimeException e) {
+                return false;
+            }
+        }
+
+        private static boolean isBlank(String value) {
+            return value == null || value.trim().isEmpty();
         }
 
         private static boolean isExpired(TgtTicket tgtTicket) {
             return tgtTicket.getEncKdcRepPart().getEndTime().lessThan(System.currentTimeMillis());
         }
 
+    }
+
+    private static class ServiceIdentity {
+        private final String servicePrincipal;
+        private final org.ietf.jgss.GSSName gssName;
+
+        private ServiceIdentity(String servicePrincipal, org.ietf.jgss.GSSName gssName) {
+            this.servicePrincipal = servicePrincipal;
+            this.gssName = gssName;
+        }
+
+        private static ServiceIdentity forUrl(URL url) throws GSSException {
+            String host = url.getHost();
+            if (host == null || host.isEmpty()) {
+                throw new IllegalArgumentException("Cannot create Kerby SPNEGO context for URL without host: " + url);
+            }
+            return forSpn("HTTP/" + host);
+        }
+
+        private static ServiceIdentity forSpn(String spn) throws GSSException {
+            if (spn == null || spn.trim().isEmpty()) {
+                throw new IllegalArgumentException("SPN must not be blank");
+            }
+            String servicePrincipal = spn.trim();
+            return new ServiceIdentity(servicePrincipal, SpnegoProvider.createGSSNameForSPN(servicePrincipal));
+        }
     }
 }

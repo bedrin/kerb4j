@@ -5,8 +5,9 @@ All notable changes to this project are documented in this file.
 ## 0.4.0-SNAPSHOT
 
 ### New Functionality
-- Added pluggable `SpnegoClient` implementations with classpath-based provider selection. `kerb4j-client-kerby` is preferred when present; otherwise `kerb4j-client-jdk` provides the existing JDK JAAS/JGSS behavior.
+- Added built-in `SpnegoClient` implementation selection. `kerb4j-client-kerby` is preferred when present; otherwise `kerb4j-client-jdk` provides the existing JDK JAAS/JGSS behavior. Override with `-Dkerb4j.spnego.provider=jdk`, `kerby`, or a provider class name.
 - Added Apache Kerby-backed client ticket acquisition for username/password logins and service-ticket-backed Negotiate header creation.
+- Kept deprecated compatibility classes for `com.kerb4j.common.jaas.sun.*` in `kerb4j-common` while JDK provider behavior lives in `kerb4j-client-jdk`.
 - Reactive Spring Security support via `[kerb4j-server-spring-webflux](kerb4j-server/kerb4j-server-spring-webflux)` module
 - Multi-principal SPNEGO support is now shared in `kerb4j-server-spring-security-core` for feature parity between servlet and reactive Spring stacks
 - Multi-principal fallback policy is now owned by `MultiPrincipalManager` (including explicit default principal support) so servlet Spring and Tomcat authenticator paths delegate principal resolution consistently

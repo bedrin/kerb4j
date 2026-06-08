@@ -73,7 +73,8 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                     }
                     subjectTgtPair = subjectTgtPairReference.get();
                     if (null == subjectTgtPair) {
-                        // isInitiator=false / acceptOnly client: no TGT is expected.
+                        // isInitiator=false / acceptOnly subjects do not contain a TGT, so there is no expiry time
+                        // to drive refresh. Keep that subject permanently to preserve the old JDK accept-only behavior.
                         eternalSubjectReference.set(subject);
                         return subject;
                     }
@@ -91,13 +92,14 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
 
     @Override
     public KerberosKey[] getKerberosKeys() {
-        Set<KerberosKey> kerberosKeys = getSubject().getPrivateCredentials(KerberosKey.class);
+        Subject subject = getSubject();
+        Set<KerberosKey> kerberosKeys = subject.getPrivateCredentials(KerberosKey.class);
         if (!kerberosKeys.isEmpty()) {
             return new ArrayList<>(kerberosKeys).toArray(new KerberosKey[kerberosKeys.size()]);
         } else {
-            Set<KerberosPrincipal> kerberosPrincipals = getSubject().getPrincipals(KerberosPrincipal.class);
+            Set<KerberosPrincipal> kerberosPrincipals = subject.getPrincipals(KerberosPrincipal.class);
             for (KerberosPrincipal kerberosPrincipal : kerberosPrincipals) {
-                Set<KeyTab> keyTabs = getSubject().getPrivateCredentials(KeyTab.class);
+                Set<KeyTab> keyTabs = subject.getPrivateCredentials(KeyTab.class);
                 for (KeyTab keyTab : keyTabs) {
                     KerberosKey[] keys = keyTab.getKeys(kerberosPrincipal);
                     if (null != keys && keys.length > 0) {

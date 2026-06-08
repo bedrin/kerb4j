@@ -52,6 +52,8 @@ import java.util.concurrent.Callable;
  */
 public final class SpnegoClient {
 
+    public static final String SPNEGO_PROVIDER_PROPERTY = "kerb4j.spnego.provider";
+
     private static final LRUCache<CacheKey, SpnegoClient> SPNEGO_CLIENT_CACHE = new LRUCache<>(1024);
 
     private final SpnegoClientBackend backend;
@@ -64,11 +66,13 @@ public final class SpnegoClient {
         synchronized (SPNEGO_CLIENT_CACHE) {
             SPNEGO_CLIENT_CACHE.clear();
         }
+        SpnegoClientProviderRegistry.reset();
     }
 
     /**
      * Creates an instance where authentication is done using username and password.
-     * Kerby is used when the Kerby provider module is present; otherwise the JDK/JGSS provider is used.
+     * Kerby is used when the Kerby provider module is present; otherwise the JDK/JGSS provider is used. Override with
+     * {@code -Dkerb4j.spnego.provider=jdk}, {@code -Dkerb4j.spnego.provider=kerby}, or a provider class name.
      *
      * @param username username
      * @param password password
@@ -79,7 +83,8 @@ public final class SpnegoClient {
 
     /**
      * Creates an instance where authentication is done using username and password.
-     * Kerby is used when the Kerby provider module is present; otherwise the JDK/JGSS provider is used.
+     * Kerby is used when the Kerby provider module is present; otherwise the JDK/JGSS provider is used. Override with
+     * {@code -Dkerb4j.spnego.provider=jdk}, {@code -Dkerb4j.spnego.provider=kerby}, or a provider class name.
      *
      * @param username username
      * @param password password
@@ -197,10 +202,16 @@ public final class SpnegoClient {
         private static final Logger LOGGER = LoggerFactory.getLogger(SpnegoClientProviderRegistry.class);
         private static final String KERBY_PROVIDER_CLASS = "com.kerb4j.client.kerby.KerbySpnegoClientProvider";
         private static final String JDK_PROVIDER_CLASS = "com.kerb4j.client.jdk.JdkSpnegoClientProvider";
+        private static final String KERBY_PROVIDER_ALIAS = "kerby";
+        private static final String JDK_PROVIDER_ALIAS = "jdk";
 
         private static volatile SpnegoClientProvider preferredProvider;
 
         private SpnegoClientProviderRegistry() {
+        }
+
+        private static void reset() {
+            preferredProvider = null;
         }
 
         private static SpnegoClientProvider getPreferredProvider() {
@@ -211,7 +222,12 @@ public final class SpnegoClient {
             synchronized (SpnegoClientProviderRegistry.class) {
                 provider = preferredProvider;
                 if (null == provider) {
-                    provider = loadProvider(KERBY_PROVIDER_CLASS);
+                    String providerOverride = System.getProperty(SPNEGO_PROVIDER_PROPERTY);
+                    if (providerOverride != null && !providerOverride.trim().isEmpty()) {
+                        provider = loadRequiredProvider(toProviderClassName(providerOverride.trim()));
+                    } else {
+                        provider = loadProvider(KERBY_PROVIDER_CLASS);
+                    }
                     if (null == provider) {
                         provider = loadProvider(JDK_PROVIDER_CLASS);
                     }
@@ -221,6 +237,25 @@ public final class SpnegoClient {
                     }
                     preferredProvider = provider;
                 }
+            }
+            return provider;
+        }
+
+        private static String toProviderClassName(String providerOverride) {
+            if (KERBY_PROVIDER_ALIAS.equalsIgnoreCase(providerOverride)) {
+                return KERBY_PROVIDER_CLASS;
+            }
+            if (JDK_PROVIDER_ALIAS.equalsIgnoreCase(providerOverride)) {
+                return JDK_PROVIDER_CLASS;
+            }
+            return providerOverride;
+        }
+
+        private static SpnegoClientProvider loadRequiredProvider(String className) {
+            SpnegoClientProvider provider = loadProvider(className);
+            if (provider == null) {
+                throw new IllegalStateException("Configured Kerb4J SPNEGO client provider is not available: "
+                        + className + ". Check " + SPNEGO_PROVIDER_PROPERTY + " and the runtime classpath.");
             }
             return provider;
         }

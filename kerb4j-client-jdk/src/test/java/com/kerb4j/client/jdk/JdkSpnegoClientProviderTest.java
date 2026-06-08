@@ -4,6 +4,7 @@ import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -11,6 +12,12 @@ import java.io.File;
 import static org.junit.jupiter.api.Assertions.*;
 
 class JdkSpnegoClientProviderTest extends KerberosSecurityTestcase {
+
+    @AfterEach
+    void resetProviderOverride() {
+        System.clearProperty(SpnegoClient.SPNEGO_PROVIDER_PROPERTY);
+        SpnegoClient.resetCache();
+    }
 
     @Test
     void jdkProviderIsUsedWhenKerbyProviderIsNotOnClasspath() throws Exception {
