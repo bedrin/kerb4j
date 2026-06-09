@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file.
 
-## 0.4.0-SNAPSHOT
+## 0.4.0
 
 ### New Functionality
 - Added built-in `SpnegoClient` implementation selection. `kerb4j-client-kerby` is preferred when present; otherwise `kerb4j-client-jdk` provides the existing JDK JAAS/JGSS behavior. Override with `-Dkerb4j.spnego.provider=jdk`, `kerby`, or a provider class name.
@@ -17,7 +17,7 @@ All notable changes to this project are documented in this file.
 - Fixed PAC resource-domain group SID expansion in `PacLogonInfo`:
 - MS-PAC KERB_VALIDATION_INFO: `ResourceGroupDomainSid` + `ResourceGroupIds` create resource group SIDs.
 - MS-KILE Domain Local Group Membership: compressed resource SIDs are represented as `GROUP_MEMBERSHIP` RelativeIds under `ResourceGroupDomainSid`.
-- Resource group SIDs are now built once and no longer have `ResourceGroupDomainSid` appended twice.
+- Resource group SIDs are now built once and no longer have `ResourceGroupDomainSid` appended twice. Thanks to @cluck 
 
 ### Breaking change note
 - `PacLogonInfo#getResourceGroupSids()` now returns correctly constructed resource group SIDs without duplicated domain components. Code that previously relied on the incorrect double-appended SID format may need adjustment.
@@ -52,6 +52,7 @@ All notable changes to this project are documented in this file.
 ## 0.2.1
 
 ### Build and release
+- Support for UPN_DNS_INFO buffer type in PAC by @GrimirCZ in https://github.com/bedrin/kerb4j/pull/63
 - Migrated publishing from OSSRH to Maven Central Portal using `central-publishing-maven-plugin`.
 - Updated GitHub Actions publishing workflow to use the new Central credentials and server id.
 - Finalized all module versions to `0.2.1` for release.
