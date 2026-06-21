@@ -4,6 +4,7 @@ import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;
 import com.kerb4j.common.util.Constants;
 import com.kerb4j.server.MultiPrincipalManager;
+import com.kerb4j.server.SpnegoTokenFixer;
 import com.kerb4j.server.marshall.Kerb4JException;
 import com.kerb4j.server.marshall.pac.Pac;
 import com.kerb4j.server.marshall.pac.PacLogonInfo;
@@ -213,7 +214,7 @@ public class SpnegoAuthenticator extends AuthenticatorBase {
         byte[] decoded = Base64.getDecoder().decode(encoded);
 
         if (getApplyJava8u40Fix()) {
-            org.apache.catalina.authenticator.SpnegoAuthenticator.SpnegoTokenFixer.fix(decoded);
+            SpnegoTokenFixer.fix(decoded);
         }
 
         if (decoded.length == 0) {
