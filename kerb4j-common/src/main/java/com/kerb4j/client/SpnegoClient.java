@@ -22,6 +22,8 @@ import com.kerb4j.client.spi.JaasSubjectSupplier;
 import com.kerb4j.client.spi.SpnegoClientBackend;
 import com.kerb4j.client.spi.SpnegoClientProvider;
 import com.kerb4j.client.spi.SubjectBasedSpnegoClientBackend;
+import com.kerb4j.common.exception.Kerb4JKerberosException;
+import com.kerb4j.common.exception.KerberosFailureAnalyzer;
 import com.kerb4j.common.util.LRUCache;
 import org.ietf.jgss.GSSException;
 import org.slf4j.Logger;
@@ -217,14 +219,39 @@ public final class SpnegoClient {
         return backend.createContext(this, url);
     }
 
+    public SpnegoContext createContextOrThrow(URL url) throws Kerb4JKerberosException {
+        try {
+            return createContext(url);
+        } catch (PrivilegedActionException | GSSException e) {
+            throw KerberosFailureAnalyzer.wrap("spnego.create-context", e);
+        }
+    }
+
     public SpnegoContext createContextForSPN(String spn) throws PrivilegedActionException, GSSException, MalformedURLException {
         return backend.createContextForSPN(this, spn);
+    }
+
+    public SpnegoContext createContextForSPNOrThrow(String spn) throws Kerb4JKerberosException {
+        try {
+            return createContextForSPN(spn);
+        } catch (PrivilegedActionException | GSSException | MalformedURLException e) {
+            throw KerberosFailureAnalyzer.wrap("spnego.create-context-for-spn", e);
+        }
     }
 
     public String createAuthroizationHeader(URL url) throws PrivilegedActionException, GSSException, IOException {
         SpnegoContext context = createContext(url);
         try {
             return context.createTokenAsAuthroizationHeader();
+        } finally {
+            context.close();
+        }
+    }
+
+    public String createAuthorizationHeader(URL url) throws Kerb4JKerberosException, IOException {
+        SpnegoContext context = createContextOrThrow(url);
+        try {
+            return context.createTokenAsAuthorizationHeader();
         } finally {
             context.close();
         }
@@ -239,8 +266,25 @@ public final class SpnegoClient {
         }
     }
 
+    public String createAuthorizationHeaderForSPN(String spn) throws Kerb4JKerberosException, IOException {
+        SpnegoContext contextForSPN = createContextForSPNOrThrow(spn);
+        try {
+            return contextForSPN.createTokenAsAuthorizationHeader();
+        } finally {
+            contextForSPN.close();
+        }
+    }
+
     public SpnegoContext createAcceptContext() throws PrivilegedActionException {
         return backend.createAcceptContext(this);
+    }
+
+    public SpnegoContext createAcceptContextOrThrow() throws Kerb4JKerberosException {
+        try {
+            return createAcceptContext();
+        } catch (PrivilegedActionException e) {
+            throw KerberosFailureAnalyzer.wrap("spnego.create-accept-context", e);
+        }
     }
 
     private static final class SpnegoClientProviderRegistry {

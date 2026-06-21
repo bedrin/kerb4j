@@ -1,5 +1,7 @@
 package com.kerb4j.client;
 
+import com.kerb4j.common.exception.Kerb4JKerberosException;
+import com.kerb4j.common.exception.KerberosFailureAnalyzer;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSException;
 import org.ietf.jgss.GSSName;
@@ -61,13 +63,33 @@ public class SpnegoContext implements Closeable {
         );
     }
 
+    public byte[] createTokenOrThrow() {
+        try {
+            return createToken();
+        } catch (PrivilegedActionException e) {
+            throw KerberosFailureAnalyzer.wrap("spnego.create-token", e);
+        }
+    }
+
     public String createTokenAsAuthroizationHeader() throws PrivilegedActionException {
         return "Negotiate " + Base64.getEncoder().encodeToString(createToken());
+    }
+
+    public String createTokenAsAuthorizationHeader() throws Kerb4JKerberosException {
+        return "Negotiate " + Base64.getEncoder().encodeToString(createTokenOrThrow());
     }
 
     public byte[] processMutualAuthorization(final byte[] data, final int offset, final int length) throws PrivilegedActionException {
         return Subject.doAs(subject, (PrivilegedExceptionAction<byte[]>) () -> gssContext.initSecContext(data, offset, length)
         );
+    }
+
+    public byte[] processMutualAuthorizationOrThrow(final byte[] data, final int offset, final int length) {
+        try {
+            return processMutualAuthorization(data, offset, length);
+        } catch (PrivilegedActionException e) {
+            throw KerberosFailureAnalyzer.wrap("spnego.process-mutual-authorization", e);
+        }
     }
 
     public byte[] acceptToken(byte[] token) throws GSSException {
@@ -76,6 +98,14 @@ public class SpnegoContext implements Closeable {
                     () -> gssContext.acceptSecContext(token, 0, token.length));
         } catch (PrivilegedActionException e) {
             throw toGssException(e);
+        }
+    }
+
+    public byte[] acceptTokenOrThrow(byte[] token) {
+        try {
+            return acceptToken(token);
+        } catch (GSSException e) {
+            throw KerberosFailureAnalyzer.wrap("spnego.accept-token", e);
         }
     }
 

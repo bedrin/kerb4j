@@ -2,6 +2,7 @@ package com.kerb4j.server.spring;
 
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;
+import com.kerb4j.common.exception.KerberosFailureAnalyzer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.ietf.jgss.GSSException;
@@ -64,12 +65,9 @@ public class SpnegoAuthenticationProvider implements AuthenticationProvider, Ini
                 context = spnegoClient.createContextForSPN(serverSpn);
                 authentication = new SpnegoRequestToken(context.createToken());
                 // context.close(); // TODO: implement
-            } catch (PrivilegedActionException e) {
-                throw new AuthenticationServiceException(e.getMessage(), e);
-            } catch (GSSException e) {
-                throw new AuthenticationServiceException(e.getMessage(), e);
-            } catch (MalformedURLException e) {
-                throw new AuthenticationServiceException(e.getMessage(), e);
+            } catch (PrivilegedActionException | GSSException | MalformedURLException e) {
+                RuntimeException kerberosException = KerberosFailureAnalyzer.wrap("spnego.authenticate-username-password", e);
+                throw new AuthenticationServiceException(kerberosException.getMessage(), kerberosException);
             } finally {
                 try {
                     if (null != context) {
