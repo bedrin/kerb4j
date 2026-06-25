@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.6.0
+
+### Dependencies
+- Updated `org.springframework.boot` from `3.5.14` to `4.1.0`.
+
 ## 0.5.0
 
 ### Bug fixes
