@@ -14,8 +14,15 @@ Main features:
 
 Java Compatibility
 ========
-Version 0.2.x+ requires Java 17 or higher
-Version 0.1.x+ supports Java 7+
+Version 0.2.x and higher requires Java 17 or higher
+Version 0.1.x supports Java 7+
+
+Spring Compatibility
+========
+Version 0.5.x and higher supports Spring 7.x and Spring Boot 4.1.x
+Version 0.3.x and higher supports Spring 7.x and Spring Boot 4.0.x
+Version 0.2.x and higher supports Spring 6.x and Spring Boot 3.x
+Version 0.1.x supports Spring 5.x and Spring Boot 2.x
 
 Installation
 ========
@@ -28,7 +35,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-client</artifactId>
-    <version>0.5.0</version>
+    <version>0.5.1</version>
 </dependency>
 ```
 
@@ -38,7 +45,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-server-spring-security</artifactId>
-    <version>0.5.0</version>
+    <version>0.5.1</version>
 </dependency>
 ```
 
@@ -48,7 +55,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-server-tomcat</artifactId>
-    <version>0.5.0</version>
+    <version>0.5.1</version>
 </dependency>
 ```
 

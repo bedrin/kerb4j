@@ -2,12 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.5.1
+
+### Dependencies
+- Updated `org.apache.kerby` from `2.1.1` to `2.1.2`.
+
 ## 0.5.0
 
 ### Bug fixes
 - Tomcat Kerb4J SpnegoAuthenticator is now compatible with Tomcat 11.x
 ### Dependencies
-- Updated `org.springframework.boot` from `3.5.14` to `4.0.6`.
+- Updated `org.springframework.boot` from `3.5.14` to `4.1.0`.
 
 ## 0.4.0
 
