@@ -28,7 +28,7 @@
         <maven.compiler.version>3.15.0</maven.compiler.version>
         <maven.javadoc.version>3.12.0</maven.javadoc.version>
         <apacheDirServerVersion>2.0.0.AM26</apacheDirServerVersion>
-        <kerby.version>2.1.1</kerby.version>
+        <kerby.version>2.1.2</kerby.version>
         <hamcrest.version>3.0</hamcrest.version>
         <mokito.version>5.23.0</mokito.version>
         <slf4j.version>2.0.18</slf4j.version>
