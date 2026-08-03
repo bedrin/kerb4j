@@ -32,7 +32,7 @@
         <hamcrest.version>3.0</hamcrest.version>
         <mokito.version>5.23.0</mokito.version>
         <slf4j.version>2.0.18</slf4j.version>
-        <jspecify.version>1.0.0</jspecify.version>
+        <jspecify.version>1.0.1</jspecify.version>
     </properties>
 
     <licenses>
