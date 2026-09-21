@@ -177,12 +177,6 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
 
     protected GSSContext getGSSContext(final Subject subject, final GSSName gssName)
             throws GSSException, PrivilegedActionException {
-        try {
-            Thread.sleep(31);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
         return Subject.doAs(subject, new PrivilegedExceptionAction<GSSContext>() {
             @Override
             public GSSContext run() throws Exception {
