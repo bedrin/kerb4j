@@ -9,11 +9,17 @@ import org.apache.kerby.kerberos.kerb.request.KrbIdentity;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.apache.kerby.kerberos.kerb.type.base.NameType;
 import org.apache.kerby.kerberos.kerb.type.base.PrincipalName;
+import org.ietf.jgss.GSSContext;
+import org.ietf.jgss.GSSException;
+import org.ietf.jgss.GSSName;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import javax.security.auth.Subject;
 import java.io.File;
+import java.security.PrivilegedActionException;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -133,5 +139,46 @@ class KerbySpnegoClientProviderTest extends KerberosSecurityTestcase {
         SpnegoClient spnegoClient = SpnegoClient.loginWithKeyTab("unused", "unused.keytab");
 
         assertEquals(JdkSpnegoClientProvider.NAME, spnegoClient.getImplementationName());
+    }
+
+    @Test
+    void kerbyBackendRefreshesExactTgtAndRetriesNoCredContextConstructionOnce() throws Exception {
+        SimpleKdcServer kdc = getKdc();
+        File workDir = getWorkDir();
+        String serverPrincipal = "HTTP/localhost";
+        File serverKeytab = new File(workDir, "kerby-retry-server.keytab");
+        kdc.createAndExportPrincipals(serverKeytab, serverPrincipal);
+
+        String clientPrincipal = "retry-client";
+        String clientPassword = "changeit";
+        kdc.createPrincipal(clientPrincipal, clientPassword);
+
+        AtomicInteger contextAttempts = new AtomicInteger();
+        KerbySpnegoClientProvider.KerbyCredentials credentials =
+                KerbySpnegoClientProvider.KerbyCredentials.withPassword(clientPrincipal, clientPassword);
+        KerbySpnegoClientProvider.KerbySpnegoClientBackend backend =
+                new KerbySpnegoClientProvider.KerbySpnegoClientBackend(credentials) {
+                    @Override
+                    protected GSSContext getGSSContext(Subject subject, GSSName gssName)
+                            throws GSSException, PrivilegedActionException {
+                        if (contextAttempts.incrementAndGet() == 1) {
+                            throw new PrivilegedActionException(new GSSException(GSSException.NO_CRED));
+                        }
+                        return super.getGSSContext(subject, gssName);
+                    }
+                };
+        SpnegoClient acceptor = SpnegoClient.loginWithKeyTab(
+                serverPrincipal, serverKeytab.getAbsolutePath(), true);
+
+        byte[] token;
+        try (SpnegoContext initiatorContext = backend.createContextForSPN(null, serverPrincipal)) {
+            token = initiatorContext.createToken();
+        }
+
+        assertEquals(2, contextAttempts.get());
+        try (SpnegoContext acceptContext = acceptor.createAcceptContext()) {
+            acceptContext.acceptToken(token);
+            assertTrue(acceptContext.isEstablished());
+        }
     }
 }

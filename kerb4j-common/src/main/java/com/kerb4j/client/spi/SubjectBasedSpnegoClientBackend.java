@@ -24,7 +24,9 @@ import java.security.PrivilegedExceptionAction;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.IdentityHashMap;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -69,9 +71,13 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
 
     @Override
     public Subject getSubject() {
+        return getSubjectSelection().subject;
+    }
+
+    private SubjectSelection getSubjectSelection() {
         Subject eternalSubject = eternalSubjectReference.get();
         if (null != eternalSubject) {
-            return eternalSubject;
+            return new SubjectSelection(eternalSubject, null);
         }
         SubjectTgtPair subjectTgtPair = subjectTgtPairReference.get();
         if (null == subjectTgtPair || subjectTgtPair.isExpired(clock, tgtRefreshMargin)) {
@@ -79,7 +85,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
             try {
                 eternalSubject = eternalSubjectReference.get();
                 if (null != eternalSubject) {
-                    return eternalSubject;
+                    return new SubjectSelection(eternalSubject, null);
                 }
                 subjectTgtPair = subjectTgtPairReference.get();
                 if (null == subjectTgtPair || subjectTgtPair.isExpired(clock, tgtRefreshMargin)) {
@@ -95,7 +101,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                         // isInitiator=false / acceptOnly subjects do not contain a TGT, so there is no expiry time
                         // to drive refresh. Keep that subject permanently to preserve the old JDK accept-only behavior.
                         eternalSubjectReference.set(subject);
-                        return subject;
+                        return new SubjectSelection(subject, null);
                     }
                 }
             } catch (RuntimeException e) {
@@ -106,7 +112,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                 authenticateLock.unlock();
             }
         }
-        return subjectTgtPair.subject;
+        return new SubjectSelection(subjectTgtPair.subject, subjectTgtPair);
     }
 
     private static Duration requireNonNegative(Duration duration) {
@@ -140,15 +146,53 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
 
     @Override
     public SpnegoContext createContext(SpnegoClient spnegoClient, URL url) throws PrivilegedActionException, GSSException {
-        Subject subject = getSubject();
-        return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, SpnegoProvider.getServerName(url)));
+        GSSName gssName = SpnegoProvider.getServerName(url);
+        return createInitiatorContext(spnegoClient, gssName);
     }
 
     @Override
     public SpnegoContext createContextForSPN(SpnegoClient spnegoClient, String spn)
             throws PrivilegedActionException, GSSException, MalformedURLException {
-        Subject subject = getSubject();
-        return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, SpnegoProvider.createGSSNameForSPN(spn)));
+        GSSName gssName = SpnegoProvider.createGSSNameForSPN(spn);
+        return createInitiatorContext(spnegoClient, gssName);
+    }
+
+    SpnegoContext createInitiatorContext(SpnegoClient spnegoClient, GSSName gssName)
+            throws PrivilegedActionException, GSSException {
+        SubjectSelection firstSelection = getSubjectSelection();
+        try {
+            return createInitiatorContext(spnegoClient, gssName, firstSelection.subject);
+        } catch (PrivilegedActionException | GSSException firstFailure) {
+            if (!isNoCredentialFailure(firstFailure) || firstSelection.subjectTgtPair == null) {
+                throw firstFailure;
+            }
+
+            subjectTgtPairReference.compareAndSet(firstSelection.subjectTgtPair, null);
+            try {
+                SubjectSelection secondSelection = getSubjectSelection();
+                return createInitiatorContext(spnegoClient, gssName, secondSelection.subject);
+            } catch (PrivilegedActionException | GSSException | RuntimeException secondFailure) {
+                if (secondFailure != firstFailure) {
+                    secondFailure.addSuppressed(firstFailure);
+                }
+                throw secondFailure;
+            }
+        }
+    }
+
+    private SpnegoContext createInitiatorContext(SpnegoClient spnegoClient, GSSName gssName, Subject subject)
+            throws PrivilegedActionException, GSSException {
+        return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, gssName));
+    }
+
+    private static boolean isNoCredentialFailure(Throwable failure) {
+        Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Throwable cause = failure; cause != null && visited.add(cause); cause = cause.getCause()) {
+            if (cause instanceof GSSException && ((GSSException) cause).getMajor() == GSSException.NO_CRED) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -227,6 +271,17 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                 LOGGER.error("Failed to get Kerberos ticket end time", e);
                 return true;
             }
+        }
+    }
+
+    private static class SubjectSelection {
+
+        private final Subject subject;
+        private final SubjectTgtPair subjectTgtPair;
+
+        private SubjectSelection(Subject subject, SubjectTgtPair subjectTgtPair) {
+            this.subject = subject;
+            this.subjectTgtPair = subjectTgtPair;
         }
     }
 }

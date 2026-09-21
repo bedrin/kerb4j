@@ -21,6 +21,7 @@ import org.apache.kerby.kerberos.kerb.type.base.PrincipalName;
 import org.apache.kerby.kerberos.kerb.type.kdc.EncKdcRepPart;
 import org.apache.kerby.kerberos.kerb.type.ticket.*;
 import org.ietf.jgss.GSSException;
+import org.ietf.jgss.GSSName;
 import org.jspecify.annotations.NonNull;
 
 import javax.security.auth.Subject;
@@ -95,10 +96,10 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         return new Subject(false, principals, new HashSet<>(), privateCredentials);
     }
 
-    private static class KerbySpnegoClientBackend extends SubjectBasedSpnegoClientBackend {
+    static class KerbySpnegoClientBackend extends SubjectBasedSpnegoClientBackend {
         private final KerbyCredentials credentials;
 
-        private KerbySpnegoClientBackend(KerbyCredentials credentials) {
+        KerbySpnegoClientBackend(KerbyCredentials credentials) {
             super(NAME, credentials::getTgtSubject);
             this.credentials = credentials;
         }
@@ -107,24 +108,60 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         public SpnegoContext createContext(SpnegoClient spnegoClient, URL url)
                 throws PrivilegedActionException, GSSException {
             ServiceIdentity serviceIdentity = ServiceIdentity.forUrl(url);
-            Subject subject = subjectForService(serviceIdentity.servicePrincipal);
-            return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, serviceIdentity.gssName));
+            return createInitiatorContext(spnegoClient, serviceIdentity);
         }
 
         @Override
         public SpnegoContext createContextForSPN(SpnegoClient spnegoClient, String spn)
                 throws PrivilegedActionException, GSSException, MalformedURLException {
             ServiceIdentity serviceIdentity = ServiceIdentity.forSpn(spn);
-            Subject subject = subjectForService(serviceIdentity.servicePrincipal);
-            return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, serviceIdentity.gssName));
+            return createInitiatorContext(spnegoClient, serviceIdentity);
         }
 
-        private Subject subjectForService(String servicePrincipal) throws PrivilegedActionException {
+        private SpnegoContext createInitiatorContext(SpnegoClient spnegoClient, ServiceIdentity serviceIdentity)
+                throws PrivilegedActionException, GSSException {
+            ServiceSubject firstServiceSubject = subjectForService(serviceIdentity.servicePrincipal);
+            try {
+                return createInitiatorContext(spnegoClient, serviceIdentity.gssName, firstServiceSubject.subject);
+            } catch (PrivilegedActionException | GSSException firstFailure) {
+                if (!isNoCredentialFailure(firstFailure)) {
+                    throw firstFailure;
+                }
+
+                credentials.invalidateTgtTicket(firstServiceSubject.tgt);
+                try {
+                    ServiceSubject secondServiceSubject = subjectForService(serviceIdentity.servicePrincipal);
+                    return createInitiatorContext(spnegoClient, serviceIdentity.gssName, secondServiceSubject.subject);
+                } catch (PrivilegedActionException | GSSException | RuntimeException secondFailure) {
+                    if (secondFailure != firstFailure) {
+                        secondFailure.addSuppressed(firstFailure);
+                    }
+                    throw secondFailure;
+                }
+            }
+        }
+
+        private SpnegoContext createInitiatorContext(SpnegoClient spnegoClient, GSSName gssName, Subject subject)
+                throws PrivilegedActionException, GSSException {
+            return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, gssName));
+        }
+
+        private ServiceSubject subjectForService(String servicePrincipal) throws PrivilegedActionException {
             try {
                 return credentials.getServiceSubject(servicePrincipal);
             } catch (Exception e) {
                 throw new PrivilegedActionException(e);
             }
+        }
+
+        private static boolean isNoCredentialFailure(Throwable failure) {
+            Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+            for (Throwable cause = failure; cause != null && visited.add(cause); cause = cause.getCause()) {
+                if (cause instanceof GSSException && ((GSSException) cause).getMajor() == GSSException.NO_CRED) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -150,7 +187,7 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             this.tgtRefreshMargin = requireNonNegative(tgtRefreshMargin);
         }
 
-        private static KerbyCredentials withPassword(String principal, String password) {
+        static KerbyCredentials withPassword(String principal, String password) {
             return new KerbyCredentials(() -> {
                 KrbClient client = createClient();
                 return client.requestTgt(realmQualifiedPrincipal(client, principal), password);
@@ -183,12 +220,12 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             return subjectWithTickets(tgt.getClientPrincipal(), tgt);
         }
 
-        private Subject getServiceSubject(String servicePrincipal) throws Exception {
+        private ServiceSubject getServiceSubject(String servicePrincipal) throws Exception {
             TgtTicket tgt = getTgtTicket();
             KrbClient client = createClient();
             SgtTicket sgt = client.requestSgt(tgt, servicePrincipal);
             PrincipalName clientPrincipal = sgt.getClientPrincipal() == null ? tgt.getClientPrincipal() : sgt.getClientPrincipal();
-            return subjectWithTickets(clientPrincipal, tgt, sgt);
+            return new ServiceSubject(subjectWithTickets(clientPrincipal, tgt, sgt), tgt);
         }
 
         TgtTicket getTgtTicket() throws Exception {
@@ -198,6 +235,17 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
                     tgtTicket = tgtRequester.call();
                 }
                 return tgtTicket;
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        void invalidateTgtTicket(TgtTicket failedTgt) {
+            lock.lock();
+            try {
+                if (tgtTicket == failedTgt) {
+                    tgtTicket = null;
+                }
             } finally {
                 lock.unlock();
             }
@@ -367,6 +415,17 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             return endTime == null || endTime.getTime() <= clock.instant().plus(refreshMargin).toEpochMilli();
         }
 
+    }
+
+    private static class ServiceSubject {
+
+        private final Subject subject;
+        private final TgtTicket tgt;
+
+        private ServiceSubject(Subject subject, TgtTicket tgt) {
+            this.subject = subject;
+            this.tgt = tgt;
+        }
     }
 
     private static class EnterpriseInternalKrbClient extends DefaultInternalKrbClient {

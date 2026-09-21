@@ -112,6 +112,39 @@ class KerbyCredentialsTest {
         assertEquals(2, requesterCalls.get());
     }
 
+    @Test
+    void invalidatingCurrentTgtForcesNormalRequesterRefresh() throws Exception {
+        TgtTicket failedTgt = tgt(NOW.plusSeconds(600));
+        TgtTicket refreshedTgt = tgt(NOW.plusSeconds(600));
+        AtomicInteger requesterCalls = new AtomicInteger();
+        KerbySpnegoClientProvider.KerbyCredentials credentials =
+                credentials(sequence(failedTgt, refreshedTgt, requesterCalls));
+
+        assertSame(failedTgt, credentials.getTgtTicket());
+        credentials.invalidateTgtTicket(failedTgt);
+
+        assertSame(refreshedTgt, credentials.getTgtTicket());
+        assertEquals(2, requesterCalls.get());
+    }
+
+    @Test
+    void staleTgtInvalidationDoesNotClearNewerTgt() throws Exception {
+        TgtTicket staleTgt = tgt(NOW.plusSeconds(600));
+        TgtTicket freshTgt = tgt(NOW.plusSeconds(600));
+        AtomicInteger requesterCalls = new AtomicInteger();
+        KerbySpnegoClientProvider.KerbyCredentials credentials =
+                credentials(sequence(staleTgt, freshTgt, requesterCalls));
+
+        assertSame(staleTgt, credentials.getTgtTicket());
+        credentials.invalidateTgtTicket(staleTgt);
+        assertSame(freshTgt, credentials.getTgtTicket());
+
+        credentials.invalidateTgtTicket(staleTgt);
+
+        assertSame(freshTgt, credentials.getTgtTicket());
+        assertEquals(2, requesterCalls.get());
+    }
+
     private static void assertRefreshesAt(Instant endTime) throws Exception {
         TgtTicket initialTgt = tgt(endTime);
         TgtTicket refreshedTgt = tgt(NOW.plusSeconds(600));
