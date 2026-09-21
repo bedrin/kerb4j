@@ -9,8 +9,6 @@ public class Kerb4JException extends Exception {
     private static final ResourceBundle MESSAGES = ResourceBundle
             .getBundle("exceptions");
 
-    private final Throwable cause;
-
     public Kerb4JException() {
         this(null, null);
     }
@@ -28,12 +26,7 @@ public class Kerb4JException extends Exception {
     }
 
     public Kerb4JException(String message, Throwable cause) {
-        super(message);
-        this.cause = cause;
-    }
-
-    public Throwable getCause() {
-        return cause;
+        super(message, cause);
     }
 
 }

@@ -2,6 +2,7 @@ package com.kerb4j.client.spi;
 
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;
+import com.kerb4j.common.exception.KerberosFailureAnalyzer;
 import com.kerb4j.common.util.JreVendor;
 import com.kerb4j.common.util.SpnegoProvider;
 import org.ietf.jgss.GSSContext;
@@ -82,7 +83,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
             } catch (RuntimeException e) {
                 throw e;
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw KerberosFailureAnalyzer.wrap("kerberos.login", e);
             } finally {
                 authenticateLock.unlock();
             }

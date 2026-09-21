@@ -4,6 +4,9 @@ import com.kerb4j.client.spi.JaasSubjectSupplier;
 import com.kerb4j.client.spi.SpnegoClientBackend;
 import com.kerb4j.client.spi.SpnegoClientProvider;
 import com.kerb4j.client.spi.SubjectBasedSpnegoClientBackend;
+import com.kerb4j.common.exception.KerberosFailureAnalyzer;
+import com.kerb4j.common.exception.KerberosFailureCategory;
+import com.kerb4j.common.exception.KerberosFailureCode;
 import com.kerb4j.common.jaas.sun.Krb5LoginContext;
 
 public class JdkSpnegoClientProvider implements SpnegoClientProvider {
@@ -24,7 +27,14 @@ public class JdkSpnegoClientProvider implements SpnegoClientProvider {
 
     @Override
     public SpnegoClientBackend loginWithEnterprisePrincipal(String enterprisePrincipal, String password) {
-        throw new UnsupportedOperationException("Enterprise principal login is not supported by the JDK SPNEGO provider");
+        throw KerberosFailureAnalyzer.explicit(
+                "kerberos.login-with-enterprise-principal",
+                KerberosFailureCode.UNSUPPORTED_OPERATION,
+                KerberosFailureCategory.PROVIDER,
+                "Enterprise principal login is not supported by the JDK SPNEGO provider.",
+                null,
+                "The JDK provider cannot send the client name as Kerberos NT_ENTERPRISE",
+                "Use the apache-kerby provider for enterprise principal login");
     }
 
     @Override

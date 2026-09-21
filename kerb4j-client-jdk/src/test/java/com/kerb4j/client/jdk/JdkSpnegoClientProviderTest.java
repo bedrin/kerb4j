@@ -3,6 +3,8 @@ package com.kerb4j.client.jdk;
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;
+import com.kerb4j.common.exception.KerberosFailureCode;
+import com.kerb4j.common.exception.KerberosProviderException;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -50,10 +52,11 @@ class JdkSpnegoClientProviderTest extends KerberosSecurityTestcase {
 
     @Test
     void jdkProviderDoesNotSupportEnterprisePrincipalLogin() {
-        UnsupportedOperationException exception = assertThrows(
-                UnsupportedOperationException.class,
+        KerberosProviderException exception = assertThrows(
+                KerberosProviderException.class,
                 () -> SpnegoClient.loginWithEnterprisePrincipal("dmitry.bedrin@db.com", "password"));
 
+        assertEquals(KerberosFailureCode.UNSUPPORTED_OPERATION, exception.getFailureCode());
         assertTrue(exception.getMessage().contains("Enterprise principal login"));
     }
 }
