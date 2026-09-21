@@ -192,6 +192,11 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
         }
 
         private boolean isExpired() {
+
+            if (null == tgt || tgt.isDestroyed()) {
+                return true;
+            }
+
             try {
                 synchronized (tgt) {
                     return tgt.getEndTime().before(new Date());
