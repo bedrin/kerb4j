@@ -4,6 +4,8 @@ import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;
 import com.kerb4j.client.jdk.JdkSpnegoClientProvider;
+import com.kerb4j.client.spi.SpnegoClientBackend;
+import com.kerb4j.client.spi.SubjectBasedSpnegoClientBackend;
 import org.apache.kerby.kerberos.kerb.common.EncryptionUtil;
 import org.apache.kerby.kerberos.kerb.request.KrbIdentity;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.Test;
 
 import javax.security.auth.Subject;
 import java.io.File;
+import java.lang.reflect.Field;
 import java.security.PrivilegedActionException;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -142,6 +145,16 @@ class KerbySpnegoClientProviderTest extends KerberosSecurityTestcase {
     }
 
     @Test
+    void kerbyProviderConfiguresInitiatorAndAcceptOnlyModesExplicitly() throws Exception {
+        KerbySpnegoClientProvider provider = new KerbySpnegoClientProvider();
+
+        assertSubjectMode(provider.loginWithUsernamePassword("client", "password"), "INITIATOR");
+        assertSubjectMode(provider.loginWithEnterprisePrincipal("user@example.com", "password"), "INITIATOR");
+        assertSubjectMode(provider.loginWithKeyTab("client", "client.keytab", false), "INITIATOR");
+        assertSubjectMode(provider.loginWithKeyTab("HTTP/service", "service.keytab", true), "ACCEPT_ONLY");
+    }
+
+    @Test
     void kerbyBackendRefreshesExactTgtAndRetriesNoCredContextConstructionOnce() throws Exception {
         SimpleKdcServer kdc = getKdc();
         File workDir = getWorkDir();
@@ -180,5 +193,11 @@ class KerbySpnegoClientProviderTest extends KerberosSecurityTestcase {
             acceptContext.acceptToken(token);
             assertTrue(acceptContext.isEstablished());
         }
+    }
+
+    private static void assertSubjectMode(SpnegoClientBackend backend, String expectedMode) throws Exception {
+        Field subjectMode = SubjectBasedSpnegoClientBackend.class.getDeclaredField("subjectMode");
+        subjectMode.setAccessible(true);
+        assertEquals(expectedMode, subjectMode.get(backend).toString());
     }
 }

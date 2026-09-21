@@ -3,11 +3,14 @@ package com.kerb4j.client.jdk;
 import com.kerb4j.KerberosSecurityTestcase;
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;
+import com.kerb4j.client.spi.SpnegoClientBackend;
+import com.kerb4j.client.spi.SubjectBasedSpnegoClientBackend;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -62,6 +65,16 @@ class JdkSpnegoClientProviderTest extends KerberosSecurityTestcase {
                 () -> SpnegoClient.loginWithEnterprisePrincipal("dmitry.bedrin@db.com", "password"));
 
         assertTrue(exception.getMessage().contains("Enterprise principal login"));
+    }
+
+    @Test
+    void jdkProviderConfiguresInitiatorAndAcceptOnlyModesExplicitly() throws Exception {
+        JdkSpnegoClientProvider provider = new JdkSpnegoClientProvider();
+
+        assertSubjectMode(provider.loginWithUsernamePassword("client", "password"), "INITIATOR");
+        assertSubjectMode(provider.loginWithKeyTab("client", "client.keytab", false), "INITIATOR");
+        assertSubjectMode(provider.loginWithTicketCache("client"), "INITIATOR");
+        assertSubjectMode(provider.loginWithKeyTab("HTTP/service", "service.keytab", true), "ACCEPT_ONLY");
     }
 
     @Test
@@ -130,6 +143,12 @@ class JdkSpnegoClientProviderTest extends KerberosSecurityTestcase {
                         contextPairs.get(j).acceptorContext().getGSSContext());
             }
         }
+    }
+
+    private static void assertSubjectMode(SpnegoClientBackend backend, String expectedMode) throws Exception {
+        Field subjectMode = SubjectBasedSpnegoClientBackend.class.getDeclaredField("subjectMode");
+        subjectMode.setAccessible(true);
+        assertEquals(expectedMode, subjectMode.get(backend).toString());
     }
 
     private record ContextPair(SpnegoContext initiatorContext, SpnegoContext acceptorContext) {

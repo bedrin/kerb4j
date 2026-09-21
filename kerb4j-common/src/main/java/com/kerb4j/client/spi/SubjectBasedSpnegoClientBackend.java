@@ -45,23 +45,51 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
     private final Callable<Subject> subjectSupplier;
     private final Clock clock;
     private final Duration tgtRefreshMargin;
+    private final SubjectMode subjectMode;
     private final Lock authenticateLock = new ReentrantLock();
+    private boolean tgtWasPublished;
 
     public SubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier) {
-        this(implementationName, subjectSupplier, Clock.systemUTC(), DEFAULT_TGT_REFRESH_MARGIN);
+        this(implementationName, subjectSupplier, Clock.systemUTC(), DEFAULT_TGT_REFRESH_MARGIN, SubjectMode.AUTOMATIC);
+    }
+
+    /**
+     * Internal constructor for providers that know whether their login configuration is accept-only.
+     *
+     * @param implementationName backend implementation name
+     * @param subjectSupplier authenticated Subject supplier
+     * @param acceptOnly whether the supplied Subject is intentionally accept-only
+     */
+    protected SubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier,
+                                              boolean acceptOnly) {
+        this(implementationName, subjectSupplier, Clock.systemUTC(), DEFAULT_TGT_REFRESH_MARGIN,
+                acceptOnly ? SubjectMode.ACCEPT_ONLY : SubjectMode.INITIATOR);
     }
 
     SubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier,
                                     @NonNull Clock clock) {
-        this(implementationName, subjectSupplier, clock, DEFAULT_TGT_REFRESH_MARGIN);
+        this(implementationName, subjectSupplier, clock, DEFAULT_TGT_REFRESH_MARGIN, SubjectMode.AUTOMATIC);
+    }
+
+    SubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier,
+                                    @NonNull Clock clock, boolean acceptOnly) {
+        this(implementationName, subjectSupplier, clock, DEFAULT_TGT_REFRESH_MARGIN,
+                acceptOnly ? SubjectMode.ACCEPT_ONLY : SubjectMode.INITIATOR);
     }
 
     SubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier,
                                     @NonNull Clock clock, @NonNull Duration tgtRefreshMargin) {
+        this(implementationName, subjectSupplier, clock, tgtRefreshMargin, SubjectMode.AUTOMATIC);
+    }
+
+    private SubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier,
+                                             @NonNull Clock clock, @NonNull Duration tgtRefreshMargin,
+                                             @NonNull SubjectMode subjectMode) {
         this.implementationName = implementationName;
         this.subjectSupplier = subjectSupplier;
         this.clock = Objects.requireNonNull(clock, "clock");
         this.tgtRefreshMargin = requireNonNegative(tgtRefreshMargin);
+        this.subjectMode = Objects.requireNonNull(subjectMode, "subjectMode");
     }
 
     @Override
@@ -89,20 +117,22 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                 }
                 subjectTgtPair = subjectTgtPairReference.get();
                 if (null == subjectTgtPair || subjectTgtPair.isExpired(clock, tgtRefreshMargin)) {
-                    Subject subject = subjectSupplier.call();
-                    for (KerberosTicket ticket : subject.getPrivateCredentials(KerberosTicket.class)) {
-                        if (ticket.getServer().getName().startsWith("krbtgt")) {
-                            subjectTgtPairReference.set(new SubjectTgtPair(ticket, subject));
-                            break;
-                        }
+                    Subject refreshedSubject = subjectSupplier.call();
+                    SubjectTgtPair refreshedPair = findTgtPair(refreshedSubject);
+                    if (refreshedPair != null) {
+                        subjectTgtPairReference.set(refreshedPair);
+                        tgtWasPublished = true;
+                        return new SubjectSelection(refreshedSubject, refreshedPair);
                     }
-                    subjectTgtPair = subjectTgtPairReference.get();
-                    if (null == subjectTgtPair) {
-                        // isInitiator=false / acceptOnly subjects do not contain a TGT, so there is no expiry time
-                        // to drive refresh. Keep that subject permanently to preserve the old JDK accept-only behavior.
-                        eternalSubjectReference.set(subject);
-                        return new SubjectSelection(subject, null);
+
+                    if (subjectMode == SubjectMode.INITIATOR || tgtWasPublished) {
+                        throw new IllegalStateException("Refreshed Subject for initiator backend '"
+                                + implementationName + "' contains no Kerberos TGT");
                     }
+
+                    // Explicit accept-only and legacy automatic backends may cache an initial no-TGT Subject.
+                    eternalSubjectReference.set(refreshedSubject);
+                    return new SubjectSelection(refreshedSubject, null);
                 }
             } catch (RuntimeException e) {
                 throw e;
@@ -113,6 +143,16 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
             }
         }
         return new SubjectSelection(subjectTgtPair.subject, subjectTgtPair);
+    }
+
+    private static SubjectTgtPair findTgtPair(Subject subject) {
+        for (KerberosTicket ticket : subject.getPrivateCredentials(KerberosTicket.class)) {
+            KerberosPrincipal server = ticket.getServer();
+            if (server != null && server.getName().startsWith("krbtgt")) {
+                return new SubjectTgtPair(ticket, subject);
+            }
+        }
+        return null;
     }
 
     private static Duration requireNonNegative(Duration duration) {
@@ -283,5 +323,11 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
             this.subject = subject;
             this.subjectTgtPair = subjectTgtPair;
         }
+    }
+
+    private enum SubjectMode {
+        AUTOMATIC,
+        INITIATOR,
+        ACCEPT_ONLY
     }
 }

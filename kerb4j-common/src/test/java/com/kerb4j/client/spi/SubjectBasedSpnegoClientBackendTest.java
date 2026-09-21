@@ -21,6 +21,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -161,6 +162,117 @@ class SubjectBasedSpnegoClientBackendTest {
         assertEquals("refresh failed", failure.getCause().getMessage());
         assertSame(refreshedSubject, backend.getSubject());
         assertSame(refreshedSubject, backend.getSubject());
+        assertEquals(3, supplierCalls.get());
+    }
+
+    @Test
+    void initialExplicitAcceptOnlySubjectIsCachedAsEternal() {
+        Subject acceptOnlySubject = new Subject();
+        AtomicInteger supplierCalls = new AtomicInteger();
+        SubjectBasedSpnegoClientBackend backend = backend(() -> {
+            supplierCalls.incrementAndGet();
+            return acceptOnlySubject;
+        }, true);
+
+        assertSame(acceptOnlySubject, backend.getSubject());
+        assertSame(acceptOnlySubject, backend.getSubject());
+
+        assertEquals(1, supplierCalls.get());
+    }
+
+    @Test
+    void initialInitiatorSubjectWithoutTgtFailsClearlyAndRemainsRetryable() {
+        AtomicInteger supplierCalls = new AtomicInteger();
+        SubjectBasedSpnegoClientBackend backend = backend(() -> {
+            supplierCalls.incrementAndGet();
+            return new Subject();
+        }, false);
+
+        IllegalStateException firstFailure = assertThrows(IllegalStateException.class, backend::getSubject);
+        IllegalStateException secondFailure = assertThrows(IllegalStateException.class, backend::getSubject);
+
+        assertTrue(firstFailure.getMessage().contains("contains no Kerberos TGT"));
+        assertTrue(secondFailure.getMessage().contains("contains no Kerberos TGT"));
+        assertEquals(2, supplierCalls.get());
+    }
+
+    @Test
+    void noTgtRefreshNeverReturnsExpiredSubjectAndLaterValidResultRecovers() {
+        Subject expiredSubject = subjectWithTgt(NOW.plusSeconds(30));
+        Subject invalidRefreshedSubject = new Subject();
+        Subject recoveredSubject = subjectWithTgt(NOW.plusSeconds(600));
+        AtomicInteger supplierCalls = new AtomicInteger();
+        SubjectBasedSpnegoClientBackend backend = backend(
+                sequence(new Subject[]{expiredSubject, invalidRefreshedSubject, recoveredSubject}, supplierCalls));
+        assertSame(expiredSubject, backend.getSubject());
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class, backend::getSubject);
+
+        assertTrue(failure.getMessage().contains("contains no Kerberos TGT"));
+        assertSame(recoveredSubject, backend.getSubject());
+        assertSame(recoveredSubject, backend.getSubject());
+        assertEquals(3, supplierCalls.get());
+    }
+
+    @Test
+    void concurrentCallersCannotObserveOldOrPartiallyPublishedStateAfterInvalidRefresh() throws Exception {
+        Subject expiredSubject = subjectWithTgt(NOW.plusSeconds(30));
+        Subject invalidRefreshedSubject = new Subject();
+        Subject recoveredSubject = subjectWithTgt(NOW.plusSeconds(600));
+        AtomicInteger supplierCalls = new AtomicInteger();
+        CountDownLatch invalidRefreshStarted = new CountDownLatch(1);
+        CountDownLatch allowInvalidRefresh = new CountDownLatch(1);
+        SubjectBasedSpnegoClientBackend backend = backend(() -> {
+            int call = supplierCalls.incrementAndGet();
+            if (call == 1) {
+                return expiredSubject;
+            }
+            if (call == 2) {
+                invalidRefreshStarted.countDown();
+                if (!allowInvalidRefresh.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Timed out waiting to complete invalid refresh");
+                }
+                return invalidRefreshedSubject;
+            }
+            return recoveredSubject;
+        }, false);
+        assertSame(expiredSubject, backend.getSubject());
+
+        int callerCount = 16;
+        ExecutorService executor = Executors.newFixedThreadPool(callerCount);
+        CountDownLatch callersReady = new CountDownLatch(callerCount);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Future<Subject>> results = java.util.stream.IntStream.range(0, callerCount)
+                    .mapToObj(ignored -> executor.submit(() -> {
+                        callersReady.countDown();
+                        start.await();
+                        return backend.getSubject();
+                    }))
+                    .toList();
+
+            assertTrue(callersReady.await(10, TimeUnit.SECONDS));
+            start.countDown();
+            assertTrue(invalidRefreshStarted.await(10, TimeUnit.SECONDS));
+            allowInvalidRefresh.countDown();
+
+            int invalidRefreshFailures = 0;
+            for (Future<Subject> result : results) {
+                try {
+                    assertSame(recoveredSubject, result.get(10, TimeUnit.SECONDS));
+                } catch (ExecutionException e) {
+                    assertTrue(e.getCause() instanceof IllegalStateException);
+                    assertTrue(e.getCause().getMessage().contains("contains no Kerberos TGT"));
+                    invalidRefreshFailures++;
+                }
+            }
+            assertEquals(1, invalidRefreshFailures);
+        } finally {
+            allowInvalidRefresh.countDown();
+            executor.shutdownNow();
+        }
+
+        assertSame(recoveredSubject, backend.getSubject());
         assertEquals(3, supplierCalls.get());
     }
 
@@ -324,6 +436,10 @@ class SubjectBasedSpnegoClientBackendTest {
 
     private static SubjectBasedSpnegoClientBackend backend(Callable<Subject> supplier) {
         return new SubjectBasedSpnegoClientBackend("test", supplier, CLOCK);
+    }
+
+    private static SubjectBasedSpnegoClientBackend backend(Callable<Subject> supplier, boolean acceptOnly) {
+        return new SubjectBasedSpnegoClientBackend("test", supplier, CLOCK, acceptOnly);
     }
 
     private static SpnegoContext createInitiatorContext(SubjectBasedSpnegoClientBackend backend)

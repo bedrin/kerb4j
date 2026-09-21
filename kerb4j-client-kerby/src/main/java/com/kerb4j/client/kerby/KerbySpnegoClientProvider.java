@@ -66,8 +66,8 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
     @Override
     public SpnegoClientBackend loginWithKeyTab(String principal, String keyTabLocation, boolean acceptOnly) {
         if (acceptOnly) {
-            return new SubjectBasedSpnegoClientBackend(NAME + "-accept-only",
-                    () -> acceptOnlySubject(principal, new File(keyTabLocation)));
+            return new ConfiguredSubjectBasedSpnegoClientBackend(NAME + "-accept-only",
+                    () -> acceptOnlySubject(principal, new File(keyTabLocation)), true);
         }
         KerbyCredentials credentials = KerbyCredentials.withKeyTab(principal, new File(keyTabLocation));
         return new KerbySpnegoClientBackend(credentials);
@@ -83,8 +83,8 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         if (cache == null) {
             throw new IllegalStateException("Kerby ticket-cache login requires KRB5CCNAME to point to a FILE ccache");
         }
-        return new SubjectBasedSpnegoClientBackend(NAME + "-ticket-cache",
-                () -> JaasTicketCacheSubject.login(principal, cache));
+        return new ConfiguredSubjectBasedSpnegoClientBackend(NAME + "-ticket-cache",
+                () -> JaasTicketCacheSubject.login(principal, cache), false);
     }
 
     private static Subject acceptOnlySubject(String principal, File keyTabFile) {
@@ -96,11 +96,19 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         return new Subject(false, principals, new HashSet<>(), privateCredentials);
     }
 
+    private static class ConfiguredSubjectBasedSpnegoClientBackend extends SubjectBasedSpnegoClientBackend {
+
+        private ConfiguredSubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier,
+                                                          boolean acceptOnly) {
+            super(implementationName, subjectSupplier, acceptOnly);
+        }
+    }
+
     static class KerbySpnegoClientBackend extends SubjectBasedSpnegoClientBackend {
         private final KerbyCredentials credentials;
 
         KerbySpnegoClientBackend(KerbyCredentials credentials) {
-            super(NAME, credentials::getTgtSubject);
+            super(NAME, credentials::getTgtSubject, false);
             this.credentials = credentials;
         }
 
