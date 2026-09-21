@@ -8,6 +8,7 @@ import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
 import org.ietf.jgss.GSSName;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,8 +21,11 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
@@ -31,16 +35,31 @@ import java.util.concurrent.locks.ReentrantLock;
 public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SubjectBasedSpnegoClientBackend.class);
+    private static final Duration DEFAULT_TGT_REFRESH_MARGIN = Duration.ofSeconds(60);
 
     private final String implementationName;
     private final AtomicReference<SubjectTgtPair> subjectTgtPairReference = new AtomicReference<>();
     private final AtomicReference<Subject> eternalSubjectReference = new AtomicReference<>();
     private final Callable<Subject> subjectSupplier;
+    private final Clock clock;
+    private final Duration tgtRefreshMargin;
     private final Lock authenticateLock = new ReentrantLock();
 
     public SubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier) {
+        this(implementationName, subjectSupplier, Clock.systemUTC(), DEFAULT_TGT_REFRESH_MARGIN);
+    }
+
+    SubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier,
+                                    @NonNull Clock clock) {
+        this(implementationName, subjectSupplier, clock, DEFAULT_TGT_REFRESH_MARGIN);
+    }
+
+    SubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier,
+                                    @NonNull Clock clock, @NonNull Duration tgtRefreshMargin) {
         this.implementationName = implementationName;
         this.subjectSupplier = subjectSupplier;
+        this.clock = Objects.requireNonNull(clock, "clock");
+        this.tgtRefreshMargin = requireNonNegative(tgtRefreshMargin);
     }
 
     @Override
@@ -55,7 +74,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
             return eternalSubject;
         }
         SubjectTgtPair subjectTgtPair = subjectTgtPairReference.get();
-        if (null == subjectTgtPair || subjectTgtPair.isExpired()) {
+        if (null == subjectTgtPair || subjectTgtPair.isExpired(clock, tgtRefreshMargin)) {
             authenticateLock.lock();
             try {
                 eternalSubject = eternalSubjectReference.get();
@@ -63,7 +82,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                     return eternalSubject;
                 }
                 subjectTgtPair = subjectTgtPairReference.get();
-                if (null == subjectTgtPair || subjectTgtPair.isExpired()) {
+                if (null == subjectTgtPair || subjectTgtPair.isExpired(clock, tgtRefreshMargin)) {
                     Subject subject = subjectSupplier.call();
                     for (KerberosTicket ticket : subject.getPrivateCredentials(KerberosTicket.class)) {
                         if (ticket.getServer().getName().startsWith("krbtgt")) {
@@ -88,6 +107,14 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
             }
         }
         return subjectTgtPair.subject;
+    }
+
+    private static Duration requireNonNegative(Duration duration) {
+        Objects.requireNonNull(duration, "tgtRefreshMargin");
+        if (duration.isNegative()) {
+            throw new IllegalArgumentException("tgtRefreshMargin must not be negative");
+        }
+        return duration;
     }
 
     @Override
@@ -191,7 +218,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
             this.subject = subject;
         }
 
-        private boolean isExpired() {
+        private boolean isExpired(Clock clock, Duration refreshMargin) {
 
             if (null == tgt || tgt.isDestroyed()) {
                 return true;
@@ -199,7 +226,8 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
 
             try {
                 synchronized (tgt) {
-                    return tgt.getEndTime().before(new Date());
+                    Date endTime = tgt.getEndTime();
+                    return endTime == null || !endTime.toInstant().isAfter(clock.instant().plus(refreshMargin));
                 }
             } catch (Exception e) {
                 LOGGER.error("Failed to get Kerberos ticket end time", e);

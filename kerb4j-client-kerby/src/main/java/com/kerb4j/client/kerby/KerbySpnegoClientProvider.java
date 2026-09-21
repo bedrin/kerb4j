@@ -21,6 +21,7 @@ import org.apache.kerby.kerberos.kerb.type.base.PrincipalName;
 import org.apache.kerby.kerberos.kerb.type.kdc.EncKdcRepPart;
 import org.apache.kerby.kerberos.kerb.type.ticket.*;
 import org.ietf.jgss.GSSException;
+import org.jspecify.annotations.NonNull;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosPrincipal;
@@ -32,6 +33,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.Principal;
 import java.security.PrivilegedActionException;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.locks.Lock;
@@ -40,6 +43,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class KerbySpnegoClientProvider implements SpnegoClientProvider {
 
     public static final String NAME = "apache-kerby";
+    private static final Duration DEFAULT_TGT_REFRESH_MARGIN = Duration.ofSeconds(60);
 
     @Override
     public String getName() {
@@ -124,13 +128,26 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         }
     }
 
-    private static class KerbyCredentials {
+    static class KerbyCredentials {
         private final Callable<TgtTicket> tgtRequester;
+        private final Clock clock;
+        private final Duration tgtRefreshMargin;
         private final Lock lock = new ReentrantLock();
         private TgtTicket tgtTicket;
 
         private KerbyCredentials(Callable<TgtTicket> tgtRequester) {
+            this(tgtRequester, Clock.systemUTC(), DEFAULT_TGT_REFRESH_MARGIN);
+        }
+
+        KerbyCredentials(Callable<TgtTicket> tgtRequester, @NonNull Clock clock) {
+            this(tgtRequester, clock, DEFAULT_TGT_REFRESH_MARGIN);
+        }
+
+        KerbyCredentials(Callable<TgtTicket> tgtRequester, @NonNull Clock clock,
+                         @NonNull Duration tgtRefreshMargin) {
             this.tgtRequester = tgtRequester;
+            this.clock = Objects.requireNonNull(clock, "clock");
+            this.tgtRefreshMargin = requireNonNegative(tgtRefreshMargin);
         }
 
         private static KerbyCredentials withPassword(String principal, String password) {
@@ -174,10 +191,10 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             return subjectWithTickets(clientPrincipal, tgt, sgt);
         }
 
-        private TgtTicket getTgtTicket() throws Exception {
+        TgtTicket getTgtTicket() throws Exception {
             lock.lock();
             try {
-                if (tgtTicket == null || isExpired(tgtTicket)) {
+                if (tgtTicket == null || isExpired(tgtTicket, clock, tgtRefreshMargin)) {
                     tgtTicket = tgtRequester.call();
                 }
                 return tgtTicket;
@@ -336,8 +353,18 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             return value == null || value.trim().isEmpty();
         }
 
-        private static boolean isExpired(TgtTicket tgtTicket) {
-            return tgtTicket.getEncKdcRepPart().getEndTime().lessThan(System.currentTimeMillis());
+        private static Duration requireNonNegative(Duration duration) {
+            Objects.requireNonNull(duration, "tgtRefreshMargin");
+            if (duration.isNegative()) {
+                throw new IllegalArgumentException("tgtRefreshMargin must not be negative");
+            }
+            return duration;
+        }
+
+        private static boolean isExpired(TgtTicket tgtTicket, Clock clock, Duration refreshMargin) {
+            EncKdcRepPart encKdcRepPart = tgtTicket.getEncKdcRepPart();
+            KerberosTime endTime = encKdcRepPart == null ? null : encKdcRepPart.getEndTime();
+            return endTime == null || endTime.getTime() <= clock.instant().plus(refreshMargin).toEpochMilli();
         }
 
     }
