@@ -120,6 +120,17 @@ class SubjectBasedSpnegoClientBackendTest {
     }
 
     @Test
+    void skipsNotYetValidTgt() {
+        KerberosTicket notYetValid = ticket("client@EXAMPLE.COM",
+                "krbtgt/EXAMPLE.COM@EXAMPLE.COM", NOW.plusSeconds(1200), (byte) 1);
+        when(notYetValid.getStartTime()).thenReturn(Date.from(NOW.plusSeconds(1)));
+        KerberosTicket valid = ticket("client@EXAMPLE.COM",
+                "krbtgt/EXAMPLE.COM@EXAMPLE.COM", NOW.plusSeconds(600), (byte) 2);
+
+        assertSame(valid, selectTgt(subjectWithTickets(notYetValid, valid)));
+    }
+
+    @Test
     void skipsDestroyedTgt() {
         KerberosTicket destroyed = ticket("client@EXAMPLE.COM",
                 "krbtgt/EXAMPLE.COM@EXAMPLE.COM", NOW.plusSeconds(1200), (byte) 1);
@@ -697,6 +708,7 @@ class SubjectBasedSpnegoClientBackendTest {
         KerberosTicket ticket = mock(KerberosTicket.class);
         when(ticket.getClient()).thenReturn(new KerberosPrincipal(clientName));
         when(ticket.getServer()).thenReturn(new KerberosPrincipal(serverName));
+        when(ticket.getStartTime()).thenReturn(Date.from(NOW.minusSeconds(60)));
         when(ticket.getEndTime()).thenReturn(endTime == null ? null : Date.from(endTime));
         when(ticket.getEncoded()).thenReturn(new byte[]{encoding});
         return ticket;

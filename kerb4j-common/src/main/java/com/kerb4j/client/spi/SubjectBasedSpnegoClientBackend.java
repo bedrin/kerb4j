@@ -217,10 +217,11 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
             }
             KerberosPrincipal client = ticket.getClient();
             KerberosPrincipal server = ticket.getServer();
+            Date startTime = ticket.getStartTime();
             Date endTime = ticket.getEndTime();
             byte[] encoded = ticket.getEncoded();
-            if (ticket.isDestroyed() || client == null || server == null || endTime == null || encoded == null
-                    || !endTime.toInstant().isAfter(now)) {
+            if (ticket.isDestroyed() || client == null || server == null || startTime == null || endTime == null
+                    || encoded == null || startTime.toInstant().isAfter(now) || !endTime.toInstant().isAfter(now)) {
                 return null;
             }
 
@@ -233,7 +234,8 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                 return null;
             }
             boolean homeRealm = clientRealm.equals(targetRealm) && clientRealm.equals(serverRealm);
-            return new TgtCandidate(ticket, client, server, endTime, encoded, clientName, serverName, homeRealm);
+            return new TgtCandidate(ticket, client, server, startTime, endTime, encoded,
+                    clientName, serverName, homeRealm);
         } catch (IllegalStateException | NullPointerException ignored) {
             // Destruction can clear ticket fields between individual accessor calls.
             return null;
@@ -276,8 +278,10 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
             if (ticket.isDestroyed()) {
                 return false;
             }
+            Date startTime = ticket.getStartTime();
             Date endTime = ticket.getEndTime();
-            return endTime != null && endTime.toInstant().isAfter(instant) && !ticket.isDestroyed();
+            return startTime != null && !startTime.toInstant().isAfter(instant)
+                    && endTime != null && endTime.toInstant().isAfter(instant) && !ticket.isDestroyed();
         } catch (IllegalStateException | NullPointerException ignored) {
             return false;
         }
@@ -438,6 +442,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
         private final KerberosTicket ticket;
         private final KerberosPrincipal client;
         private final KerberosPrincipal server;
+        private final Date startTime;
         private final Date endTime;
         private final byte[] encoded;
         private final String clientName;
@@ -445,10 +450,12 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
         private final boolean homeRealm;
 
         private TgtCandidate(KerberosTicket ticket, KerberosPrincipal client, KerberosPrincipal server,
-                             Date endTime, byte[] encoded, String clientName, String serverName, boolean homeRealm) {
+                             Date startTime, Date endTime, byte[] encoded,
+                             String clientName, String serverName, boolean homeRealm) {
             this.ticket = ticket;
             this.client = client;
             this.server = server;
+            this.startTime = startTime;
             this.endTime = endTime;
             this.encoded = encoded;
             this.clientName = clientName;
@@ -461,6 +468,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                 return !ticket.isDestroyed()
                         && client.equals(ticket.getClient())
                         && server.equals(ticket.getServer())
+                        && startTime.equals(ticket.getStartTime())
                         && endTime.equals(ticket.getEndTime())
                         && Arrays.equals(encoded, ticket.getEncoded())
                         && !ticket.isDestroyed();

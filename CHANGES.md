@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.5.2
+
+### Bug fixes
+
+- Made concurrent clients refresh TGTs before expiry and recover once from pre-token `NO_CRED` context creation failures.
+
 ## 0.5.1
 
 ### Dependencies
