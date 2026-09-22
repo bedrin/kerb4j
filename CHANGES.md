@@ -6,7 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Bug fixes
 
-- Made concurrent clients refresh TGTs before expiry and recover once from pre-token `NO_CRED` context creation failures.
+- Made concurrent clients refresh TGTs before expiry without refresh storms, share refresh failures, and recover once
+  from structurally identified pre-token credential failures, including Kerby service-ticket acquisition.
 
 ## 0.5.1
 

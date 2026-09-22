@@ -125,10 +125,13 @@ two requests to the KDC (e.g. in Active Directory Domain Controller).
 One `SpnegoClient` is created, Kerb4J will make first request for TGT (authentication). The TGT is cached and
 proactively refreshed during the 60 seconds before expiry. Concurrent callers share the same refresh. Reuse the
 `SpnegoClient` instance for all requests you want to make using the same credentials.
+If a refresh source still returns the same current, near-expiry TGT, Kerb4J reuses it for a one-second cooldown before
+trying again; an actually expired TGT is never reused.
 
 If initial GSS credential or context construction fails with `GSSException.NO_CRED`, Kerb4J invalidates only the
 credentials used by that attempt and retries once with a fresh Subject/TGT. This recovery happens before token
-generation; Kerb4J never retries token generation automatically.
+generation; Kerb4J never retries token generation automatically. The Kerby provider applies the same bounded recovery
+to service-ticket acquisition when Kerby reports that the exact TGT used by the attempt is no longer valid.
 
 When you create first `SpnegoContext` instance for the given SPN, Kerb4J will make another request for a service ticket.
 This service ticket will be reused when creating new `SpnegoContext` instances from the same `SpnegoClient`.

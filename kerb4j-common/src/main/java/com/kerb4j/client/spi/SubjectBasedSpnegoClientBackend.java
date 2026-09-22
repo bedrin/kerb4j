@@ -39,13 +39,14 @@ import java.util.concurrent.locks.ReentrantLock;
 public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
 
     private static final Duration DEFAULT_TGT_REFRESH_MARGIN = Duration.ofSeconds(60);
-    // Supplier failures are shared for one second; the next request after that may retry without sleeping.
-    private static final Duration REFRESH_FAILURE_COOLDOWN = Duration.ofSeconds(1);
+    // Failed or still-near-expiry refreshes are shared for one second before another caller may retry.
+    private static final Duration REFRESH_RETRY_COOLDOWN = Duration.ofSeconds(1);
+    private static final int POSTDATED_TICKET_FLAG = 6;
+    private static final int INVALID_TICKET_FLAG = 7;
 
     private final String implementationName;
-    private final AtomicReference<SubjectTgtPair> subjectTgtPairReference = new AtomicReference<>();
-    // Accept-only Subjects have no TGT and therefore no expiry time to drive refresh.
-    private final AtomicReference<Subject> eternalSubjectReference = new AtomicReference<>();
+    private final AtomicReference<SubjectCacheState> subjectStateReference =
+            new AtomicReference<>(SubjectCacheState.empty(false));
     private final Callable<Subject> subjectSupplier;
     private final Clock clock;
     private final Duration tgtRefreshMargin;
@@ -53,8 +54,6 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
     private final Lock authenticateLock = new ReentrantLock();
     // Guarded by authenticateLock and scoped to the exact cache entry whose refresh failed.
     private @Nullable RefreshFailure refreshFailure;
-    // Guarded by authenticateLock; prevents a legacy automatic initiator from becoming accept-only after refresh.
-    private boolean tgtWasPublished;
 
     public SubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier) {
         this(implementationName, subjectSupplier, Clock.systemUTC(), DEFAULT_TGT_REFRESH_MARGIN, SubjectMode.AUTOMATIC);
@@ -111,48 +110,66 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
     }
 
     private SubjectSelection getSubjectSelection() {
-        Subject eternalSubject = eternalSubjectReference.get();
-        if (null != eternalSubject) {
-            return new SubjectSelection(eternalSubject, null);
-        }
-        SubjectTgtPair subjectTgtPair = subjectTgtPairReference.get();
-        if (null == subjectTgtPair || subjectTgtPair.isExpired(clock, tgtRefreshMargin)) {
+        SubjectCacheState state = subjectStateReference.get();
+        if (state.requiresAuthentication(clock, tgtRefreshMargin)) {
             Instant refreshRequestedAt = clock.instant();
             authenticateLock.lock();
             try {
-                eternalSubject = eternalSubjectReference.get();
-                if (null != eternalSubject) {
-                    return new SubjectSelection(eternalSubject, null);
-                }
-                subjectTgtPair = subjectTgtPairReference.get();
-                if (null == subjectTgtPair || subjectTgtPair.isExpired(clock, tgtRefreshMargin)) {
-                    throwCachedRefreshFailure(subjectTgtPair, refreshRequestedAt);
-                    Subject refreshedSubject = callSubjectSupplier(subjectTgtPair);
-                    refreshFailure = null;
-                    SubjectTgtPair refreshedPair = findTgtPair(refreshedSubject);
-                    if (refreshedPair != null) {
-                        subjectTgtPairReference.set(refreshedPair);
-                        tgtWasPublished = true;
-                        return new SubjectSelection(refreshedSubject, refreshedPair);
-                    }
-
-                    if (subjectMode == SubjectMode.INITIATOR || tgtWasPublished) {
-                        throw new IllegalStateException("Refreshed Subject for initiator backend '"
-                                + implementationName + "' contains no Kerberos TGT");
-                    }
-
-                    // Explicit accept-only and legacy automatic backends may cache an initial no-TGT Subject.
-                    eternalSubjectReference.set(refreshedSubject);
-                    return new SubjectSelection(refreshedSubject, null);
+                state = subjectStateReference.get();
+                if (state.requiresAuthentication(clock, tgtRefreshMargin)) {
+                    throwCachedRefreshFailure(state, refreshRequestedAt);
+                    return refreshSubject(state);
                 }
             } finally {
                 authenticateLock.unlock();
             }
         }
-        return new SubjectSelection(subjectTgtPair.subject, subjectTgtPair);
+        return state.selection();
     }
 
-    private void throwCachedRefreshFailure(@Nullable SubjectTgtPair refreshTarget, Instant refreshRequestedAt) {
+    private SubjectSelection refreshSubject(SubjectCacheState refreshTarget) {
+        try {
+            Subject refreshedSubject = subjectSupplier.call();
+            if (refreshedSubject == null) {
+                throw new IllegalStateException("Subject supplier for backend '" + implementationName
+                        + "' returned null");
+            }
+
+            Instant refreshedAt = clock.instant();
+            KerberosTicket refreshedTgt = selectTgt(refreshedSubject, clock);
+            SubjectCacheState refreshedState;
+            if (refreshedTgt != null) {
+                // A near-expiry result remains usable, but one refresh attempt per second bounds KDC/cache load.
+                Instant retryAt = refreshTarget.tgtWasPublished
+                        && !isTicketUsableAt(refreshedTgt, refreshedAt.plus(tgtRefreshMargin))
+                        ? refreshedAt.plus(REFRESH_RETRY_COOLDOWN) : refreshedAt;
+                refreshedState = SubjectCacheState.withTgt(refreshedSubject, refreshedTgt, retryAt);
+            } else if (subjectMode == SubjectMode.INITIATOR || refreshTarget.tgtWasPublished) {
+                throw new IllegalStateException("Refreshed Subject for initiator backend '"
+                        + implementationName + "' contains no usable Kerberos TGT");
+            } else {
+                // Explicit accept-only and legacy automatic backends may cache an initial no-TGT Subject.
+                refreshedState = SubjectCacheState.eternal(refreshedSubject);
+            }
+
+            subjectStateReference.set(refreshedState);
+            refreshFailure = null;
+            return refreshedState.selection();
+        } catch (InterruptedException e) {
+            // Interruption belongs to the initiating caller and must not become a shared authentication failure.
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (RuntimeException e) {
+            publishRefreshFailure(refreshTarget, e);
+            throw e;
+        } catch (Exception e) {
+            RuntimeException failure = new RuntimeException(e);
+            publishRefreshFailure(refreshTarget, failure);
+            throw failure;
+        }
+    }
+
+    private void throwCachedRefreshFailure(SubjectCacheState refreshTarget, Instant refreshRequestedAt) {
         if (refreshFailure == null) {
             return;
         }
@@ -164,28 +181,9 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
         refreshFailure = null;
     }
 
-    private Subject callSubjectSupplier(@Nullable SubjectTgtPair refreshTarget) {
-        try {
-            return subjectSupplier.call();
-        } catch (InterruptedException e) {
-            // Interruption belongs to the initiating caller and must not become a shared authentication failure.
-            Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
-        } catch (RuntimeException e) {
-            refreshFailure = new RefreshFailure(refreshTarget, e,
-                    clock.instant().plus(REFRESH_FAILURE_COOLDOWN));
-            throw e;
-        } catch (Exception e) {
-            RuntimeException failure = new RuntimeException(e);
-            refreshFailure = new RefreshFailure(refreshTarget, failure,
-                    clock.instant().plus(REFRESH_FAILURE_COOLDOWN));
-            throw failure;
-        }
-    }
-
-    private SubjectTgtPair findTgtPair(Subject subject) {
-        KerberosTicket tgt = selectTgt(subject, clock);
-        return tgt == null ? null : new SubjectTgtPair(tgt, subject);
+    private void publishRefreshFailure(SubjectCacheState refreshTarget, RuntimeException failure) {
+        refreshFailure = new RefreshFailure(refreshTarget, failure,
+                clock.instant().plus(REFRESH_RETRY_COOLDOWN));
     }
 
     static @Nullable KerberosTicket selectTgt(Subject subject, Clock clock) {
@@ -219,9 +217,12 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
             KerberosPrincipal server = ticket.getServer();
             Date startTime = ticket.getStartTime();
             Date endTime = ticket.getEndTime();
+            boolean[] flags = ticket.getFlags();
             byte[] encoded = ticket.getEncoded();
             if (ticket.isDestroyed() || client == null || server == null || startTime == null || endTime == null
-                    || encoded == null || startTime.toInstant().isAfter(now) || !endTime.toInstant().isAfter(now)) {
+                    || encoded == null || !endTime.toInstant().isAfter(now)
+                    || hasFlag(flags, INVALID_TICKET_FLAG)
+                    || hasFlag(flags, POSTDATED_TICKET_FLAG) && startTime.toInstant().isAfter(now)) {
                 return null;
             }
 
@@ -234,7 +235,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                 return null;
             }
             boolean homeRealm = clientRealm.equals(targetRealm) && clientRealm.equals(serverRealm);
-            return new TgtCandidate(ticket, client, server, startTime, endTime, encoded,
+            return new TgtCandidate(ticket, client, server, startTime, endTime, flags, encoded,
                     clientName, serverName, homeRealm);
         } catch (IllegalStateException | NullPointerException ignored) {
             // Destruction can clear ticket fields between individual accessor calls.
@@ -270,7 +271,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
         return comparison == 0 ? Arrays.compareUnsigned(left.encoded, right.encoded) : comparison;
     }
 
-    static boolean isTicketCurrentAt(@Nullable KerberosTicket ticket, Instant instant) {
+    static boolean isTicketUsableAt(@Nullable KerberosTicket ticket, Instant instant) {
         if (ticket == null) {
             return false;
         }
@@ -280,11 +281,18 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
             }
             Date startTime = ticket.getStartTime();
             Date endTime = ticket.getEndTime();
-            return startTime != null && !startTime.toInstant().isAfter(instant)
-                    && endTime != null && endTime.toInstant().isAfter(instant) && !ticket.isDestroyed();
+            boolean[] flags = ticket.getFlags();
+            return startTime != null && endTime != null && endTime.toInstant().isAfter(instant)
+                    && !hasFlag(flags, INVALID_TICKET_FLAG)
+                    && (!hasFlag(flags, POSTDATED_TICKET_FLAG) || !startTime.toInstant().isAfter(instant))
+                    && !ticket.isDestroyed();
         } catch (IllegalStateException | NullPointerException ignored) {
             return false;
         }
+    }
+
+    private static boolean hasFlag(@Nullable boolean[] flags, int index) {
+        return flags != null && flags.length > index && flags[index];
     }
 
     private static Duration requireNonNegative(Duration duration) {
@@ -335,12 +343,12 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
         try {
             return createInitiatorContext(spnegoClient, gssName, firstSelection.subject);
         } catch (PrivilegedActionException | GSSException firstFailure) {
-            if (!isNoCredentialFailure(firstFailure) || firstSelection.subjectTgtPair == null) {
+            if (!isNoCredentialFailure(firstFailure) || firstSelection.cacheState.tgt == null) {
                 throw firstFailure;
             }
 
-            // Clear only the pair used by this attempt; a concurrently published replacement must survive.
-            subjectTgtPairReference.compareAndSet(firstSelection.subjectTgtPair, null);
+            // Clear only the state used by this attempt; a concurrently published replacement must survive.
+            subjectStateReference.compareAndSet(firstSelection.cacheState, firstSelection.cacheState.withoutTgt());
             try {
                 // No token has been generated yet, so rebuilding credentials and context is safe and bounded.
                 SubjectSelection secondSelection = getSubjectSelection();
@@ -421,21 +429,6 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
         });
     }
 
-    private static class SubjectTgtPair {
-
-        private final KerberosTicket tgt;
-        private final Subject subject;
-
-        private SubjectTgtPair(KerberosTicket tgt, Subject subject) {
-            this.tgt = tgt;
-            this.subject = subject;
-        }
-
-        private boolean isExpired(Clock clock, Duration refreshMargin) {
-            return !isTicketCurrentAt(tgt, clock.instant().plus(refreshMargin));
-        }
-    }
-
     // Immutable inspection snapshot used to rank tickets without rereading mutable ticket fields.
     private static class TgtCandidate {
 
@@ -444,19 +437,21 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
         private final KerberosPrincipal server;
         private final Date startTime;
         private final Date endTime;
+        private final boolean[] flags;
         private final byte[] encoded;
         private final String clientName;
         private final String serverName;
         private final boolean homeRealm;
 
         private TgtCandidate(KerberosTicket ticket, KerberosPrincipal client, KerberosPrincipal server,
-                             Date startTime, Date endTime, byte[] encoded,
+                             Date startTime, Date endTime, boolean[] flags, byte[] encoded,
                              String clientName, String serverName, boolean homeRealm) {
             this.ticket = ticket;
             this.client = client;
             this.server = server;
             this.startTime = startTime;
             this.endTime = endTime;
+            this.flags = flags;
             this.encoded = encoded;
             this.clientName = clientName;
             this.serverName = serverName;
@@ -470,6 +465,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                         && server.equals(ticket.getServer())
                         && startTime.equals(ticket.getStartTime())
                         && endTime.equals(ticket.getEndTime())
+                        && Arrays.equals(flags, ticket.getFlags())
                         && Arrays.equals(encoded, ticket.getEncoded())
                         && !ticket.isDestroyed();
             } catch (IllegalStateException | NullPointerException ignored) {
@@ -481,26 +477,76 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
     // Callers joining one failed refresh share its exception; the first request after retryAt may try again.
     private static class RefreshFailure {
 
-        private final @Nullable SubjectTgtPair refreshTarget;
+        private final SubjectCacheState refreshTarget;
         private final RuntimeException failure;
         private final Instant retryAt;
 
-        private RefreshFailure(@Nullable SubjectTgtPair refreshTarget, RuntimeException failure, Instant retryAt) {
+        private RefreshFailure(SubjectCacheState refreshTarget, RuntimeException failure, Instant retryAt) {
             this.refreshTarget = refreshTarget;
             this.failure = failure;
             this.retryAt = retryAt;
         }
     }
 
-    // Couples a Subject to its cache entry so recovery can invalidate exactly the credentials that failed.
+    // One immutable state object makes Subject/TGT publication and refresh-generation identity indivisible.
+    private static class SubjectCacheState {
+
+        private final @Nullable Subject subject;
+        private final @Nullable KerberosTicket tgt;
+        private final boolean eternal;
+        private final boolean tgtWasPublished;
+        private final Instant proactiveRetryAt;
+
+        private SubjectCacheState(@Nullable Subject subject, @Nullable KerberosTicket tgt, boolean eternal,
+                                  boolean tgtWasPublished, Instant proactiveRetryAt) {
+            this.subject = subject;
+            this.tgt = tgt;
+            this.eternal = eternal;
+            this.tgtWasPublished = tgtWasPublished;
+            this.proactiveRetryAt = proactiveRetryAt;
+        }
+
+        private static SubjectCacheState empty(boolean tgtWasPublished) {
+            return new SubjectCacheState(null, null, false, tgtWasPublished, Instant.MIN);
+        }
+
+        private static SubjectCacheState withTgt(Subject subject, KerberosTicket tgt, Instant proactiveRetryAt) {
+            return new SubjectCacheState(subject, tgt, false, true, proactiveRetryAt);
+        }
+
+        private static SubjectCacheState eternal(Subject subject) {
+            return new SubjectCacheState(subject, null, true, false, Instant.MAX);
+        }
+
+        private boolean requiresAuthentication(Clock clock, Duration refreshMargin) {
+            if (eternal) {
+                return false;
+            }
+            Instant now = clock.instant();
+            if (!isTicketUsableAt(tgt, now)) {
+                return true;
+            }
+            return !isTicketUsableAt(tgt, now.plus(refreshMargin)) && !now.isBefore(proactiveRetryAt);
+        }
+
+        private SubjectSelection selection() {
+            return new SubjectSelection(Objects.requireNonNull(subject), this);
+        }
+
+        private SubjectCacheState withoutTgt() {
+            return empty(tgtWasPublished);
+        }
+    }
+
+    // Couples a Subject to its cache state so recovery can invalidate exactly the credentials that failed.
     private static class SubjectSelection {
 
         private final Subject subject;
-        private final SubjectTgtPair subjectTgtPair;
+        private final SubjectCacheState cacheState;
 
-        private SubjectSelection(Subject subject, SubjectTgtPair subjectTgtPair) {
+        private SubjectSelection(Subject subject, SubjectCacheState cacheState) {
             this.subject = subject;
-            this.subjectTgtPair = subjectTgtPair;
+            this.cacheState = cacheState;
         }
     }
 

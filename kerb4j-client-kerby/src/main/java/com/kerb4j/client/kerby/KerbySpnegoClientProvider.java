@@ -8,6 +8,8 @@ import com.kerb4j.client.spi.SpnegoClientProvider;
 import com.kerb4j.client.spi.SubjectBasedSpnegoClientBackend;
 import com.kerb4j.common.util.SpnegoProvider;
 import org.apache.kerby.KOptions;
+import org.apache.kerby.kerberos.kerb.KrbErrorCode;
+import org.apache.kerby.kerberos.kerb.KrbErrorException;
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.kerby.kerberos.kerb.client.KrbClient;
 import org.apache.kerby.kerberos.kerb.client.KrbOption;
@@ -23,6 +25,7 @@ import org.apache.kerby.kerberos.kerb.type.ticket.*;
 import org.ietf.jgss.GSSException;
 import org.ietf.jgss.GSSName;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosPrincipal;
@@ -36,6 +39,7 @@ import java.security.Principal;
 import java.security.PrivilegedActionException;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.locks.Lock;
@@ -45,6 +49,7 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
 
     public static final String NAME = "apache-kerby";
     private static final Duration DEFAULT_TGT_REFRESH_MARGIN = Duration.ofSeconds(60);
+    private static final Duration TGT_REFRESH_RETRY_COOLDOWN = Duration.ofSeconds(1);
 
     @Override
     public String getName() {
@@ -129,20 +134,19 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
 
         private SpnegoContext createInitiatorContext(SpnegoClient spnegoClient, ServiceIdentity serviceIdentity)
                 throws PrivilegedActionException, GSSException {
-            ServiceSubject firstServiceSubject = subjectForService(serviceIdentity.servicePrincipal);
+            ContextAttempt firstAttempt = new ContextAttempt();
             try {
-                return createInitiatorContext(spnegoClient, serviceIdentity.gssName, firstServiceSubject.subject);
+                return createInitiatorContext(spnegoClient, serviceIdentity, firstAttempt);
             } catch (PrivilegedActionException | GSSException firstFailure) {
-                if (!isNoCredentialFailure(firstFailure)) {
+                if (!isCredentialFailure(firstFailure) || firstAttempt.tgt == null) {
                     throw firstFailure;
                 }
 
                 // Invalidate only the TGT used for this service Subject; a newer cached TGT must survive.
-                credentials.invalidateTgtTicket(firstServiceSubject.tgt);
+                credentials.invalidateTgtTicket(firstAttempt.tgt);
                 try {
-                    // This retry happens before any token generation and constructs a fresh GSS context.
-                    ServiceSubject secondServiceSubject = subjectForService(serviceIdentity.servicePrincipal);
-                    return createInitiatorContext(spnegoClient, serviceIdentity.gssName, secondServiceSubject.subject);
+                    // The whole TGT/TGS/GSS attempt is repeated before any token generation.
+                    return createInitiatorContext(spnegoClient, serviceIdentity, new ContextAttempt());
                 } catch (PrivilegedActionException | GSSException | RuntimeException secondFailure) {
                     if (secondFailure != firstFailure) {
                         secondFailure.addSuppressed(firstFailure);
@@ -152,28 +156,48 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             }
         }
 
-        private SpnegoContext createInitiatorContext(SpnegoClient spnegoClient, GSSName gssName, Subject subject)
+        private SpnegoContext createInitiatorContext(SpnegoClient spnegoClient, ServiceIdentity serviceIdentity,
+                                                     ContextAttempt attempt)
                 throws PrivilegedActionException, GSSException {
-            return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, gssName));
-        }
-
-        private ServiceSubject subjectForService(String servicePrincipal) throws PrivilegedActionException {
             try {
-                return credentials.getServiceSubject(servicePrincipal);
+                attempt.tgt = credentials.getTgtTicket();
+                Subject subject = getServiceSubject(attempt.tgt, serviceIdentity.servicePrincipal);
+                return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, serviceIdentity.gssName));
+            } catch (PrivilegedActionException | GSSException e) {
+                throw e;
             } catch (Exception e) {
                 throw new PrivilegedActionException(e);
             }
         }
 
-        private static boolean isNoCredentialFailure(Throwable failure) {
+        protected Subject getServiceSubject(TgtTicket tgt, String servicePrincipal) throws Exception {
+            return credentials.getServiceSubject(tgt, servicePrincipal);
+        }
+
+        private static boolean isCredentialFailure(Throwable failure) {
             // Identity tracking also makes malformed cyclic cause chains safe to inspect.
             Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
             for (Throwable cause = failure; cause != null && visited.add(cause); cause = cause.getCause()) {
                 if (cause instanceof GSSException && ((GSSException) cause).getMajor() == GSSException.NO_CRED) {
                     return true;
                 }
+                KrbErrorCode errorCode = krbErrorCode(cause);
+                if (errorCode == KrbErrorCode.KRB_AP_ERR_TKT_EXPIRED
+                        || errorCode == KrbErrorCode.KRB_AP_ERR_TKT_NYV
+                        || errorCode == KrbErrorCode.KDC_ERR_TGT_REVOKED
+                        || errorCode == KrbErrorCode.KRB_AP_ERR_NO_TGT) {
+                    return true;
+                }
             }
             return false;
+        }
+
+        private static @Nullable KrbErrorCode krbErrorCode(Throwable failure) {
+            if (failure instanceof KrbErrorException) {
+                return ((KrbErrorException) failure).getKrbError() == null
+                        ? null : ((KrbErrorException) failure).getKrbError().getErrorCode();
+            }
+            return failure instanceof KrbException ? ((KrbException) failure).getKrbErrorCode() : null;
         }
     }
 
@@ -182,7 +206,7 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         private final Clock clock;
         private final Duration tgtRefreshMargin;
         private final Lock lock = new ReentrantLock();
-        private TgtTicket tgtTicket;
+        private @Nullable TgtCacheState tgtState;
 
         private KerbyCredentials(Callable<TgtTicket> tgtRequester) {
             this(tgtRequester, Clock.systemUTC(), DEFAULT_TGT_REFRESH_MARGIN);
@@ -233,21 +257,30 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             return subjectWithTickets(tgt.getClientPrincipal(), tgt);
         }
 
-        private ServiceSubject getServiceSubject(String servicePrincipal) throws Exception {
-            TgtTicket tgt = getTgtTicket();
+        private Subject getServiceSubject(TgtTicket tgt, String servicePrincipal) throws Exception {
             KrbClient client = createClient();
             SgtTicket sgt = client.requestSgt(tgt, servicePrincipal);
             PrincipalName clientPrincipal = sgt.getClientPrincipal() == null ? tgt.getClientPrincipal() : sgt.getClientPrincipal();
-            return new ServiceSubject(subjectWithTickets(clientPrincipal, tgt, sgt), tgt);
+            return subjectWithTickets(clientPrincipal, tgt, sgt);
         }
 
         TgtTicket getTgtTicket() throws Exception {
             lock.lock();
             try {
-                if (tgtTicket == null || isExpired(tgtTicket, clock, tgtRefreshMargin)) {
-                    tgtTicket = tgtRequester.call();
+                TgtCacheState state = tgtState;
+                if (state == null || state.requiresRefresh(clock, tgtRefreshMargin)) {
+                    Instant refreshedAt = clock.instant();
+                    TgtTicket refreshedTgt = tgtRequester.call();
+                    if (!isCurrent(refreshedTgt, refreshedAt)) {
+                        throw new IllegalStateException("Kerby TGT requester returned no current TGT");
+                    }
+                    // A still-near-expiry result is usable, but retry at most once per second.
+                    Instant retryAt = state != null && isInsideMargin(refreshedTgt, refreshedAt, tgtRefreshMargin)
+                            ? refreshedAt.plus(TGT_REFRESH_RETRY_COOLDOWN) : refreshedAt;
+                    state = new TgtCacheState(refreshedTgt, retryAt);
+                    tgtState = state;
                 }
-                return tgtTicket;
+                return state.tgt;
             } finally {
                 lock.unlock();
             }
@@ -257,8 +290,8 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             lock.lock();
             try {
                 // Identity comparison prevents a late failure from evicting a newer TGT.
-                if (tgtTicket == failedTgt) {
-                    tgtTicket = null;
+                if (tgtState != null && tgtState.tgt == failedTgt) {
+                    tgtState = null;
                 }
             } finally {
                 lock.unlock();
@@ -423,24 +456,41 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             return duration;
         }
 
-        private static boolean isExpired(TgtTicket tgtTicket, Clock clock, Duration refreshMargin) {
-            EncKdcRepPart encKdcRepPart = tgtTicket.getEncKdcRepPart();
+        private static boolean isCurrent(@Nullable TgtTicket tgtTicket, Instant instant) {
+            EncKdcRepPart encKdcRepPart = tgtTicket == null ? null : tgtTicket.getEncKdcRepPart();
             KerberosTime endTime = encKdcRepPart == null ? null : encKdcRepPart.getEndTime();
-            return endTime == null || endTime.getTime() <= clock.instant().plus(refreshMargin).toEpochMilli();
+            return endTime != null && endTime.getTime() > instant.toEpochMilli();
+        }
+
+        private static boolean isInsideMargin(TgtTicket tgtTicket, Instant now, Duration refreshMargin) {
+            return !isCurrent(tgtTicket, now.plus(refreshMargin));
+        }
+
+        private static class TgtCacheState {
+
+            private final TgtTicket tgt;
+            private final Instant proactiveRetryAt;
+
+            private TgtCacheState(TgtTicket tgt, Instant proactiveRetryAt) {
+                this.tgt = tgt;
+                this.proactiveRetryAt = proactiveRetryAt;
+            }
+
+            private boolean requiresRefresh(Clock clock, Duration refreshMargin) {
+                Instant now = clock.instant();
+                if (!isCurrent(tgt, now)) {
+                    return true;
+                }
+                return isInsideMargin(tgt, now, refreshMargin) && !now.isBefore(proactiveRetryAt);
+            }
         }
 
     }
 
-    // Couples a service Subject to the exact TGT used to create it for identity-safe recovery.
-    private static class ServiceSubject {
+    // Records the exact TGT used by one TGT/TGS/GSS attempt for identity-safe invalidation.
+    private static class ContextAttempt {
 
-        private final Subject subject;
-        private final TgtTicket tgt;
-
-        private ServiceSubject(Subject subject, TgtTicket tgt) {
-            this.subject = subject;
-            this.tgt = tgt;
-        }
+        private @Nullable TgtTicket tgt;
     }
 
     private static class EnterpriseInternalKrbClient extends DefaultInternalKrbClient {

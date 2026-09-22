@@ -6,7 +6,9 @@ import org.apache.kerby.kerberos.kerb.type.ticket.TgtTicket;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -16,9 +18,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -57,10 +61,11 @@ class KerbyCredentialsTest {
     void refreshesTgtWithNullEndTimeWithoutNullPointerException() throws Exception {
         TgtTicket initialTgt = tgt(null);
         TgtTicket refreshedTgt = tgt(NOW.plusSeconds(600));
+        MutableClock clock = new MutableClock(NOW);
         KerbySpnegoClientProvider.KerbyCredentials credentials =
-                credentials(sequence(initialTgt, refreshedTgt, new AtomicInteger()));
+                credentials(sequence(initialTgt, refreshedTgt, new AtomicInteger()), clock);
 
-        assertSame(initialTgt, credentials.getTgtTicket());
+        assertThrows(IllegalStateException.class, credentials::getTgtTicket);
         assertSame(refreshedTgt, credentials.getTgtTicket());
     }
 
@@ -110,6 +115,89 @@ class KerbyCredentialsTest {
         }
 
         assertEquals(2, requesterCalls.get());
+    }
+
+    @Test
+    void nearExpiryRefreshIsSharedAndRetriedOnceAfterCooldown() throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        TgtTicket initialTgt = tgt(NOW.plusSeconds(30));
+        TgtTicket stillNearExpiry = tgt(NOW.plusSeconds(45));
+        TgtTicket freshTgt = tgt(NOW.plusSeconds(600));
+        AtomicInteger requesterCalls = new AtomicInteger();
+        CountDownLatch refreshStarted = new CountDownLatch(1);
+        CountDownLatch allowRefresh = new CountDownLatch(1);
+        KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
+            int call = requesterCalls.incrementAndGet();
+            if (call == 1) {
+                return initialTgt;
+            }
+            if (call == 2) {
+                refreshStarted.countDown();
+                if (!allowRefresh.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Timed out waiting to complete near-expiry refresh");
+                }
+                return stillNearExpiry;
+            }
+            return freshTgt;
+        }, clock);
+        assertSame(initialTgt, credentials.getTgtTicket());
+
+        int callerCount = 20;
+        ExecutorService executor = Executors.newFixedThreadPool(callerCount);
+        CountDownLatch callersReady = new CountDownLatch(callerCount);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Future<TgtTicket>> results = java.util.stream.IntStream.range(0, callerCount)
+                    .mapToObj(ignored -> executor.submit(() -> {
+                        callersReady.countDown();
+                        start.await();
+                        return credentials.getTgtTicket();
+                    }))
+                    .toList();
+
+            assertTrue(callersReady.await(10, TimeUnit.SECONDS));
+            start.countDown();
+            assertTrue(refreshStarted.await(10, TimeUnit.SECONDS));
+            allowRefresh.countDown();
+            for (Future<TgtTicket> result : results) {
+                assertSame(stillNearExpiry, result.get(10, TimeUnit.SECONDS));
+            }
+
+            for (int i = 0; i < callerCount; i++) {
+                assertSame(stillNearExpiry, credentials.getTgtTicket());
+            }
+            assertEquals(2, requesterCalls.get());
+
+            clock.advance(Duration.ofSeconds(1));
+            assertSame(freshTgt, credentials.getTgtTicket());
+            assertSame(freshTgt, credentials.getTgtTicket());
+            assertEquals(3, requesterCalls.get());
+        } finally {
+            allowRefresh.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void repeatedSameNearExpiryTgtIsThrottledAndNeverReturnedAfterExpiry() throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        TgtTicket nearExpiryTgt = tgt(NOW.plusSeconds(1));
+        AtomicInteger requesterCalls = new AtomicInteger();
+        KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
+            requesterCalls.incrementAndGet();
+            return nearExpiryTgt;
+        }, clock);
+
+        assertSame(nearExpiryTgt, credentials.getTgtTicket());
+        assertSame(nearExpiryTgt, credentials.getTgtTicket());
+        for (int i = 0; i < 20; i++) {
+            assertSame(nearExpiryTgt, credentials.getTgtTicket());
+        }
+        assertEquals(2, requesterCalls.get());
+
+        clock.advance(Duration.ofSeconds(1));
+        assertThrows(IllegalStateException.class, credentials::getTgtTicket);
+        assertEquals(3, requesterCalls.get());
     }
 
     @Test
@@ -163,6 +251,11 @@ class KerbyCredentialsTest {
         return new KerbySpnegoClientProvider.KerbyCredentials(requester, CLOCK);
     }
 
+    private static KerbySpnegoClientProvider.KerbyCredentials credentials(Callable<TgtTicket> requester,
+                                                                           Clock clock) {
+        return new KerbySpnegoClientProvider.KerbyCredentials(requester, clock);
+    }
+
     private static Callable<TgtTicket> sequence(TgtTicket first, TgtTicket second, AtomicInteger calls) {
         return () -> calls.getAndIncrement() == 0 ? first : second;
     }
@@ -173,5 +266,39 @@ class KerbyCredentialsTest {
         TgtTicket tgt = mock(TgtTicket.class);
         when(tgt.getEncKdcRepPart()).thenReturn(encKdcRepPart);
         return tgt;
+    }
+
+    private static class MutableClock extends Clock {
+
+        private final AtomicReference<Instant> instant;
+        private final ZoneId zone;
+
+        private MutableClock(Instant instant) {
+            this(new AtomicReference<>(instant), ZoneOffset.UTC);
+        }
+
+        private MutableClock(AtomicReference<Instant> instant, ZoneId zone) {
+            this.instant = instant;
+            this.zone = zone;
+        }
+
+        private void advance(Duration duration) {
+            instant.updateAndGet(value -> value.plus(duration));
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return zone;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return new MutableClock(instant, zone);
+        }
+
+        @Override
+        public Instant instant() {
+            return instant.get();
+        }
     }
 }
