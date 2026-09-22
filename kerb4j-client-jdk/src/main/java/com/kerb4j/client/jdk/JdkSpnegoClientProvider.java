@@ -44,6 +44,7 @@ public class JdkSpnegoClientProvider implements SpnegoClientProvider {
                         () -> Krb5LoginContext.loginWithTicketCache(principal)), false);
     }
 
+    // Bridges the provider to the internal mode-aware constructor without changing the public API.
     private static class JdkSubjectBasedSpnegoClientBackend extends SubjectBasedSpnegoClientBackend {
 
         private JdkSubjectBasedSpnegoClientBackend(Callable<Subject> subjectSupplier, boolean acceptOnly) {

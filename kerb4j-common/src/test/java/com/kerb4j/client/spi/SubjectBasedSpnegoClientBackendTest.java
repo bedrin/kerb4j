@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -75,9 +76,9 @@ class SubjectBasedSpnegoClientBackendTest {
         when(destroyedTgt.isDestroyed()).thenReturn(true);
         Subject initialSubject = subjectWithTgt(destroyedTgt);
         Subject refreshedSubject = subjectWithTgt(NOW.plusSeconds(600));
-        SubjectBasedSpnegoClientBackend backend = backend(sequence(initialSubject, refreshedSubject));
+        SubjectBasedSpnegoClientBackend backend = backend(sequence(initialSubject, refreshedSubject), false);
 
-        assertSame(initialSubject, backend.getSubject());
+        assertThrows(IllegalStateException.class, backend::getSubject);
         assertSame(refreshedSubject, backend.getSubject());
 
         verify(destroyedTgt, never()).getEndTime();
@@ -87,10 +88,101 @@ class SubjectBasedSpnegoClientBackendTest {
     void refreshesTgtWithNullEndTimeWithoutNullPointerException() {
         Subject initialSubject = subjectWithTgt((Instant) null);
         Subject refreshedSubject = subjectWithTgt(NOW.plusSeconds(600));
-        SubjectBasedSpnegoClientBackend backend = backend(sequence(initialSubject, refreshedSubject));
+        SubjectBasedSpnegoClientBackend backend = backend(sequence(initialSubject, refreshedSubject), false);
 
-        assertSame(initialSubject, backend.getSubject());
+        assertThrows(IllegalStateException.class, backend::getSubject);
         assertSame(refreshedSubject, backend.getSubject());
+    }
+
+    @Test
+    void selectsHomeRealmTgtRegardlessOfInsertionOrder() {
+        KerberosTicket crossRealm = ticket("client@CLIENT.REALM",
+                "krbtgt/TARGET.REALM@CLIENT.REALM", NOW.plusSeconds(1200), (byte) 1);
+        KerberosTicket homeRealm = ticket("client@CLIENT.REALM",
+                "krbtgt/CLIENT.REALM@CLIENT.REALM", NOW.plusSeconds(600), (byte) 2);
+
+        assertSame(homeRealm, selectTgt(subjectWithTickets(crossRealm, homeRealm)));
+        assertSame(homeRealm, selectTgt(subjectWithTickets(homeRealm, crossRealm)));
+    }
+
+    @Test
+    void selectsValidTgtInsteadOfExpiredTgt() {
+        KerberosTicket expired = ticket("client@EXAMPLE.COM",
+                "krbtgt/EXAMPLE.COM@EXAMPLE.COM", NOW.minusSeconds(1), (byte) 1);
+        KerberosTicket valid = ticket("client@EXAMPLE.COM",
+                "krbtgt/EXAMPLE.COM@EXAMPLE.COM", NOW.plusSeconds(600), (byte) 2);
+
+        assertSame(valid, selectTgt(subjectWithTickets(expired, valid)));
+    }
+
+    @Test
+    void skipsDestroyedTgt() {
+        KerberosTicket destroyed = ticket("client@EXAMPLE.COM",
+                "krbtgt/EXAMPLE.COM@EXAMPLE.COM", NOW.plusSeconds(1200), (byte) 1);
+        when(destroyed.isDestroyed()).thenReturn(true);
+        KerberosTicket valid = ticket("client@EXAMPLE.COM",
+                "krbtgt/EXAMPLE.COM@EXAMPLE.COM", NOW.plusSeconds(600), (byte) 2);
+
+        assertSame(valid, selectTgt(subjectWithTickets(destroyed, valid)));
+        verify(destroyed, never()).getClient();
+    }
+
+    @Test
+    void skipsTgtsWithMissingClientServerOrEndTime() {
+        KerberosTicket missingClient = ticket("client@EXAMPLE.COM",
+                "krbtgt/EXAMPLE.COM@EXAMPLE.COM", NOW.plusSeconds(1200), (byte) 1);
+        when(missingClient.getClient()).thenReturn(null);
+        KerberosTicket missingServer = ticket("client@EXAMPLE.COM",
+                "krbtgt/EXAMPLE.COM@EXAMPLE.COM", NOW.plusSeconds(1200), (byte) 2);
+        when(missingServer.getServer()).thenReturn(null);
+        KerberosTicket missingEndTime = ticket("client@EXAMPLE.COM",
+                "krbtgt/EXAMPLE.COM@EXAMPLE.COM", null, (byte) 3);
+        KerberosTicket valid = ticket("client@EXAMPLE.COM",
+                "krbtgt/EXAMPLE.COM@EXAMPLE.COM", NOW.plusSeconds(600), (byte) 4);
+
+        assertSame(valid, selectTgt(subjectWithTickets(
+                missingClient, missingServer, missingEndTime, valid)));
+    }
+
+    @Test
+    void selectsLatestExpiryAmongEquivalentValidTgts() {
+        KerberosTicket earlier = ticket("client@EXAMPLE.COM",
+                "krbtgt/EXAMPLE.COM@EXAMPLE.COM", NOW.plusSeconds(600), (byte) 1);
+        KerberosTicket later = ticket("client@EXAMPLE.COM",
+                "krbtgt/EXAMPLE.COM@EXAMPLE.COM", NOW.plusSeconds(1200), (byte) 2);
+
+        assertSame(later, selectTgt(subjectWithTickets(earlier, later)));
+        assertSame(later, selectTgt(subjectWithTickets(later, earlier)));
+    }
+
+    @Test
+    void rejectsServiceTicketWithKrbtgtLikePrincipal() {
+        KerberosTicket serviceTicket = ticket("client@EXAMPLE.COM",
+                "krbtgt-service/EXAMPLE.COM@EXAMPLE.COM", NOW.plusSeconds(1200), (byte) 1);
+
+        assertNull(selectTgt(subjectWithTickets(serviceTicket)));
+    }
+
+    @Test
+    void deterministicCrossRealmTieBreakDoesNotDependOnSetOrder() {
+        KerberosTicket realmB = ticket("client@CLIENT.REALM",
+                "krbtgt/B.REALM@CLIENT.REALM", NOW.plusSeconds(600), (byte) 1);
+        KerberosTicket realmA = ticket("client@CLIENT.REALM",
+                "krbtgt/A.REALM@CLIENT.REALM", NOW.plusSeconds(600), (byte) 2);
+
+        assertSame(realmA, selectTgt(subjectWithTickets(realmB, realmA)));
+        assertSame(realmA, selectTgt(subjectWithTickets(realmA, realmB)));
+    }
+
+    @Test
+    void skipsTicketDestroyedDuringInspection() {
+        KerberosTicket concurrentlyDestroyed = ticket("client@EXAMPLE.COM",
+                "krbtgt/EXAMPLE.COM@EXAMPLE.COM", NOW.plusSeconds(1200), (byte) 1);
+        when(concurrentlyDestroyed.isDestroyed()).thenReturn(false, false, true);
+        KerberosTicket valid = ticket("client@EXAMPLE.COM",
+                "krbtgt/EXAMPLE.COM@EXAMPLE.COM", NOW.plusSeconds(600), (byte) 2);
+
+        assertSame(valid, selectTgt(subjectWithTickets(concurrentlyDestroyed, valid)));
     }
 
     @Test
@@ -471,16 +563,30 @@ class SubjectBasedSpnegoClientBackendTest {
     }
 
     private static Subject subjectWithTgt(KerberosTicket ticket) {
+        return subjectWithTickets(ticket);
+    }
+
+    private static Subject subjectWithTickets(KerberosTicket... tickets) {
         Subject subject = new Subject();
-        subject.getPrivateCredentials().add(ticket);
+        subject.getPrivateCredentials().addAll(List.of(tickets));
         return subject;
     }
 
     private static KerberosTicket tgt(Instant endTime) {
+        return ticket("client@EXAMPLE.COM", "krbtgt/EXAMPLE.COM@EXAMPLE.COM", endTime, (byte) 1);
+    }
+
+    private static KerberosTicket ticket(String clientName, String serverName, Instant endTime, byte encoding) {
         KerberosTicket ticket = mock(KerberosTicket.class);
-        when(ticket.getServer()).thenReturn(new KerberosPrincipal("krbtgt/EXAMPLE.COM@EXAMPLE.COM"));
+        when(ticket.getClient()).thenReturn(new KerberosPrincipal(clientName));
+        when(ticket.getServer()).thenReturn(new KerberosPrincipal(serverName));
         when(ticket.getEndTime()).thenReturn(endTime == null ? null : Date.from(endTime));
+        when(ticket.getEncoded()).thenReturn(new byte[]{encoding});
         return ticket;
+    }
+
+    private static KerberosTicket selectTgt(Subject subject) {
+        return SubjectBasedSpnegoClientBackend.selectTgt(subject, CLOCK);
     }
 
     private static GSSException gssException(int majorCode) {

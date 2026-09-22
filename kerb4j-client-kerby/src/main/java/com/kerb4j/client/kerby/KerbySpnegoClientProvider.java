@@ -96,6 +96,7 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         return new Subject(false, principals, new HashSet<>(), privateCredentials);
     }
 
+    // Bridges provider-specific login modes to the internal constructor without exposing new public API.
     private static class ConfiguredSubjectBasedSpnegoClientBackend extends SubjectBasedSpnegoClientBackend {
 
         private ConfiguredSubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier,
@@ -136,8 +137,10 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
                     throw firstFailure;
                 }
 
+                // Invalidate only the TGT used for this service Subject; a newer cached TGT must survive.
                 credentials.invalidateTgtTicket(firstServiceSubject.tgt);
                 try {
+                    // This retry happens before any token generation and constructs a fresh GSS context.
                     ServiceSubject secondServiceSubject = subjectForService(serviceIdentity.servicePrincipal);
                     return createInitiatorContext(spnegoClient, serviceIdentity.gssName, secondServiceSubject.subject);
                 } catch (PrivilegedActionException | GSSException | RuntimeException secondFailure) {
@@ -163,6 +166,7 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         }
 
         private static boolean isNoCredentialFailure(Throwable failure) {
+            // Identity tracking also makes malformed cyclic cause chains safe to inspect.
             Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
             for (Throwable cause = failure; cause != null && visited.add(cause); cause = cause.getCause()) {
                 if (cause instanceof GSSException && ((GSSException) cause).getMajor() == GSSException.NO_CRED) {
@@ -184,6 +188,7 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             this(tgtRequester, Clock.systemUTC(), DEFAULT_TGT_REFRESH_MARGIN);
         }
 
+        // Package-private clock overloads keep expiry tests deterministic without expanding the public API.
         KerbyCredentials(Callable<TgtTicket> tgtRequester, @NonNull Clock clock) {
             this(tgtRequester, clock, DEFAULT_TGT_REFRESH_MARGIN);
         }
@@ -251,6 +256,7 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         void invalidateTgtTicket(TgtTicket failedTgt) {
             lock.lock();
             try {
+                // Identity comparison prevents a late failure from evicting a newer TGT.
                 if (tgtTicket == failedTgt) {
                     tgtTicket = null;
                 }
@@ -425,6 +431,7 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
 
     }
 
+    // Couples a service Subject to the exact TGT used to create it for identity-safe recovery.
     private static class ServiceSubject {
 
         private final Subject subject;

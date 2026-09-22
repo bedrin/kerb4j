@@ -9,8 +9,7 @@ import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
 import org.ietf.jgss.GSSName;
 import org.jspecify.annotations.NonNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jspecify.annotations.Nullable;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosKey;
@@ -23,10 +22,13 @@ import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -36,17 +38,18 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SubjectBasedSpnegoClientBackend.class);
     private static final Duration DEFAULT_TGT_REFRESH_MARGIN = Duration.ofSeconds(60);
 
     private final String implementationName;
     private final AtomicReference<SubjectTgtPair> subjectTgtPairReference = new AtomicReference<>();
+    // Accept-only Subjects have no TGT and therefore no expiry time to drive refresh.
     private final AtomicReference<Subject> eternalSubjectReference = new AtomicReference<>();
     private final Callable<Subject> subjectSupplier;
     private final Clock clock;
     private final Duration tgtRefreshMargin;
     private final SubjectMode subjectMode;
     private final Lock authenticateLock = new ReentrantLock();
+    // Guarded by authenticateLock; prevents a legacy automatic initiator from becoming accept-only after refresh.
     private boolean tgtWasPublished;
 
     public SubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier) {
@@ -66,6 +69,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                 acceptOnly ? SubjectMode.ACCEPT_ONLY : SubjectMode.INITIATOR);
     }
 
+    // Package-private clock overloads keep expiry tests deterministic without expanding the public API.
     SubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier,
                                     @NonNull Clock clock) {
         this(implementationName, subjectSupplier, clock, DEFAULT_TGT_REFRESH_MARGIN, SubjectMode.AUTOMATIC);
@@ -145,14 +149,104 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
         return new SubjectSelection(subjectTgtPair.subject, subjectTgtPair);
     }
 
-    private static SubjectTgtPair findTgtPair(Subject subject) {
-        for (KerberosTicket ticket : subject.getPrivateCredentials(KerberosTicket.class)) {
-            KerberosPrincipal server = ticket.getServer();
-            if (server != null && server.getName().startsWith("krbtgt")) {
-                return new SubjectTgtPair(ticket, subject);
+    private SubjectTgtPair findTgtPair(Subject subject) {
+        KerberosTicket tgt = selectTgt(subject, clock);
+        return tgt == null ? null : new SubjectTgtPair(tgt, subject);
+    }
+
+    static @Nullable KerberosTicket selectTgt(Subject subject, Clock clock) {
+        Instant now = clock.instant();
+        // Selection is isolated from later changes to the Subject credential set.
+        List<KerberosTicket> tickets = new ArrayList<>(subject.getPrivateCredentials(KerberosTicket.class));
+        List<TgtCandidate> candidates = new ArrayList<>(tickets.size());
+        for (KerberosTicket ticket : tickets) {
+            TgtCandidate candidate = inspectTgt(ticket, now);
+            if (candidate != null) {
+                candidates.add(candidate);
+            }
+        }
+
+        // Home-realm wins; fallbacks use latest expiry, principal names, then encoded bytes.
+        candidates.sort(SubjectBasedSpnegoClientBackend::compareTgtCandidates);
+        for (TgtCandidate candidate : candidates) {
+            if (candidate.stillMatchesTicket()) {
+                return candidate.ticket;
             }
         }
         return null;
+    }
+
+    private static @Nullable TgtCandidate inspectTgt(KerberosTicket ticket, Instant now) {
+        try {
+            if (ticket.isDestroyed()) {
+                return null;
+            }
+            KerberosPrincipal client = ticket.getClient();
+            KerberosPrincipal server = ticket.getServer();
+            Date endTime = ticket.getEndTime();
+            byte[] encoded = ticket.getEncoded();
+            if (ticket.isDestroyed() || client == null || server == null || endTime == null || encoded == null
+                    || !endTime.toInstant().isAfter(now)) {
+                return null;
+            }
+
+            String clientRealm = client.getRealm();
+            String clientName = client.getName();
+            String serverRealm = server.getRealm();
+            String serverName = server.getName();
+            String targetRealm = tgtTargetRealm(serverName, serverRealm);
+            if (clientRealm == null || clientName == null || targetRealm == null) {
+                return null;
+            }
+            boolean homeRealm = clientRealm.equals(targetRealm) && clientRealm.equals(serverRealm);
+            return new TgtCandidate(ticket, client, server, endTime, encoded, clientName, serverName, homeRealm);
+        } catch (IllegalStateException | NullPointerException ignored) {
+            // Destruction can clear ticket fields between individual accessor calls.
+            return null;
+        }
+    }
+
+    private static @Nullable String tgtTargetRealm(String serverName, String serverRealm) {
+        if (serverName == null || serverRealm == null) {
+            return null;
+        }
+        String prefix = "krbtgt/";
+        String suffix = "@" + serverRealm;
+        if (!serverName.startsWith(prefix) || !serverName.endsWith(suffix)) {
+            return null;
+        }
+        String targetRealm = serverName.substring(prefix.length(), serverName.length() - suffix.length());
+        return targetRealm.isEmpty() || targetRealm.indexOf('/') >= 0 || targetRealm.indexOf('@') >= 0
+                ? null : targetRealm;
+    }
+
+    private static int compareTgtCandidates(TgtCandidate left, TgtCandidate right) {
+        int comparison = Boolean.compare(right.homeRealm, left.homeRealm);
+        if (comparison == 0) {
+            comparison = right.endTime.compareTo(left.endTime);
+        }
+        if (comparison == 0) {
+            comparison = left.serverName.compareTo(right.serverName);
+        }
+        if (comparison == 0) {
+            comparison = left.clientName.compareTo(right.clientName);
+        }
+        return comparison == 0 ? Arrays.compareUnsigned(left.encoded, right.encoded) : comparison;
+    }
+
+    static boolean isTicketCurrentAt(@Nullable KerberosTicket ticket, Instant instant) {
+        if (ticket == null) {
+            return false;
+        }
+        try {
+            if (ticket.isDestroyed()) {
+                return false;
+            }
+            Date endTime = ticket.getEndTime();
+            return endTime != null && endTime.toInstant().isAfter(instant) && !ticket.isDestroyed();
+        } catch (IllegalStateException | NullPointerException ignored) {
+            return false;
+        }
     }
 
     private static Duration requireNonNegative(Duration duration) {
@@ -207,8 +301,10 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                 throw firstFailure;
             }
 
+            // Clear only the pair used by this attempt; a concurrently published replacement must survive.
             subjectTgtPairReference.compareAndSet(firstSelection.subjectTgtPair, null);
             try {
+                // No token has been generated yet, so rebuilding credentials and context is safe and bounded.
                 SubjectSelection secondSelection = getSubjectSelection();
                 return createInitiatorContext(spnegoClient, gssName, secondSelection.subject);
             } catch (PrivilegedActionException | GSSException | RuntimeException secondFailure) {
@@ -226,6 +322,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
     }
 
     private static boolean isNoCredentialFailure(Throwable failure) {
+        // Identity tracking also makes malformed cyclic cause chains safe to inspect.
         Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Throwable cause = failure; cause != null && visited.add(cause); cause = cause.getCause()) {
             if (cause instanceof GSSException && ((GSSException) cause).getMajor() == GSSException.NO_CRED) {
@@ -297,23 +394,49 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
         }
 
         private boolean isExpired(Clock clock, Duration refreshMargin) {
+            return !isTicketCurrentAt(tgt, clock.instant().plus(refreshMargin));
+        }
+    }
 
-            if (null == tgt || tgt.isDestroyed()) {
-                return true;
-            }
+    // Immutable inspection snapshot used to rank tickets without rereading mutable ticket fields.
+    private static class TgtCandidate {
 
+        private final KerberosTicket ticket;
+        private final KerberosPrincipal client;
+        private final KerberosPrincipal server;
+        private final Date endTime;
+        private final byte[] encoded;
+        private final String clientName;
+        private final String serverName;
+        private final boolean homeRealm;
+
+        private TgtCandidate(KerberosTicket ticket, KerberosPrincipal client, KerberosPrincipal server,
+                             Date endTime, byte[] encoded, String clientName, String serverName, boolean homeRealm) {
+            this.ticket = ticket;
+            this.client = client;
+            this.server = server;
+            this.endTime = endTime;
+            this.encoded = encoded;
+            this.clientName = clientName;
+            this.serverName = serverName;
+            this.homeRealm = homeRealm;
+        }
+
+        private boolean stillMatchesTicket() {
             try {
-                synchronized (tgt) {
-                    Date endTime = tgt.getEndTime();
-                    return endTime == null || !endTime.toInstant().isAfter(clock.instant().plus(refreshMargin));
-                }
-            } catch (Exception e) {
-                LOGGER.error("Failed to get Kerberos ticket end time", e);
-                return true;
+                return !ticket.isDestroyed()
+                        && client.equals(ticket.getClient())
+                        && server.equals(ticket.getServer())
+                        && endTime.equals(ticket.getEndTime())
+                        && Arrays.equals(encoded, ticket.getEncoded())
+                        && !ticket.isDestroyed();
+            } catch (IllegalStateException | NullPointerException ignored) {
+                return false;
             }
         }
     }
 
+    // Couples a Subject to its cache entry so recovery can invalidate exactly the credentials that failed.
     private static class SubjectSelection {
 
         private final Subject subject;
@@ -325,6 +448,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
         }
     }
 
+    // AUTOMATIC preserves the historic public-constructor behavior for an initial no-TGT Subject.
     private enum SubjectMode {
         AUTOMATIC,
         INITIATOR,
