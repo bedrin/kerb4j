@@ -39,6 +39,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
 
     private static final Duration DEFAULT_TGT_REFRESH_MARGIN = Duration.ofSeconds(60);
+    // Supplier failures are shared for one second; the next request after that may retry without sleeping.
+    private static final Duration REFRESH_FAILURE_COOLDOWN = Duration.ofSeconds(1);
 
     private final String implementationName;
     private final AtomicReference<SubjectTgtPair> subjectTgtPairReference = new AtomicReference<>();
@@ -49,6 +51,8 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
     private final Duration tgtRefreshMargin;
     private final SubjectMode subjectMode;
     private final Lock authenticateLock = new ReentrantLock();
+    // Guarded by authenticateLock and scoped to the exact cache entry whose refresh failed.
+    private @Nullable RefreshFailure refreshFailure;
     // Guarded by authenticateLock; prevents a legacy automatic initiator from becoming accept-only after refresh.
     private boolean tgtWasPublished;
 
@@ -113,6 +117,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
         }
         SubjectTgtPair subjectTgtPair = subjectTgtPairReference.get();
         if (null == subjectTgtPair || subjectTgtPair.isExpired(clock, tgtRefreshMargin)) {
+            Instant refreshRequestedAt = clock.instant();
             authenticateLock.lock();
             try {
                 eternalSubject = eternalSubjectReference.get();
@@ -121,7 +126,9 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                 }
                 subjectTgtPair = subjectTgtPairReference.get();
                 if (null == subjectTgtPair || subjectTgtPair.isExpired(clock, tgtRefreshMargin)) {
-                    Subject refreshedSubject = subjectSupplier.call();
+                    throwCachedRefreshFailure(subjectTgtPair, refreshRequestedAt);
+                    Subject refreshedSubject = callSubjectSupplier(subjectTgtPair);
+                    refreshFailure = null;
                     SubjectTgtPair refreshedPair = findTgtPair(refreshedSubject);
                     if (refreshedPair != null) {
                         subjectTgtPairReference.set(refreshedPair);
@@ -138,15 +145,42 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                     eternalSubjectReference.set(refreshedSubject);
                     return new SubjectSelection(refreshedSubject, null);
                 }
-            } catch (RuntimeException e) {
-                throw e;
-            } catch (Exception e) {
-                throw new RuntimeException(e);
             } finally {
                 authenticateLock.unlock();
             }
         }
         return new SubjectSelection(subjectTgtPair.subject, subjectTgtPair);
+    }
+
+    private void throwCachedRefreshFailure(@Nullable SubjectTgtPair refreshTarget, Instant refreshRequestedAt) {
+        if (refreshFailure == null) {
+            return;
+        }
+        if (refreshFailure.refreshTarget == refreshTarget
+                && (refreshRequestedAt.isBefore(refreshFailure.retryAt)
+                    || clock.instant().isBefore(refreshFailure.retryAt))) {
+            throw refreshFailure.failure;
+        }
+        refreshFailure = null;
+    }
+
+    private Subject callSubjectSupplier(@Nullable SubjectTgtPair refreshTarget) {
+        try {
+            return subjectSupplier.call();
+        } catch (InterruptedException e) {
+            // Interruption belongs to the initiating caller and must not become a shared authentication failure.
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (RuntimeException e) {
+            refreshFailure = new RefreshFailure(refreshTarget, e,
+                    clock.instant().plus(REFRESH_FAILURE_COOLDOWN));
+            throw e;
+        } catch (Exception e) {
+            RuntimeException failure = new RuntimeException(e);
+            refreshFailure = new RefreshFailure(refreshTarget, failure,
+                    clock.instant().plus(REFRESH_FAILURE_COOLDOWN));
+            throw failure;
+        }
     }
 
     private SubjectTgtPair findTgtPair(Subject subject) {
@@ -433,6 +467,20 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
             } catch (IllegalStateException | NullPointerException ignored) {
                 return false;
             }
+        }
+    }
+
+    // Callers joining one failed refresh share its exception; the first request after retryAt may try again.
+    private static class RefreshFailure {
+
+        private final @Nullable SubjectTgtPair refreshTarget;
+        private final RuntimeException failure;
+        private final Instant retryAt;
+
+        private RefreshFailure(@Nullable SubjectTgtPair refreshTarget, RuntimeException failure, Instant retryAt) {
+            this.refreshTarget = refreshTarget;
+            this.failure = failure;
+            this.retryAt = retryAt;
         }
     }
 

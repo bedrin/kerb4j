@@ -15,7 +15,9 @@ import java.lang.reflect.Proxy;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.List;
@@ -26,10 +28,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -234,9 +238,81 @@ class SubjectBasedSpnegoClientBackendTest {
     }
 
     @Test
+    void concurrentCallersShareRefreshFailureAndLaterRetryPublishesOnce() throws Exception {
+        Subject initialSubject = subjectWithTgt(NOW.plusSeconds(30));
+        Subject refreshedSubject = subjectWithTgt(NOW.plusSeconds(600));
+        Exception expectedCause = new Exception("refresh failed");
+        MutableClock clock = new MutableClock(NOW);
+        AtomicInteger supplierCalls = new AtomicInteger();
+        CountDownLatch failureStarted = new CountDownLatch(1);
+        CountDownLatch allowFailure = new CountDownLatch(1);
+        SubjectBasedSpnegoClientBackend backend = backend(() -> {
+            int call = supplierCalls.incrementAndGet();
+            if (call == 1) {
+                return initialSubject;
+            }
+            if (call == 2) {
+                failureStarted.countDown();
+                if (!allowFailure.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Timed out waiting to release refresh failure");
+                }
+                throw expectedCause;
+            }
+            return refreshedSubject;
+        }, clock);
+        assertSame(initialSubject, backend.getSubject());
+
+        int callerCount = 20;
+        ExecutorService executor = Executors.newFixedThreadPool(callerCount);
+        CountDownLatch callersReady = new CountDownLatch(callerCount);
+        CountDownLatch start = new CountDownLatch(1);
+        RuntimeException sharedFailure = null;
+        try {
+            List<Future<Subject>> results = java.util.stream.IntStream.range(0, callerCount)
+                    .mapToObj(ignored -> executor.submit(() -> {
+                        callersReady.countDown();
+                        start.await();
+                        return backend.getSubject();
+                    }))
+                    .toList();
+
+            assertTrue(callersReady.await(10, TimeUnit.SECONDS));
+            start.countDown();
+            assertTrue(failureStarted.await(10, TimeUnit.SECONDS));
+            allowFailure.countDown();
+
+            for (Future<Subject> result : results) {
+                ExecutionException executionException = assertThrows(ExecutionException.class,
+                        () -> result.get(10, TimeUnit.SECONDS));
+                assertTrue(executionException.getCause() instanceof RuntimeException);
+                RuntimeException failure = (RuntimeException) executionException.getCause();
+                if (sharedFailure == null) {
+                    sharedFailure = failure;
+                } else {
+                    assertSame(sharedFailure, failure);
+                }
+                assertSame(expectedCause, failure.getCause());
+            }
+        } finally {
+            allowFailure.countDown();
+            executor.shutdownNow();
+        }
+
+        assertEquals(2, supplierCalls.get());
+        assertSame(sharedFailure, assertThrows(RuntimeException.class, backend::getSubject));
+        assertEquals(2, supplierCalls.get());
+
+        clock.advance(Duration.ofSeconds(1));
+        assertSame(refreshedSubject, backend.getSubject());
+        assertSame(refreshedSubject, backend.getSubject());
+        assertEquals(3, supplierCalls.get());
+    }
+
+    @Test
     void supplierFailureDoesNotPublishReplacementState() {
         Subject initialSubject = subjectWithTgt(NOW.plusSeconds(30));
         Subject refreshedSubject = subjectWithTgt(NOW.plusSeconds(600));
+        MutableClock clock = new MutableClock(NOW);
         AtomicInteger supplierCalls = new AtomicInteger();
         SubjectBasedSpnegoClientBackend backend = backend(() -> {
             int call = supplierCalls.incrementAndGet();
@@ -247,14 +323,51 @@ class SubjectBasedSpnegoClientBackendTest {
                 throw new Exception("refresh failed");
             }
             return refreshedSubject;
-        });
+        }, clock);
         assertSame(initialSubject, backend.getSubject());
 
         RuntimeException failure = assertThrows(RuntimeException.class, backend::getSubject);
         assertEquals("refresh failed", failure.getCause().getMessage());
+        assertSame(failure, assertThrows(RuntimeException.class, backend::getSubject));
+        clock.advance(Duration.ofSeconds(1));
         assertSame(refreshedSubject, backend.getSubject());
         assertSame(refreshedSubject, backend.getSubject());
         assertEquals(3, supplierCalls.get());
+    }
+
+    @Test
+    void interruptedSupplierDoesNotCorruptBackendState() throws Exception {
+        Subject refreshedSubject = subjectWithTgt(NOW.plusSeconds(600));
+        AtomicInteger supplierCalls = new AtomicInteger();
+        CountDownLatch supplierStarted = new CountDownLatch(1);
+        SubjectBasedSpnegoClientBackend backend = backend(() -> {
+            if (supplierCalls.incrementAndGet() == 1) {
+                supplierStarted.countDown();
+                new CountDownLatch(1).await();
+            }
+            return refreshedSubject;
+        });
+        AtomicReference<RuntimeException> failure = new AtomicReference<>();
+        AtomicBoolean interruptRestored = new AtomicBoolean();
+        Thread refreshThread = new Thread(() -> {
+            try {
+                backend.getSubject();
+            } catch (RuntimeException e) {
+                failure.set(e);
+                interruptRestored.set(Thread.currentThread().isInterrupted());
+            }
+        });
+
+        refreshThread.start();
+        assertTrue(supplierStarted.await(10, TimeUnit.SECONDS));
+        refreshThread.interrupt();
+        refreshThread.join(TimeUnit.SECONDS.toMillis(10));
+
+        assertFalse(refreshThread.isAlive());
+        assertTrue(failure.get().getCause() instanceof InterruptedException);
+        assertTrue(interruptRestored.get());
+        assertSame(refreshedSubject, backend.getSubject());
+        assertEquals(2, supplierCalls.get());
     }
 
     @Test
@@ -530,6 +643,10 @@ class SubjectBasedSpnegoClientBackendTest {
         return new SubjectBasedSpnegoClientBackend("test", supplier, CLOCK);
     }
 
+    private static SubjectBasedSpnegoClientBackend backend(Callable<Subject> supplier, Clock clock) {
+        return new SubjectBasedSpnegoClientBackend("test", supplier, clock);
+    }
+
     private static SubjectBasedSpnegoClientBackend backend(Callable<Subject> supplier, boolean acceptOnly) {
         return new SubjectBasedSpnegoClientBackend("test", supplier, CLOCK, acceptOnly);
     }
@@ -638,5 +755,39 @@ class SubjectBasedSpnegoClientBackendTest {
     @FunctionalInterface
     private interface ContextFactory {
         GSSContext create(Subject subject, GSSName gssName) throws GSSException, PrivilegedActionException;
+    }
+
+    private static class MutableClock extends Clock {
+
+        private final AtomicReference<Instant> instant;
+        private final ZoneId zone;
+
+        private MutableClock(Instant instant) {
+            this(new AtomicReference<>(instant), ZoneOffset.UTC);
+        }
+
+        private MutableClock(AtomicReference<Instant> instant, ZoneId zone) {
+            this.instant = instant;
+            this.zone = zone;
+        }
+
+        private void advance(Duration duration) {
+            instant.updateAndGet(value -> value.plus(duration));
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return zone;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return new MutableClock(instant, zone);
+        }
+
+        @Override
+        public Instant instant() {
+            return instant.get();
+        }
     }
 }
