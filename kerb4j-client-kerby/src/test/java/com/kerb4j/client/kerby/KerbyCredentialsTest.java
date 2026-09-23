@@ -181,6 +181,123 @@ class KerbyCredentialsTest {
     }
 
     @Test
+    void concurrentCallersUseValidTgtAfterProactiveFailureAndLaterRetryPublishesOnce() throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        TgtTicket initialTgt = tgt(NOW.plusSeconds(30));
+        TgtTicket refreshedTgt = tgt(NOW.plusSeconds(600));
+        KrbException expectedFailure = new KrbException("expected proactive refresh failure");
+        AtomicInteger requesterCalls = new AtomicInteger();
+        CountDownLatch requestStarted = new CountDownLatch(1);
+        CountDownLatch allowFailure = new CountDownLatch(1);
+        KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
+            int call = requesterCalls.incrementAndGet();
+            if (call == 1) {
+                return initialTgt;
+            }
+            if (call == 2) {
+                requestStarted.countDown();
+                if (!allowFailure.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Timed out waiting to fail proactive TGT request");
+                }
+                throw expectedFailure;
+            }
+            return refreshedTgt;
+        }, clock);
+        assertSame(initialTgt, credentials.getTgtTicket());
+
+        int callerCount = 20;
+        ExecutorService executor = Executors.newFixedThreadPool(callerCount);
+        CountDownLatch callersReady = new CountDownLatch(callerCount);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Future<TgtTicket>> fallbackResults = java.util.stream.IntStream.range(0, callerCount)
+                    .mapToObj(ignored -> executor.submit(() -> {
+                        callersReady.countDown();
+                        start.await();
+                        return credentials.getTgtTicket();
+                    }))
+                    .toList();
+
+            assertTrue(callersReady.await(10, TimeUnit.SECONDS));
+            start.countDown();
+            assertTrue(requestStarted.await(10, TimeUnit.SECONDS));
+            allowFailure.countDown();
+            for (Future<TgtTicket> result : fallbackResults) {
+                assertSame(initialTgt, result.get(10, TimeUnit.SECONDS));
+            }
+            assertEquals(2, requesterCalls.get());
+            assertSame(initialTgt, credentials.getTgtTicket());
+
+            clock.advance(Duration.ofMillis(14_999));
+            assertSame(initialTgt, credentials.getTgtTicket());
+            assertEquals(2, requesterCalls.get());
+
+            clock.advance(Duration.ofMillis(1));
+            List<Future<TgtTicket>> recoveredResults = java.util.stream.IntStream.range(0, callerCount)
+                    .mapToObj(ignored -> executor.submit(credentials::getTgtTicket))
+                    .toList();
+            for (Future<TgtTicket> result : recoveredResults) {
+                assertSame(refreshedTgt, result.get(10, TimeUnit.SECONDS));
+            }
+            assertEquals(3, requesterCalls.get());
+        } finally {
+            allowFailure.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void runtimeProactiveRefreshFailureRetainsUsableTgt() throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        TgtTicket initialTgt = tgt(NOW.plusSeconds(30));
+        TgtTicket refreshedTgt = tgt(NOW.plusSeconds(600));
+        AtomicInteger requesterCalls = new AtomicInteger();
+        KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
+            int call = requesterCalls.incrementAndGet();
+            if (call == 1) {
+                return initialTgt;
+            }
+            if (call == 2) {
+                throw new IllegalStateException("runtime proactive refresh failure");
+            }
+            return refreshedTgt;
+        }, clock);
+
+        assertSame(initialTgt, credentials.getTgtTicket());
+        assertSame(initialTgt, credentials.getTgtTicket());
+        assertSame(initialTgt, credentials.getTgtTicket());
+        assertEquals(2, requesterCalls.get());
+
+        clock.advance(Duration.ofSeconds(15));
+        assertSame(refreshedTgt, credentials.getTgtTicket());
+        assertEquals(3, requesterCalls.get());
+    }
+
+    @Test
+    void nullProactiveRefreshResultRetainsUsableTgt() throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        TgtTicket initialTgt = tgt(NOW.plusSeconds(30));
+        TgtTicket refreshedTgt = tgt(NOW.plusSeconds(600));
+        AtomicInteger requesterCalls = new AtomicInteger();
+        KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
+            int call = requesterCalls.incrementAndGet();
+            if (call == 1) {
+                return initialTgt;
+            }
+            return call == 2 ? null : refreshedTgt;
+        }, clock);
+
+        assertSame(initialTgt, credentials.getTgtTicket());
+        assertSame(initialTgt, credentials.getTgtTicket());
+        assertSame(initialTgt, credentials.getTgtTicket());
+        assertEquals(2, requesterCalls.get());
+
+        clock.advance(Duration.ofSeconds(15));
+        assertSame(refreshedTgt, credentials.getTgtTicket());
+        assertEquals(3, requesterCalls.get());
+    }
+
+    @Test
     void concurrentCallersShareRuntimeRefreshFailure() throws Exception {
         RuntimeException expectedFailure = new IllegalStateException("runtime refresh failure");
         AtomicInteger requesterCalls = new AtomicInteger();
@@ -225,15 +342,21 @@ class KerbyCredentialsTest {
 
     @Test
     void interruptedRequesterIsNotCachedAndRestoresInterruptStatus() throws Exception {
+        TgtTicket initialTgt = tgt(NOW.plusSeconds(30));
         TgtTicket refreshedTgt = tgt(NOW.plusSeconds(600));
         InterruptedException expectedFailure = new InterruptedException("interrupted refresh");
         AtomicInteger requesterCalls = new AtomicInteger();
         KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
-            if (requesterCalls.incrementAndGet() == 1) {
+            int call = requesterCalls.incrementAndGet();
+            if (call == 1) {
+                return initialTgt;
+            }
+            if (call == 2) {
                 throw expectedFailure;
             }
             return refreshedTgt;
         });
+        assertSame(initialTgt, credentials.getTgtTicket());
         AtomicReference<Throwable> failure = new AtomicReference<>();
         AtomicReference<Boolean> interruptRestored = new AtomicReference<>(false);
         Thread thread = new Thread(() -> {
@@ -252,7 +375,7 @@ class KerbyCredentialsTest {
         assertSame(expectedFailure, failure.get());
         assertTrue(interruptRestored.get());
         assertSame(refreshedTgt, credentials.getTgtTicket());
-        assertEquals(2, requesterCalls.get());
+        assertEquals(3, requesterCalls.get());
     }
 
     @Test
@@ -329,11 +452,72 @@ class KerbyCredentialsTest {
     }
 
     @Test
-    void invalidatingOldTgtMakesItsCachedRefreshFailureIrrelevant() throws Exception {
+    void expiryDuringFailedProactiveRefreshPreventsFallbackAndSharesFailure() throws Exception {
         MutableClock clock = new MutableClock(NOW);
-        TgtTicket oldTgt = tgt(NOW.plusSeconds(30));
+        TgtTicket initialTgt = tgt(NOW.plusSeconds(30));
         TgtTicket refreshedTgt = tgt(NOW.plusSeconds(600));
-        KrbException expectedFailure = new KrbException("old generation failed");
+        KrbException expectedFailure = new KrbException("refresh failed after old TGT expired");
+        AtomicInteger requesterCalls = new AtomicInteger();
+        CountDownLatch requestStarted = new CountDownLatch(1);
+        CountDownLatch allowFailure = new CountDownLatch(1);
+        KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
+            int call = requesterCalls.incrementAndGet();
+            if (call == 1) {
+                return initialTgt;
+            }
+            if (call == 2) {
+                requestStarted.countDown();
+                if (!allowFailure.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Timed out waiting to fail proactive TGT request");
+                }
+                throw expectedFailure;
+            }
+            return refreshedTgt;
+        }, clock);
+        assertSame(initialTgt, credentials.getTgtTicket());
+
+        int callerCount = 20;
+        ExecutorService executor = Executors.newFixedThreadPool(callerCount);
+        CountDownLatch callersReady = new CountDownLatch(callerCount);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Future<TgtTicket>> results = java.util.stream.IntStream.range(0, callerCount)
+                    .mapToObj(ignored -> executor.submit(() -> {
+                        callersReady.countDown();
+                        start.await();
+                        return credentials.getTgtTicket();
+                    }))
+                    .toList();
+
+            assertTrue(callersReady.await(10, TimeUnit.SECONDS));
+            start.countDown();
+            assertTrue(requestStarted.await(10, TimeUnit.SECONDS));
+            clock.advance(Duration.ofSeconds(30));
+            allowFailure.countDown();
+
+            for (Future<TgtTicket> result : results) {
+                ExecutionException failure = assertThrows(ExecutionException.class,
+                        () -> result.get(10, TimeUnit.SECONDS));
+                assertSame(expectedFailure, failure.getCause());
+            }
+            assertEquals(2, requesterCalls.get());
+            assertSame(expectedFailure, assertThrows(KrbException.class, credentials::getTgtTicket));
+
+            clock.advance(Duration.ofSeconds(1));
+            assertSame(refreshedTgt, credentials.getTgtTicket());
+            assertEquals(3, requesterCalls.get());
+        } finally {
+            allowFailure.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void explicitlyInvalidatedTgtCannotBeUsedAsFallback() throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        TgtTicket oldTgt = tgt(NOW.plusSeconds(600));
+        TgtTicket refreshedTgt = tgt(NOW.plusSeconds(600));
+        KrbException expectedFailure = new KrbException("mandatory refresh failed");
         AtomicInteger requesterCalls = new AtomicInteger();
         KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
             int call = requesterCalls.incrementAndGet();
@@ -347,9 +531,11 @@ class KerbyCredentialsTest {
         }, clock);
 
         assertSame(oldTgt, credentials.getTgtTicket());
-        assertSame(expectedFailure, assertThrows(KrbException.class, credentials::getTgtTicket));
         credentials.invalidateTgtTicket(oldTgt);
+        assertSame(expectedFailure, assertThrows(KrbException.class, credentials::getTgtTicket));
+        assertSame(expectedFailure, assertThrows(KrbException.class, credentials::getTgtTicket));
 
+        clock.advance(Duration.ofSeconds(1));
         assertSame(refreshedTgt, credentials.getTgtTicket());
         assertEquals(3, requesterCalls.get());
     }

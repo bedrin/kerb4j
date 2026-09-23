@@ -128,6 +128,8 @@ proactively refreshed during the 60 seconds before expiry. Concurrent callers sh
 If a refresh source still returns a current, near-expiry TGT, Kerb4J schedules the next proactive attempt halfway
 through its remaining lifetime, bounded to 1–30 seconds. This avoids request-rate or once-per-second refresh loops;
 an actually expired TGT is never reused, and credential-triggered recovery still refreshes immediately.
+If a proactive refresh fails while the cached TGT remains usable, Kerb4J retains it and schedules a later attempt;
+mandatory refresh failures are still propagated.
 
 If initial GSS credential or context construction fails with `GSSException.NO_CRED`, Kerb4J invalidates only the
 credentials used by that attempt and retries once with a fresh Subject/TGT. This recovery happens before token

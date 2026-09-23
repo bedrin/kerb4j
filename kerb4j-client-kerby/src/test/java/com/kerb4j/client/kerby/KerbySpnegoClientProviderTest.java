@@ -39,6 +39,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
@@ -402,6 +403,34 @@ class KerbySpnegoClientProviderTest extends KerberosSecurityTestcase {
             assertEquals(2, serviceCalls.get());
             assertEquals(2, contextCalls.get());
         }
+    }
+
+    @Test
+    void contextConstructionUsesRetainedTgtAfterFailedProactiveRefresh() throws Exception {
+        TgtTicket retainedTgt = tgt((byte) 1, NOW.plusSeconds(30));
+        KrbException expectedFailure = new KrbException("proactive refresh failed");
+        AtomicInteger requesterCalls = new AtomicInteger();
+        AtomicReference<TgtTicket> serviceTgt = new AtomicReference<>();
+        KerbySpnegoClientProvider.KerbyCredentials credentials =
+                new KerbySpnegoClientProvider.KerbyCredentials(() -> {
+                    if (requesterCalls.incrementAndGet() == 1) {
+                        return retainedTgt;
+                    }
+                    throw expectedFailure;
+                }, CLOCK);
+        assertSame(retainedTgt, credentials.getTgtTicket());
+        KerbySpnegoClientProvider.KerbySpnegoClientBackend backend = backend(
+                credentials,
+                (tgt, ignored) -> {
+                    serviceTgt.set(tgt);
+                    return new Subject();
+                },
+                (subject, ignored) -> mock(GSSContext.class));
+
+        try (SpnegoContext ignored = backend.createContextForSPN(null, "HTTP/localhost")) {
+            assertSame(retainedTgt, serviceTgt.get());
+        }
+        assertEquals(2, requesterCalls.get());
     }
 
     private static void assertSubjectMode(SpnegoClientBackend backend, String expectedMode) throws Exception {

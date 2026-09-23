@@ -7,8 +7,8 @@ All notable changes to this project are documented in this file.
 ### Bug fixes
 
 - Made concurrent clients refresh TGTs before expiry with adaptive scheduling, share JDK and Kerby refresh failures,
-  and recover once from structurally identified pre-token credential failures, including Kerby service-ticket
-  acquisition.
+  retain still-usable credentials after proactive refresh failures, and recover once from structurally identified
+  pre-token credential failures, including Kerby service-ticket acquisition.
 
 ## 0.5.1
 

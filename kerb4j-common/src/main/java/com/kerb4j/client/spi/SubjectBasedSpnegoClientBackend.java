@@ -163,13 +163,24 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (RuntimeException e) {
-            publishRefreshFailure(refreshTarget, e);
-            throw e;
+            return handleRefreshFailure(refreshTarget, e);
         } catch (Exception e) {
             RuntimeException failure = new RuntimeException(e);
-            publishRefreshFailure(refreshTarget, failure);
-            throw failure;
+            return handleRefreshFailure(refreshTarget, failure);
         }
+    }
+
+    private SubjectSelection handleRefreshFailure(SubjectCacheState refreshTarget, RuntimeException failure) {
+        Instant failedAt = clock.instant();
+        SubjectCacheState retainedState = refreshTarget.afterFailedProactiveRefresh(failedAt);
+        if (retainedState != null && subjectStateReference.compareAndSet(refreshTarget, retainedState)) {
+            // Keep a still-usable TGT, but atomically defer the next proactive attempt.
+            refreshFailure = null;
+            return retainedState.selection();
+        }
+
+        publishRefreshFailure(refreshTarget, failure);
+        throw failure;
     }
 
     private void throwCachedRefreshFailure(SubjectCacheState refreshTarget, Instant refreshRequestedAt) {
@@ -369,8 +380,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                 throw firstFailure;
             }
 
-            // Clear only the state used by this attempt; a concurrently published replacement must survive.
-            subjectStateReference.compareAndSet(firstSelection.cacheState, firstSelection.cacheState.withoutTgt());
+            invalidateSubjectTgtPair(firstSelection.cacheState);
             try {
                 // No token has been generated yet, so rebuilding credentials and context is safe and bounded.
                 SubjectSelection secondSelection = getSubjectSelection();
@@ -381,6 +391,17 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                 }
                 throw secondFailure;
             }
+        }
+    }
+
+    private void invalidateSubjectTgtPair(SubjectCacheState failedState) {
+        SubjectCacheState currentState = subjectStateReference.get();
+        while (currentState.hasSameSubjectTgt(failedState)) {
+            // Metadata-only fallback states retain the same pair; genuinely newer credentials must survive.
+            if (subjectStateReference.compareAndSet(currentState, currentState.withoutTgt())) {
+                return;
+            }
+            currentState = subjectStateReference.get();
         }
     }
 
@@ -557,6 +578,18 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
 
         private SubjectCacheState withoutTgt() {
             return empty(tgtWasPublished);
+        }
+
+        private boolean hasSameSubjectTgt(SubjectCacheState other) {
+            return tgt != null && subject == other.subject && tgt == other.tgt;
+        }
+
+        private @Nullable SubjectCacheState afterFailedProactiveRefresh(Instant failedAt) {
+            Instant endTime = ticketEndTime(tgt);
+            if (subject == null || endTime == null || !isTicketUsableAt(tgt, failedAt)) {
+                return null;
+            }
+            return withTgt(subject, Objects.requireNonNull(tgt), nextProactiveRefreshAt(failedAt, endTime));
         }
     }
 

@@ -379,7 +379,7 @@ class SubjectBasedSpnegoClientBackendTest {
     }
 
     @Test
-    void concurrentCallersShareRefreshFailureAndLaterRetryPublishesOnce() throws Exception {
+    void concurrentCallersUseValidSubjectAfterProactiveFailureAndLaterRetryPublishesOnce() throws Exception {
         Subject initialSubject = subjectWithTgt(NOW.plusSeconds(30));
         Subject refreshedSubject = subjectWithTgt(NOW.plusSeconds(600));
         Exception expectedCause = new Exception("refresh failed");
@@ -407,7 +407,6 @@ class SubjectBasedSpnegoClientBackendTest {
         ExecutorService executor = Executors.newFixedThreadPool(callerCount);
         CountDownLatch callersReady = new CountDownLatch(callerCount);
         CountDownLatch start = new CountDownLatch(1);
-        RuntimeException sharedFailure = null;
         try {
             List<Future<Subject>> results = java.util.stream.IntStream.range(0, callerCount)
                     .mapToObj(ignored -> executor.submit(() -> {
@@ -423,34 +422,31 @@ class SubjectBasedSpnegoClientBackendTest {
             allowFailure.countDown();
 
             for (Future<Subject> result : results) {
-                ExecutionException executionException = assertThrows(ExecutionException.class,
-                        () -> result.get(10, TimeUnit.SECONDS));
-                assertTrue(executionException.getCause() instanceof RuntimeException);
-                RuntimeException failure = (RuntimeException) executionException.getCause();
-                if (sharedFailure == null) {
-                    sharedFailure = failure;
-                } else {
-                    assertSame(sharedFailure, failure);
-                }
-                assertSame(expectedCause, failure.getCause());
+                assertSame(initialSubject, result.get(10, TimeUnit.SECONDS));
             }
+
+            assertEquals(2, supplierCalls.get());
+            assertSame(initialSubject, backend.getSubject());
+            clock.advance(Duration.ofMillis(14_999));
+            assertSame(initialSubject, backend.getSubject());
+            assertEquals(2, supplierCalls.get());
+
+            clock.advance(Duration.ofMillis(1));
+            List<Future<Subject>> recoveredResults = java.util.stream.IntStream.range(0, callerCount)
+                    .mapToObj(ignored -> executor.submit(backend::getSubject))
+                    .toList();
+            for (Future<Subject> result : recoveredResults) {
+                assertSame(refreshedSubject, result.get(10, TimeUnit.SECONDS));
+            }
+            assertEquals(3, supplierCalls.get());
         } finally {
             allowFailure.countDown();
             executor.shutdownNow();
         }
-
-        assertEquals(2, supplierCalls.get());
-        assertSame(sharedFailure, assertThrows(RuntimeException.class, backend::getSubject));
-        assertEquals(2, supplierCalls.get());
-
-        clock.advance(Duration.ofSeconds(1));
-        assertSame(refreshedSubject, backend.getSubject());
-        assertSame(refreshedSubject, backend.getSubject());
-        assertEquals(3, supplierCalls.get());
     }
 
     @Test
-    void supplierFailureDoesNotPublishReplacementState() {
+    void runtimeProactiveRefreshFailureRetainsUsableSubject() {
         Subject initialSubject = subjectWithTgt(NOW.plusSeconds(30));
         Subject refreshedSubject = subjectWithTgt(NOW.plusSeconds(600));
         MutableClock clock = new MutableClock(NOW);
@@ -461,33 +457,56 @@ class SubjectBasedSpnegoClientBackendTest {
                 return initialSubject;
             }
             if (call == 2) {
-                throw new Exception("refresh failed");
+                throw new IllegalStateException("refresh failed");
             }
             return refreshedSubject;
         }, clock);
         assertSame(initialSubject, backend.getSubject());
 
-        RuntimeException failure = assertThrows(RuntimeException.class, backend::getSubject);
-        assertEquals("refresh failed", failure.getCause().getMessage());
-        assertSame(failure, assertThrows(RuntimeException.class, backend::getSubject));
-        clock.advance(Duration.ofSeconds(1));
+        assertSame(initialSubject, backend.getSubject());
+        assertSame(initialSubject, backend.getSubject());
+        clock.advance(Duration.ofSeconds(15));
         assertSame(refreshedSubject, backend.getSubject());
+        assertEquals(3, supplierCalls.get());
+    }
+
+    @Test
+    void invalidProactiveRefreshResultRetainsUsableSubject() {
+        Subject initialSubject = subjectWithTgt(NOW.plusSeconds(30));
+        Subject refreshedSubject = subjectWithTgt(NOW.plusSeconds(600));
+        MutableClock clock = new MutableClock(NOW);
+        AtomicInteger supplierCalls = new AtomicInteger();
+        SubjectBasedSpnegoClientBackend backend = backend(
+                sequence(new Subject[]{initialSubject, new Subject(), refreshedSubject}, supplierCalls), clock, false);
+
+        assertSame(initialSubject, backend.getSubject());
+        assertSame(initialSubject, backend.getSubject());
+        assertSame(initialSubject, backend.getSubject());
+        assertEquals(2, supplierCalls.get());
+
+        clock.advance(Duration.ofSeconds(15));
         assertSame(refreshedSubject, backend.getSubject());
         assertEquals(3, supplierCalls.get());
     }
 
     @Test
     void interruptedSupplierDoesNotCorruptBackendState() throws Exception {
+        Subject initialSubject = subjectWithTgt(NOW.plusSeconds(30));
         Subject refreshedSubject = subjectWithTgt(NOW.plusSeconds(600));
         AtomicInteger supplierCalls = new AtomicInteger();
         CountDownLatch supplierStarted = new CountDownLatch(1);
         SubjectBasedSpnegoClientBackend backend = backend(() -> {
-            if (supplierCalls.incrementAndGet() == 1) {
+            int call = supplierCalls.incrementAndGet();
+            if (call == 1) {
+                return initialSubject;
+            }
+            if (call == 2) {
                 supplierStarted.countDown();
                 new CountDownLatch(1).await();
             }
             return refreshedSubject;
         });
+        assertSame(initialSubject, backend.getSubject());
         AtomicReference<RuntimeException> failure = new AtomicReference<>();
         AtomicBoolean interruptRestored = new AtomicBoolean();
         Thread refreshThread = new Thread(() -> {
@@ -508,7 +527,7 @@ class SubjectBasedSpnegoClientBackendTest {
         assertTrue(failure.get().getCause() instanceof InterruptedException);
         assertTrue(interruptRestored.get());
         assertSame(refreshedSubject, backend.getSubject());
-        assertEquals(2, supplierCalls.get());
+        assertEquals(3, supplierCalls.get());
     }
 
     @Test
@@ -642,6 +661,7 @@ class SubjectBasedSpnegoClientBackendTest {
                 sequence(new Subject[]{expiredSubject, invalidRefreshedSubject, recoveredSubject}, supplierCalls),
                 clock, false);
         assertSame(expiredSubject, backend.getSubject());
+        clock.advance(Duration.ofSeconds(30));
 
         IllegalStateException failure = assertThrows(IllegalStateException.class, backend::getSubject);
 
@@ -654,10 +674,10 @@ class SubjectBasedSpnegoClientBackendTest {
     }
 
     @Test
-    void concurrentCallersCannotObserveOldOrPartiallyPublishedStateAfterInvalidRefresh() throws Exception {
+    void concurrentCallersShareFailureWhenOldTgtExpiresDuringBlockedRefresh() throws Exception {
         Subject expiredSubject = subjectWithTgt(NOW.plusSeconds(30));
-        Subject invalidRefreshedSubject = new Subject();
         Subject recoveredSubject = subjectWithTgt(NOW.plusSeconds(600));
+        Exception expectedCause = new Exception("refresh failed after old TGT expired");
         MutableClock clock = new MutableClock(NOW);
         AtomicInteger supplierCalls = new AtomicInteger();
         CountDownLatch invalidRefreshStarted = new CountDownLatch(1);
@@ -672,7 +692,7 @@ class SubjectBasedSpnegoClientBackendTest {
                 if (!allowInvalidRefresh.await(10, TimeUnit.SECONDS)) {
                     throw new IllegalStateException("Timed out waiting to complete invalid refresh");
                 }
-                return invalidRefreshedSubject;
+                throw expectedCause;
             }
             return recoveredSubject;
         }, clock, false);
@@ -694,22 +714,23 @@ class SubjectBasedSpnegoClientBackendTest {
             assertTrue(callersReady.await(10, TimeUnit.SECONDS));
             start.countDown();
             assertTrue(invalidRefreshStarted.await(10, TimeUnit.SECONDS));
+            clock.advance(Duration.ofSeconds(30));
             allowInvalidRefresh.countDown();
 
-            IllegalStateException sharedFailure = null;
+            RuntimeException sharedFailure = null;
             for (Future<Subject> result : results) {
                 ExecutionException e = assertThrows(ExecutionException.class,
                         () -> result.get(10, TimeUnit.SECONDS));
-                assertTrue(e.getCause() instanceof IllegalStateException);
-                assertTrue(e.getCause().getMessage().contains("contains no usable Kerberos TGT"));
+                assertTrue(e.getCause() instanceof RuntimeException);
+                assertSame(expectedCause, e.getCause().getCause());
                 if (sharedFailure == null) {
-                    sharedFailure = (IllegalStateException) e.getCause();
+                    sharedFailure = (RuntimeException) e.getCause();
                 } else {
                     assertSame(sharedFailure, e.getCause());
                 }
             }
             assertEquals(2, supplierCalls.get());
-            assertSame(sharedFailure, assertThrows(IllegalStateException.class, backend::getSubject));
+            assertSame(sharedFailure, assertThrows(RuntimeException.class, backend::getSubject));
 
             clock.advance(Duration.ofSeconds(1));
             for (int i = 0; i < callerCount; i++) {
@@ -772,6 +793,90 @@ class SubjectBasedSpnegoClientBackendTest {
         assertSame(refreshedSubject, backend.getSubject());
         assertEquals(3, supplierCalls.get());
         assertEquals(2, contextCalls.get());
+    }
+
+    @Test
+    void noCredInvalidatesSamePairRetainedAfterProactiveFailure() throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        Subject nearExpirySubject = subjectWithTgt(NOW.plusSeconds(30));
+        Subject refreshedSubject = subjectWithTgt(NOW.plusSeconds(600));
+        AtomicInteger supplierCalls = new AtomicInteger();
+        AtomicInteger contextCalls = new AtomicInteger();
+        AtomicReference<Subject> successfulContextSubject = new AtomicReference<>();
+        CountDownLatch contextStarted = new CountDownLatch(1);
+        CountDownLatch allowNoCred = new CountDownLatch(1);
+        SubjectBasedSpnegoClientBackend backend = backend(() -> {
+            int call = supplierCalls.incrementAndGet();
+            if (call <= 2) {
+                return nearExpirySubject;
+            }
+            if (call == 3) {
+                throw new Exception("proactive refresh failed");
+            }
+            return refreshedSubject;
+        }, clock, (subject, ignored) -> {
+            if (contextCalls.incrementAndGet() == 1) {
+                contextStarted.countDown();
+                try {
+                    if (!allowNoCred.await(10, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("Timed out waiting to release NO_CRED failure");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new PrivilegedActionException(e);
+                }
+                throw new PrivilegedActionException(gssException(GSSException.NO_CRED));
+            }
+            successfulContextSubject.set(subject);
+            return tokenContext(new AtomicReference<>(), null);
+        });
+
+        assertSame(nearExpirySubject, backend.getSubject());
+        assertSame(nearExpirySubject, backend.getSubject());
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<SpnegoContext> contextResult = executor.submit(() -> createInitiatorContext(backend));
+            assertTrue(contextStarted.await(10, TimeUnit.SECONDS));
+
+            clock.advance(Duration.ofSeconds(15));
+            assertSame(nearExpirySubject, backend.getSubject());
+            allowNoCred.countDown();
+
+            try (SpnegoContext ignored = contextResult.get(10, TimeUnit.SECONDS)) {
+                assertSame(refreshedSubject, successfulContextSubject.get());
+            }
+        } finally {
+            allowNoCred.countDown();
+            executor.shutdownNow();
+        }
+
+        assertEquals(4, supplierCalls.get());
+        assertEquals(2, contextCalls.get());
+    }
+
+    @Test
+    void explicitlyInvalidatedTgtIsNotUsedAsFallbackWhenRefreshFails() throws Exception {
+        Subject initialSubject = subjectWithTgt(NOW.plusSeconds(600));
+        Exception expectedCause = new Exception("mandatory refresh failed");
+        AtomicInteger supplierCalls = new AtomicInteger();
+        AtomicInteger contextCalls = new AtomicInteger();
+        SubjectBasedSpnegoClientBackend backend = backend(() -> {
+            if (supplierCalls.incrementAndGet() == 1) {
+                return initialSubject;
+            }
+            throw expectedCause;
+        }, (subject, ignored) -> {
+            contextCalls.incrementAndGet();
+            throw new PrivilegedActionException(gssException(GSSException.NO_CRED));
+        });
+        assertSame(initialSubject, backend.getSubject());
+
+        RuntimeException failure = assertThrows(RuntimeException.class,
+                () -> createInitiatorContext(backend));
+
+        assertSame(expectedCause, failure.getCause());
+        assertEquals(2, supplierCalls.get());
+        assertEquals(1, contextCalls.get());
     }
 
     @Test

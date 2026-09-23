@@ -302,12 +302,24 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
                 Thread.currentThread().interrupt();
                 throw e;
             } catch (RuntimeException e) {
-                publishRefreshFailure(refreshTarget, e);
-                throw e;
+                return handleRefreshFailure(refreshTarget, e);
             } catch (Exception e) {
-                publishRefreshFailure(refreshTarget, e);
-                throw e;
+                return handleRefreshFailure(refreshTarget, e);
             }
+        }
+
+        private TgtCacheState handleRefreshFailure(TgtCacheState refreshTarget, Exception failure) throws Exception {
+            Instant failedAt = clock.instant();
+            TgtCacheState retainedState = refreshTarget.afterFailedProactiveRefresh(failedAt);
+            if (tgtState == refreshTarget && retainedState != null) {
+                // Keep a still-current TGT, but publish its later retry deadline in the same state transition.
+                tgtState = retainedState;
+                refreshFailure = null;
+                return retainedState;
+            }
+
+            publishRefreshFailure(refreshTarget, failure);
+            throw failure;
         }
 
         private void throwCachedRefreshFailure(TgtCacheState refreshTarget, Instant refreshRequestedAt)
@@ -499,9 +511,18 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         }
 
         private static boolean isCurrent(@Nullable TgtTicket tgtTicket, Instant instant) {
-            EncKdcRepPart encKdcRepPart = tgtTicket == null ? null : tgtTicket.getEncKdcRepPart();
-            KerberosTime endTime = encKdcRepPart == null ? null : encKdcRepPart.getEndTime();
-            return endTime != null && endTime.getTime() > instant.toEpochMilli();
+            Instant endTime = tgtEndTime(tgtTicket);
+            return endTime != null && endTime.isAfter(instant);
+        }
+
+        private static @Nullable Instant tgtEndTime(@Nullable TgtTicket tgtTicket) {
+            try {
+                EncKdcRepPart encKdcRepPart = tgtTicket == null ? null : tgtTicket.getEncKdcRepPart();
+                KerberosTime endTime = encKdcRepPart == null ? null : encKdcRepPart.getEndTime();
+                return endTime == null ? null : Instant.ofEpochMilli(endTime.getTime());
+            } catch (RuntimeException ignored) {
+                return null;
+            }
         }
 
         private static boolean isInsideMargin(TgtTicket tgtTicket, Instant now, Duration refreshMargin) {
@@ -558,6 +579,14 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
                     return true;
                 }
                 return isInsideMargin(tgt, now, refreshMargin) && !now.isBefore(proactiveRetryAt);
+            }
+
+            private @Nullable TgtCacheState afterFailedProactiveRefresh(Instant failedAt) {
+                Instant endTime = tgtEndTime(tgt);
+                if (tgt == null || endTime == null || !endTime.isAfter(failedAt)) {
+                    return null;
+                }
+                return withTgt(tgt, nextProactiveRefreshAt(failedAt, endTime));
             }
         }
 
