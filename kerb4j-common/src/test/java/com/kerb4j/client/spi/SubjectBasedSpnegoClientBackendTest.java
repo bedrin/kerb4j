@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosPrincipal;
 import javax.security.auth.kerberos.KerberosTicket;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.security.AccessController;
@@ -855,6 +856,94 @@ class SubjectBasedSpnegoClientBackendTest {
     }
 
     @Test
+    void invalidationWinsAgainstSuccessfulRefreshReturningExactSamePair() throws Exception {
+        assertInvalidationWinsAgainstSuccessfulRefresh(false);
+    }
+
+    @Test
+    void invalidationWinsAgainstSuccessfulRefreshReturningLogicallySameTicket() throws Exception {
+        assertInvalidationWinsAgainstSuccessfulRefresh(true);
+    }
+
+    private static void assertInvalidationWinsAgainstSuccessfulRefresh(boolean differentWrapper) throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        KerberosTicket oldTgt = ticket("client@EXAMPLE.COM", "krbtgt/EXAMPLE.COM@EXAMPLE.COM",
+                NOW.plusSeconds(30), (byte) 1);
+        Subject oldSubject = subjectWithTgt(oldTgt);
+        Subject staleRefreshSubject = differentWrapper
+                ? subjectWithTgt(ticket("client@EXAMPLE.COM", "krbtgt/EXAMPLE.COM@EXAMPLE.COM",
+                        NOW.plusSeconds(30), (byte) 1))
+                : oldSubject;
+        Subject freshSubject = subjectWithTgt(ticket("client@EXAMPLE.COM", "krbtgt/EXAMPLE.COM@EXAMPLE.COM",
+                NOW.plusSeconds(600), (byte) 2));
+        AtomicInteger supplierCalls = new AtomicInteger();
+        AtomicInteger contextCalls = new AtomicInteger();
+        AtomicReference<Subject> retrySubject = new AtomicReference<>();
+        CountDownLatch contextStarted = new CountDownLatch(1);
+        CountDownLatch allowNoCred = new CountDownLatch(1);
+        CountDownLatch staleRefreshStarted = new CountDownLatch(1);
+        CountDownLatch allowStaleRefresh = new CountDownLatch(1);
+        SubjectBasedSpnegoClientBackend backend = backend(() -> {
+            int call = supplierCalls.incrementAndGet();
+            if (call <= 2) {
+                return oldSubject;
+            }
+            if (call == 3) {
+                staleRefreshStarted.countDown();
+                if (!allowStaleRefresh.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Timed out waiting to release stale refresh");
+                }
+                return staleRefreshSubject;
+            }
+            return freshSubject;
+        }, clock, (subject, ignored) -> {
+            if (contextCalls.incrementAndGet() == 1) {
+                contextStarted.countDown();
+                try {
+                    if (!allowNoCred.await(10, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("Timed out waiting to release NO_CRED failure");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new PrivilegedActionException(e);
+                }
+                throw new PrivilegedActionException(gssException(GSSException.NO_CRED));
+            }
+            retrySubject.set(subject);
+            return tokenContext(new AtomicReference<>(), null);
+        });
+
+        assertSame(oldSubject, backend.getSubject());
+        assertSame(oldSubject, backend.getSubject());
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<SpnegoContext> contextResult = executor.submit(() -> createInitiatorContext(backend));
+            assertTrue(contextStarted.await(10, TimeUnit.SECONDS));
+
+            clock.advance(Duration.ofSeconds(15));
+            Future<Subject> refreshResult = executor.submit(backend::getSubject);
+            assertTrue(staleRefreshStarted.await(10, TimeUnit.SECONDS));
+
+            allowNoCred.countDown();
+            awaitSubjectInvalidation(backend);
+            allowStaleRefresh.countDown();
+
+            assertSame(freshSubject, refreshResult.get(10, TimeUnit.SECONDS));
+            try (SpnegoContext ignored = contextResult.get(10, TimeUnit.SECONDS)) {
+                assertSame(freshSubject, retrySubject.get());
+            }
+            assertSame(freshSubject, backend.getSubject());
+        } finally {
+            allowNoCred.countDown();
+            allowStaleRefresh.countDown();
+            executor.shutdownNow();
+        }
+
+        assertEquals(4, supplierCalls.get());
+        assertEquals(2, contextCalls.get());
+    }
+
+    @Test
     void explicitlyInvalidatedTgtIsNotUsedAsFallbackWhenRefreshFails() throws Exception {
         Subject initialSubject = subjectWithTgt(NOW.plusSeconds(600));
         Exception expectedCause = new Exception("mandatory refresh failed");
@@ -1135,6 +1224,21 @@ class SubjectBasedSpnegoClientBackendTest {
             return (Subject) current.invoke(null);
         } catch (ReflectiveOperationException e) {
             return Subject.getSubject(AccessController.getContext());
+        }
+    }
+
+    private static void awaitSubjectInvalidation(SubjectBasedSpnegoClientBackend backend) throws Exception {
+        Field referenceField = SubjectBasedSpnegoClientBackend.class.getDeclaredField("subjectStateReference");
+        referenceField.setAccessible(true);
+        AtomicReference<?> stateReference = (AtomicReference<?>) referenceField.get(backend);
+        Field subjectField = stateReference.get().getClass().getDeclaredField("subject");
+        subjectField.setAccessible(true);
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (subjectField.get(stateReference.get()) != null) {
+            if (System.nanoTime() >= deadline) {
+                throw new AssertionError("Timed out waiting for Subject/TGT invalidation");
+            }
+            Thread.onSpinWait();
         }
     }
 

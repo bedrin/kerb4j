@@ -42,6 +42,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
     private static final Duration REFRESH_FAILURE_COOLDOWN = Duration.ofSeconds(1);
     private static final Duration MIN_PROACTIVE_RETRY_DELAY = Duration.ofSeconds(1);
     private static final Duration MAX_PROACTIVE_RETRY_DELAY = Duration.ofSeconds(30);
+    private static final int MAX_REFRESH_PUBLICATION_ATTEMPTS = 2;
     private static final int POSTDATED_TICKET_FLAG = 6;
     private static final int INVALID_TICKET_FLAG = 7;
 
@@ -116,11 +117,24 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
             Instant refreshRequestedAt = clock.instant();
             authenticateLock.lock();
             try {
-                state = subjectStateReference.get();
-                if (state.requiresAuthentication(clock, tgtRefreshMargin)) {
+                for (int attempt = 0; attempt < MAX_REFRESH_PUBLICATION_ATTEMPTS; attempt++) {
+                    state = subjectStateReference.get();
+                    if (!state.requiresAuthentication(clock, tgtRefreshMargin)) {
+                        return state.selection();
+                    }
                     throwCachedRefreshFailure(state, refreshRequestedAt);
-                    return refreshSubject(state);
+                    SubjectSelection refreshedSelection = refreshSubject(state);
+                    if (refreshedSelection != null) {
+                        return refreshedSelection;
+                    }
                 }
+
+                state = subjectStateReference.get();
+                if (!state.requiresAuthentication(clock, tgtRefreshMargin)) {
+                    return state.selection();
+                }
+                throw new IllegalStateException("Subject cache changed during two authentication attempts for backend '"
+                        + implementationName + "'");
             } finally {
                 authenticateLock.unlock();
             }
@@ -128,7 +142,7 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
         return state.selection();
     }
 
-    private SubjectSelection refreshSubject(SubjectCacheState refreshTarget) {
+    private @Nullable SubjectSelection refreshSubject(SubjectCacheState refreshTarget) {
         try {
             Subject refreshedSubject = subjectSupplier.call();
             if (refreshedSubject == null) {
@@ -155,7 +169,10 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
                 refreshedState = SubjectCacheState.eternal(refreshedSubject);
             }
 
-            subjectStateReference.set(refreshedState);
+            if (!subjectStateReference.compareAndSet(refreshTarget, refreshedState)) {
+                // Invalidation won while authentication was in flight; discard this result and re-read the cache.
+                return null;
+            }
             refreshFailure = null;
             return refreshedState.selection();
         } catch (InterruptedException e) {
