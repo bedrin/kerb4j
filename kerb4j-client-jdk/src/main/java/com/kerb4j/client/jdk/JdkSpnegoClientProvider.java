@@ -6,6 +6,9 @@ import com.kerb4j.client.spi.SpnegoClientProvider;
 import com.kerb4j.client.spi.SubjectBasedSpnegoClientBackend;
 import com.kerb4j.common.jaas.sun.Krb5LoginContext;
 
+import javax.security.auth.Subject;
+import java.util.concurrent.Callable;
+
 public class JdkSpnegoClientProvider implements SpnegoClientProvider {
 
     public static final String NAME = "jdk-jgss";
@@ -17,9 +20,9 @@ public class JdkSpnegoClientProvider implements SpnegoClientProvider {
 
     @Override
     public SpnegoClientBackend loginWithUsernamePassword(String username, String password) {
-        return new SubjectBasedSpnegoClientBackend(NAME,
+        return new JdkSubjectBasedSpnegoClientBackend(
                 JaasSubjectSupplier.fromLoginContextSupplier(
-                        () -> Krb5LoginContext.loginWithUsernameAndPassword(username, password)));
+                        () -> Krb5LoginContext.loginWithUsernameAndPassword(username, password)), false);
     }
 
     @Override
@@ -29,15 +32,23 @@ public class JdkSpnegoClientProvider implements SpnegoClientProvider {
 
     @Override
     public SpnegoClientBackend loginWithKeyTab(String principal, String keyTabLocation, boolean acceptOnly) {
-        return new SubjectBasedSpnegoClientBackend(NAME,
+        return new JdkSubjectBasedSpnegoClientBackend(
                 JaasSubjectSupplier.fromLoginContextSupplier(
-                        () -> Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation, acceptOnly)));
+                        () -> Krb5LoginContext.loginWithKeyTab(principal, keyTabLocation, acceptOnly)), acceptOnly);
     }
 
     @Override
     public SpnegoClientBackend loginWithTicketCache(String principal) {
-        return new SubjectBasedSpnegoClientBackend(NAME,
+        return new JdkSubjectBasedSpnegoClientBackend(
                 JaasSubjectSupplier.fromLoginContextSupplier(
-                        () -> Krb5LoginContext.loginWithTicketCache(principal)));
+                        () -> Krb5LoginContext.loginWithTicketCache(principal)), false);
+    }
+
+    // Bridges the provider to the internal mode-aware constructor without changing the public API.
+    private static class JdkSubjectBasedSpnegoClientBackend extends SubjectBasedSpnegoClientBackend {
+
+        private JdkSubjectBasedSpnegoClientBackend(Callable<Subject> subjectSupplier, boolean acceptOnly) {
+            super(NAME, subjectSupplier, acceptOnly);
+        }
     }
 }

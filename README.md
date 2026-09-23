@@ -101,7 +101,7 @@ not expose the required low-level request control and throws `UnsupportedOperati
 
 `SpnegoContext` allows creating 'Authorization: Negotiate XXXXX' header and optionally validating `WWW-Authenticate`
 response header for SPNEGO mutual authentication. A `SpnegoContext` is stateful, short-lived, and not thread-safe.
-Create a new context for each request or token exchange.
+`SpnegoClient` is reusable concurrently; create a new context for each request or token exchange.
 
 Example usage:
 
@@ -122,15 +122,31 @@ canonicalizations, e.t.c. You can even use SPN `HTTP/foo` for calling service `b
 Consider you want to make a million of HTTP requests to Kerberos-protected server. Kerb4J will allow you to make just
 two requests to the KDC (e.g. in Active Directory Domain Controller).
 
-One `SpnegoClient` is created, Kerb4J will make first request for TGT (authentication). TGT will be cached and renewed
-only when tickets expired. Reuse the `SpnegoClient` instance for all requests you want to make using the same
-credentials.
+One `SpnegoClient` is created, Kerb4J will make first request for TGT (authentication). The TGT is cached and
+proactively refreshed during the 60 seconds before expiry. Concurrent callers share the same refresh. Reuse the
+`SpnegoClient` instance for all requests you want to make using the same credentials.
+If a refresh source still returns a current, near-expiry TGT, Kerb4J schedules the next proactive attempt halfway
+through its remaining lifetime, bounded to 1–30 seconds. This avoids request-rate or once-per-second refresh loops;
+an actually expired TGT is never reused, and credential-triggered recovery still refreshes immediately.
+If a proactive refresh fails while the cached TGT remains usable, Kerb4J retains it and schedules a later attempt;
+mandatory refresh failures are still propagated.
+
+If initial GSS credential or context construction fails with `GSSException.NO_CRED`, Kerb4J invalidates only the
+credentials used by that attempt and retries once with a fresh Subject/TGT. This recovery happens before token
+generation; Kerb4J never retries token generation automatically. The Kerby provider applies the same bounded recovery
+to service-ticket acquisition when Kerby reports that the exact TGT used by the attempt is no longer valid.
 
 When you create first `SpnegoContext` instance for the given SPN, Kerb4J will make another request for a service ticket.
 This service ticket will be reused when creating new `SpnegoContext` instances from the same `SpnegoClient`.
 
-So the rule of thumb - reuse the same `SpnegoClient` instance (it is threadsafe by the way), create new `SpnegoContext`
-instance for each request.
+So the rule of thumb is: share one thread-safe `SpnegoClient`, and create a new non-thread-safe `SpnegoContext` for each
+request.
+
+`loginWithContext(LoginContext)` is not refresh-capable because Kerb4J cannot reconstruct an arbitrary caller-owned
+`LoginContext` and will not logout or relog a Subject that may still be used by an in-flight context. For renewable
+initiator credentials, prefer a built-in login method or `loginWithContextSupplier(Callable<LoginContext>)`. That
+supplier must return a fresh context to be logged in, or an independently logged context with a fresh Subject, on every
+authentication attempt.
 
 
 SPNEGO/Kerberos Server

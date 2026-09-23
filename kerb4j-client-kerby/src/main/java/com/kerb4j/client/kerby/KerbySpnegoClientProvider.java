@@ -8,6 +8,8 @@ import com.kerb4j.client.spi.SpnegoClientProvider;
 import com.kerb4j.client.spi.SubjectBasedSpnegoClientBackend;
 import com.kerb4j.common.util.SpnegoProvider;
 import org.apache.kerby.KOptions;
+import org.apache.kerby.kerberos.kerb.KrbErrorCode;
+import org.apache.kerby.kerberos.kerb.KrbErrorException;
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.kerby.kerberos.kerb.client.KrbClient;
 import org.apache.kerby.kerberos.kerb.client.KrbOption;
@@ -21,6 +23,9 @@ import org.apache.kerby.kerberos.kerb.type.base.PrincipalName;
 import org.apache.kerby.kerberos.kerb.type.kdc.EncKdcRepPart;
 import org.apache.kerby.kerberos.kerb.type.ticket.*;
 import org.ietf.jgss.GSSException;
+import org.ietf.jgss.GSSName;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosPrincipal;
@@ -32,6 +37,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.Principal;
 import java.security.PrivilegedActionException;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.locks.Lock;
@@ -40,6 +48,10 @@ import java.util.concurrent.locks.ReentrantLock;
 public class KerbySpnegoClientProvider implements SpnegoClientProvider {
 
     public static final String NAME = "apache-kerby";
+    private static final Duration DEFAULT_TGT_REFRESH_MARGIN = Duration.ofSeconds(60);
+    private static final Duration REFRESH_FAILURE_COOLDOWN = Duration.ofSeconds(1);
+    private static final Duration MIN_PROACTIVE_RETRY_DELAY = Duration.ofSeconds(1);
+    private static final Duration MAX_PROACTIVE_RETRY_DELAY = Duration.ofSeconds(30);
 
     @Override
     public String getName() {
@@ -61,8 +73,8 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
     @Override
     public SpnegoClientBackend loginWithKeyTab(String principal, String keyTabLocation, boolean acceptOnly) {
         if (acceptOnly) {
-            return new SubjectBasedSpnegoClientBackend(NAME + "-accept-only",
-                    () -> acceptOnlySubject(principal, new File(keyTabLocation)));
+            return new ConfiguredSubjectBasedSpnegoClientBackend(NAME + "-accept-only",
+                    () -> acceptOnlySubject(principal, new File(keyTabLocation)), true);
         }
         KerbyCredentials credentials = KerbyCredentials.withKeyTab(principal, new File(keyTabLocation));
         return new KerbySpnegoClientBackend(credentials);
@@ -78,8 +90,8 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         if (cache == null) {
             throw new IllegalStateException("Kerby ticket-cache login requires KRB5CCNAME to point to a FILE ccache");
         }
-        return new SubjectBasedSpnegoClientBackend(NAME + "-ticket-cache",
-                () -> JaasTicketCacheSubject.login(principal, cache));
+        return new ConfiguredSubjectBasedSpnegoClientBackend(NAME + "-ticket-cache",
+                () -> JaasTicketCacheSubject.login(principal, cache), false);
     }
 
     private static Subject acceptOnlySubject(String principal, File keyTabFile) {
@@ -91,11 +103,20 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         return new Subject(false, principals, new HashSet<>(), privateCredentials);
     }
 
-    private static class KerbySpnegoClientBackend extends SubjectBasedSpnegoClientBackend {
+    // Bridges provider-specific login modes to the internal constructor without exposing new public API.
+    private static class ConfiguredSubjectBasedSpnegoClientBackend extends SubjectBasedSpnegoClientBackend {
+
+        private ConfiguredSubjectBasedSpnegoClientBackend(String implementationName, Callable<Subject> subjectSupplier,
+                                                          boolean acceptOnly) {
+            super(implementationName, subjectSupplier, acceptOnly);
+        }
+    }
+
+    static class KerbySpnegoClientBackend extends SubjectBasedSpnegoClientBackend {
         private final KerbyCredentials credentials;
 
-        private KerbySpnegoClientBackend(KerbyCredentials credentials) {
-            super(NAME, credentials::getTgtSubject);
+        KerbySpnegoClientBackend(KerbyCredentials credentials) {
+            super(NAME, credentials::getTgtSubject, false);
             this.credentials = credentials;
         }
 
@@ -103,37 +124,111 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         public SpnegoContext createContext(SpnegoClient spnegoClient, URL url)
                 throws PrivilegedActionException, GSSException {
             ServiceIdentity serviceIdentity = ServiceIdentity.forUrl(url);
-            Subject subject = subjectForService(serviceIdentity.servicePrincipal);
-            return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, serviceIdentity.gssName));
+            return createInitiatorContext(spnegoClient, serviceIdentity);
         }
 
         @Override
         public SpnegoContext createContextForSPN(SpnegoClient spnegoClient, String spn)
                 throws PrivilegedActionException, GSSException, MalformedURLException {
             ServiceIdentity serviceIdentity = ServiceIdentity.forSpn(spn);
-            Subject subject = subjectForService(serviceIdentity.servicePrincipal);
-            return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, serviceIdentity.gssName));
+            return createInitiatorContext(spnegoClient, serviceIdentity);
         }
 
-        private Subject subjectForService(String servicePrincipal) throws PrivilegedActionException {
+        private SpnegoContext createInitiatorContext(SpnegoClient spnegoClient, ServiceIdentity serviceIdentity)
+                throws PrivilegedActionException, GSSException {
+            ContextAttempt firstAttempt = new ContextAttempt();
             try {
-                return credentials.getServiceSubject(servicePrincipal);
+                return createInitiatorContext(spnegoClient, serviceIdentity, firstAttempt);
+            } catch (PrivilegedActionException | GSSException firstFailure) {
+                if (!isCredentialFailure(firstFailure) || firstAttempt.tgt == null) {
+                    throw firstFailure;
+                }
+
+                // Invalidate only the TGT used for this service Subject; a newer cached TGT must survive.
+                credentials.invalidateTgtTicket(firstAttempt.tgt);
+                try {
+                    // The whole TGT/TGS/GSS attempt is repeated before any token generation.
+                    return createInitiatorContext(spnegoClient, serviceIdentity, new ContextAttempt());
+                } catch (PrivilegedActionException | GSSException | RuntimeException secondFailure) {
+                    if (secondFailure != firstFailure) {
+                        secondFailure.addSuppressed(firstFailure);
+                    }
+                    throw secondFailure;
+                }
+            }
+        }
+
+        private SpnegoContext createInitiatorContext(SpnegoClient spnegoClient, ServiceIdentity serviceIdentity,
+                                                     ContextAttempt attempt)
+                throws PrivilegedActionException, GSSException {
+            try {
+                attempt.tgt = credentials.getTgtTicket();
+                Subject subject = getServiceSubject(attempt.tgt, serviceIdentity.servicePrincipal);
+                return new SpnegoContext(spnegoClient, subject, getGSSContext(subject, serviceIdentity.gssName));
+            } catch (PrivilegedActionException | GSSException e) {
+                throw e;
             } catch (Exception e) {
                 throw new PrivilegedActionException(e);
             }
         }
-    }
 
-    private static class KerbyCredentials {
-        private final Callable<TgtTicket> tgtRequester;
-        private final Lock lock = new ReentrantLock();
-        private TgtTicket tgtTicket;
-
-        private KerbyCredentials(Callable<TgtTicket> tgtRequester) {
-            this.tgtRequester = tgtRequester;
+        protected Subject getServiceSubject(TgtTicket tgt, String servicePrincipal) throws Exception {
+            return credentials.getServiceSubject(tgt, servicePrincipal);
         }
 
-        private static KerbyCredentials withPassword(String principal, String password) {
+        private static boolean isCredentialFailure(Throwable failure) {
+            // Identity tracking also makes malformed cyclic cause chains safe to inspect.
+            Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+            for (Throwable cause = failure; cause != null && visited.add(cause); cause = cause.getCause()) {
+                if (cause instanceof GSSException && ((GSSException) cause).getMajor() == GSSException.NO_CRED) {
+                    return true;
+                }
+                KrbErrorCode errorCode = krbErrorCode(cause);
+                if (errorCode == KrbErrorCode.KRB_AP_ERR_TKT_EXPIRED
+                        || errorCode == KrbErrorCode.KRB_AP_ERR_TKT_NYV
+                        || errorCode == KrbErrorCode.KDC_ERR_TGT_REVOKED
+                        || errorCode == KrbErrorCode.KRB_AP_ERR_NO_TGT) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static @Nullable KrbErrorCode krbErrorCode(Throwable failure) {
+            if (failure instanceof KrbErrorException) {
+                return ((KrbErrorException) failure).getKrbError() == null
+                        ? null : ((KrbErrorException) failure).getKrbError().getErrorCode();
+            }
+            return failure instanceof KrbException ? ((KrbException) failure).getKrbErrorCode() : null;
+        }
+    }
+
+    static class KerbyCredentials {
+        private final Callable<TgtTicket> tgtRequester;
+        private final Clock clock;
+        private final Duration tgtRefreshMargin;
+        private final Lock lock = new ReentrantLock();
+        private TgtCacheState tgtState = TgtCacheState.empty();
+        // Guarded by lock and tied by identity to the cache generation that failed.
+        private @Nullable TgtRefreshFailure refreshFailure;
+
+        private KerbyCredentials(Callable<TgtTicket> tgtRequester) {
+            this(tgtRequester, Clock.systemUTC(), DEFAULT_TGT_REFRESH_MARGIN);
+        }
+
+        // Package-private clock overloads keep expiry tests deterministic without expanding the public API.
+        KerbyCredentials(Callable<TgtTicket> tgtRequester, @NonNull Clock clock) {
+            this(tgtRequester, clock, DEFAULT_TGT_REFRESH_MARGIN);
+        }
+
+        KerbyCredentials(Callable<TgtTicket> tgtRequester, @NonNull Clock clock,
+                         @NonNull Duration tgtRefreshMargin) {
+            this.tgtRequester = tgtRequester;
+            this.clock = Objects.requireNonNull(clock, "clock");
+            this.tgtRefreshMargin = requireNonNegative(tgtRefreshMargin);
+        }
+
+        static KerbyCredentials withPassword(String principal, String password) {
             return new KerbyCredentials(() -> {
                 KrbClient client = createClient();
                 return client.requestTgt(realmQualifiedPrincipal(client, principal), password);
@@ -166,21 +261,92 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             return subjectWithTickets(tgt.getClientPrincipal(), tgt);
         }
 
-        private Subject getServiceSubject(String servicePrincipal) throws Exception {
-            TgtTicket tgt = getTgtTicket();
+        private Subject getServiceSubject(TgtTicket tgt, String servicePrincipal) throws Exception {
             KrbClient client = createClient();
             SgtTicket sgt = client.requestSgt(tgt, servicePrincipal);
             PrincipalName clientPrincipal = sgt.getClientPrincipal() == null ? tgt.getClientPrincipal() : sgt.getClientPrincipal();
             return subjectWithTickets(clientPrincipal, tgt, sgt);
         }
 
-        private TgtTicket getTgtTicket() throws Exception {
+        TgtTicket getTgtTicket() throws Exception {
+            Instant refreshRequestedAt = clock.instant();
             lock.lock();
             try {
-                if (tgtTicket == null || isExpired(tgtTicket)) {
-                    tgtTicket = tgtRequester.call();
+                TgtCacheState state = tgtState;
+                if (state.requiresRefresh(clock, tgtRefreshMargin)) {
+                    throwCachedRefreshFailure(state, refreshRequestedAt);
+                    state = refreshTgt(state);
                 }
-                return tgtTicket;
+                return Objects.requireNonNull(state.tgt);
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        private TgtCacheState refreshTgt(TgtCacheState refreshTarget) throws Exception {
+            try {
+                TgtTicket refreshedTgt = tgtRequester.call();
+                // Validate against completion time so a TGT that expired during acquisition is never published.
+                Instant refreshedAt = clock.instant();
+                Instant endTime = requireCurrentTgtEndTime(refreshedTgt, refreshedAt);
+                // Retry halfway through the remaining lifetime, with bounds that avoid request-rate polling.
+                Instant retryAt = refreshTarget.tgt != null
+                        && !endTime.isAfter(refreshedAt.plus(tgtRefreshMargin))
+                        ? nextProactiveRefreshAt(refreshedAt, endTime) : refreshedAt;
+                TgtCacheState refreshedState = TgtCacheState.withTgt(refreshedTgt, retryAt);
+                tgtState = refreshedState;
+                refreshFailure = null;
+                return refreshedState;
+            } catch (InterruptedException e) {
+                // Interruption is caller-specific and must not become a shared authentication failure.
+                Thread.currentThread().interrupt();
+                throw e;
+            } catch (RuntimeException e) {
+                return handleRefreshFailure(refreshTarget, e);
+            } catch (Exception e) {
+                return handleRefreshFailure(refreshTarget, e);
+            }
+        }
+
+        private TgtCacheState handleRefreshFailure(TgtCacheState refreshTarget, Exception failure) throws Exception {
+            Instant failedAt = clock.instant();
+            TgtCacheState retainedState = refreshTarget.afterFailedProactiveRefresh(failedAt);
+            if (tgtState == refreshTarget && retainedState != null) {
+                // Keep a still-current TGT, but publish its later retry deadline in the same state transition.
+                tgtState = retainedState;
+                refreshFailure = null;
+                return retainedState;
+            }
+
+            publishRefreshFailure(refreshTarget, failure);
+            throw failure;
+        }
+
+        private void throwCachedRefreshFailure(TgtCacheState refreshTarget, Instant refreshRequestedAt)
+                throws Exception {
+            if (refreshFailure == null) {
+                return;
+            }
+            if (refreshFailure.refreshTarget == refreshTarget
+                    && (refreshRequestedAt.isBefore(refreshFailure.retryAt)
+                        || clock.instant().isBefore(refreshFailure.retryAt))) {
+                throw refreshFailure.failure;
+            }
+            refreshFailure = null;
+        }
+
+        private void publishRefreshFailure(TgtCacheState refreshTarget, Exception failure) {
+            refreshFailure = new TgtRefreshFailure(refreshTarget, failure,
+                    clock.instant().plus(REFRESH_FAILURE_COOLDOWN));
+        }
+
+        void invalidateTgtTicket(TgtTicket failedTgt) {
+            lock.lock();
+            try {
+                // Identity comparison prevents a late failure from evicting a newer TGT.
+                if (tgtState.tgt == failedTgt) {
+                    tgtState = TgtCacheState.empty();
+                }
             } finally {
                 lock.unlock();
             }
@@ -336,10 +502,113 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             return value == null || value.trim().isEmpty();
         }
 
-        private static boolean isExpired(TgtTicket tgtTicket) {
-            return tgtTicket.getEncKdcRepPart().getEndTime().lessThan(System.currentTimeMillis());
+        private static Duration requireNonNegative(Duration duration) {
+            Objects.requireNonNull(duration, "tgtRefreshMargin");
+            if (duration.isNegative()) {
+                throw new IllegalArgumentException("tgtRefreshMargin must not be negative");
+            }
+            return duration;
         }
 
+        private static boolean isCurrent(@Nullable TgtTicket tgtTicket, Instant instant) {
+            Instant endTime = tgtEndTime(tgtTicket);
+            return endTime != null && endTime.isAfter(instant);
+        }
+
+        private static @Nullable Instant tgtEndTime(@Nullable TgtTicket tgtTicket) {
+            try {
+                EncKdcRepPart encKdcRepPart = tgtTicket == null ? null : tgtTicket.getEncKdcRepPart();
+                KerberosTime endTime = encKdcRepPart == null ? null : encKdcRepPart.getEndTime();
+                return endTime == null ? null : Instant.ofEpochMilli(endTime.getTime());
+            } catch (RuntimeException ignored) {
+                return null;
+            }
+        }
+
+        private static boolean isInsideMargin(TgtTicket tgtTicket, Instant now, Duration refreshMargin) {
+            return !isCurrent(tgtTicket, now.plus(refreshMargin));
+        }
+
+        private static Instant requireCurrentTgtEndTime(@Nullable TgtTicket tgtTicket, Instant instant) {
+            if (tgtTicket == null) {
+                throw new IllegalStateException("Kerby TGT requester returned null");
+            }
+            EncKdcRepPart encKdcRepPart = tgtTicket.getEncKdcRepPart();
+            KerberosTime endTime = encKdcRepPart == null ? null : encKdcRepPart.getEndTime();
+            if (endTime == null) {
+                throw new IllegalStateException("Kerby TGT requester returned a malformed TGT without an end time");
+            }
+            Instant end = Instant.ofEpochMilli(endTime.getTime());
+            if (!end.isAfter(instant)) {
+                throw new IllegalStateException("Kerby TGT requester returned an expired TGT");
+            }
+            return end;
+        }
+
+        private static Instant nextProactiveRefreshAt(Instant now, Instant endTime) {
+            Duration delay = Duration.between(now, endTime).dividedBy(2);
+            if (delay.compareTo(MIN_PROACTIVE_RETRY_DELAY) < 0) {
+                delay = MIN_PROACTIVE_RETRY_DELAY;
+            } else if (delay.compareTo(MAX_PROACTIVE_RETRY_DELAY) > 0) {
+                delay = MAX_PROACTIVE_RETRY_DELAY;
+            }
+            return now.plus(delay);
+        }
+
+        private static class TgtCacheState {
+
+            private final @Nullable TgtTicket tgt;
+            private final Instant proactiveRetryAt;
+
+            private TgtCacheState(@Nullable TgtTicket tgt, Instant proactiveRetryAt) {
+                this.tgt = tgt;
+                this.proactiveRetryAt = proactiveRetryAt;
+            }
+
+            private static TgtCacheState empty() {
+                return new TgtCacheState(null, Instant.MIN);
+            }
+
+            private static TgtCacheState withTgt(TgtTicket tgt, Instant proactiveRetryAt) {
+                return new TgtCacheState(tgt, proactiveRetryAt);
+            }
+
+            private boolean requiresRefresh(Clock clock, Duration refreshMargin) {
+                Instant now = clock.instant();
+                if (!isCurrent(tgt, now)) {
+                    return true;
+                }
+                return isInsideMargin(tgt, now, refreshMargin) && !now.isBefore(proactiveRetryAt);
+            }
+
+            private @Nullable TgtCacheState afterFailedProactiveRefresh(Instant failedAt) {
+                Instant endTime = tgtEndTime(tgt);
+                if (tgt == null || endTime == null || !endTime.isAfter(failedAt)) {
+                    return null;
+                }
+                return withTgt(tgt, nextProactiveRefreshAt(failedAt, endTime));
+            }
+        }
+
+        private static class TgtRefreshFailure {
+
+            private final TgtCacheState refreshTarget;
+            private final Exception failure;
+            private final Instant retryAt;
+
+            private TgtRefreshFailure(TgtCacheState refreshTarget, Exception failure, Instant retryAt) {
+                this.refreshTarget = refreshTarget;
+                this.failure = failure;
+                this.retryAt = retryAt;
+            }
+        }
+
+    }
+
+    // Records the exact TGT used by one TGT/TGS/GSS attempt for identity-safe invalidation.
+    private static class ContextAttempt {
+
+        private @Nullable TgtTicket tgt;
     }
 
     private static class EnterpriseInternalKrbClient extends DefaultInternalKrbClient {

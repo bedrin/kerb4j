@@ -48,6 +48,13 @@ import java.util.concurrent.Callable;
  * Also, you must provide a keytab file, or a username and password, or allowtgtsessionkey.
  * </p>
  *
+ * <p>Instances are reusable concurrently. Each request or token exchange must use a new, stateful
+ * {@link SpnegoContext}; contexts themselves are not thread-safe.</p>
+ *
+ * <p>Initiator credentials are refreshed shortly before TGT expiry. If initial GSS credential or context creation
+ * fails with {@link GSSException#NO_CRED}, Kerb4J refreshes once and builds a new context before any token is generated.
+ * Token generation is never retried automatically.</p>
+ *
  * @author Darwin V. Felix
  */
 public final class SpnegoClient {
@@ -191,10 +198,30 @@ public final class SpnegoClient {
         return new SpnegoClient(SpnegoClientProviderRegistry.getPreferredProvider().loginWithTicketCache(principal));
     }
 
+    /**
+     * Creates a client backed by one caller-owned login context.
+     *
+     * <p>This form cannot recreate the context and is therefore not refresh-capable. Kerb4J never logs out or relogs
+     * it because doing so could mutate a Subject still used by an in-flight {@link SpnegoContext}. Initiators that need
+     * renewal should use a built-in login method or {@link #loginWithContextSupplier(Callable)}.</p>
+     *
+     * @param loginContext caller-owned login context
+     * @return SPNEGO client
+     */
     public static SpnegoClient loginWithContext(final LoginContext loginContext) {
         return loginWithContextSupplier(() -> loginContext);
     }
 
+    /**
+     * Creates a client whose login context supplier may be called again when credentials need refreshing.
+     *
+     * <p>Each call must return a fresh context to be logged in, or an independently logged context with a fresh
+     * Subject. Do not reuse, logout, or relog a context whose Subject may still belong to an in-flight
+     * {@link SpnegoContext}.</p>
+     *
+     * @param loginContextSupplier supplies an independent login context for each authentication attempt
+     * @return refresh-capable SPNEGO client when the supplier follows the contract above
+     */
     public static SpnegoClient loginWithContextSupplier(final Callable<LoginContext> loginContextSupplier) {
         return new SpnegoClient(new SubjectBasedSpnegoClientBackend(
                 "jaas-login-context",
