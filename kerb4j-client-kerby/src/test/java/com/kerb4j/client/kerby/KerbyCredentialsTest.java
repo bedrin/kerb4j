@@ -1,5 +1,6 @@
 package com.kerb4j.client.kerby;
 
+import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.kerby.kerberos.kerb.type.KerberosTime;
 import org.apache.kerby.kerberos.kerb.type.kdc.EncKdcRepPart;
 import org.apache.kerby.kerberos.kerb.type.ticket.TgtTicket;
@@ -13,6 +14,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -21,6 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -65,7 +68,9 @@ class KerbyCredentialsTest {
         KerbySpnegoClientProvider.KerbyCredentials credentials =
                 credentials(sequence(initialTgt, refreshedTgt, new AtomicInteger()), clock);
 
-        assertThrows(IllegalStateException.class, credentials::getTgtTicket);
+        IllegalStateException failure = assertThrows(IllegalStateException.class, credentials::getTgtTicket);
+        assertSame(failure, assertThrows(IllegalStateException.class, credentials::getTgtTicket));
+        clock.advance(Duration.ofSeconds(1));
         assertSame(refreshedTgt, credentials.getTgtTicket());
     }
 
@@ -118,7 +123,239 @@ class KerbyCredentialsTest {
     }
 
     @Test
-    void nearExpiryRefreshIsSharedAndRetriedOnceAfterCooldown() throws Exception {
+    void concurrentCallersShareCheckedRefreshFailureAndLaterSuccessfulRetry() throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        TgtTicket refreshedTgt = tgt(NOW.plusSeconds(600));
+        KrbException expectedFailure = new KrbException("expected refresh failure");
+        AtomicInteger requesterCalls = new AtomicInteger();
+        CountDownLatch requestStarted = new CountDownLatch(1);
+        CountDownLatch allowFailure = new CountDownLatch(1);
+        KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
+            if (requesterCalls.incrementAndGet() == 1) {
+                requestStarted.countDown();
+                if (!allowFailure.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Timed out waiting to fail TGT request");
+                }
+                throw expectedFailure;
+            }
+            return refreshedTgt;
+        }, clock);
+
+        int callerCount = 20;
+        ExecutorService executor = Executors.newFixedThreadPool(callerCount);
+        CountDownLatch callersReady = new CountDownLatch(callerCount);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Future<TgtTicket>> failedResults = java.util.stream.IntStream.range(0, callerCount)
+                    .mapToObj(ignored -> executor.submit(() -> {
+                        callersReady.countDown();
+                        start.await();
+                        return credentials.getTgtTicket();
+                    }))
+                    .toList();
+
+            assertTrue(callersReady.await(10, TimeUnit.SECONDS));
+            start.countDown();
+            assertTrue(requestStarted.await(10, TimeUnit.SECONDS));
+            allowFailure.countDown();
+            for (Future<TgtTicket> result : failedResults) {
+                ExecutionException failure = assertThrows(ExecutionException.class,
+                        () -> result.get(10, TimeUnit.SECONDS));
+                assertSame(expectedFailure, failure.getCause());
+            }
+            assertEquals(1, requesterCalls.get());
+            assertSame(expectedFailure, assertThrows(KrbException.class, credentials::getTgtTicket));
+
+            clock.advance(Duration.ofSeconds(1));
+            List<Future<TgtTicket>> recoveredResults = java.util.stream.IntStream.range(0, callerCount)
+                    .mapToObj(ignored -> executor.submit(credentials::getTgtTicket))
+                    .toList();
+            for (Future<TgtTicket> result : recoveredResults) {
+                assertSame(refreshedTgt, result.get(10, TimeUnit.SECONDS));
+            }
+            assertEquals(2, requesterCalls.get());
+        } finally {
+            allowFailure.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void concurrentCallersShareRuntimeRefreshFailure() throws Exception {
+        RuntimeException expectedFailure = new IllegalStateException("runtime refresh failure");
+        AtomicInteger requesterCalls = new AtomicInteger();
+        CountDownLatch requestStarted = new CountDownLatch(1);
+        CountDownLatch allowFailure = new CountDownLatch(1);
+        KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
+            requesterCalls.incrementAndGet();
+            requestStarted.countDown();
+            if (!allowFailure.await(10, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Timed out waiting to fail TGT request");
+            }
+            throw expectedFailure;
+        });
+
+        int callerCount = 20;
+        ExecutorService executor = Executors.newFixedThreadPool(callerCount);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Future<TgtTicket>> results = java.util.stream.IntStream.range(0, callerCount)
+                    .mapToObj(ignored -> executor.submit(() -> {
+                        start.await();
+                        return credentials.getTgtTicket();
+                    }))
+                    .toList();
+            start.countDown();
+            assertTrue(requestStarted.await(10, TimeUnit.SECONDS));
+            allowFailure.countDown();
+
+            for (Future<TgtTicket> result : results) {
+                ExecutionException failure = assertThrows(ExecutionException.class,
+                        () -> result.get(10, TimeUnit.SECONDS));
+                assertSame(expectedFailure, failure.getCause());
+            }
+            assertEquals(1, requesterCalls.get());
+            assertSame(expectedFailure,
+                    assertThrows(IllegalStateException.class, credentials::getTgtTicket));
+        } finally {
+            allowFailure.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void interruptedRequesterIsNotCachedAndRestoresInterruptStatus() throws Exception {
+        TgtTicket refreshedTgt = tgt(NOW.plusSeconds(600));
+        InterruptedException expectedFailure = new InterruptedException("interrupted refresh");
+        AtomicInteger requesterCalls = new AtomicInteger();
+        KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
+            if (requesterCalls.incrementAndGet() == 1) {
+                throw expectedFailure;
+            }
+            return refreshedTgt;
+        });
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        AtomicReference<Boolean> interruptRestored = new AtomicReference<>(false);
+        Thread thread = new Thread(() -> {
+            try {
+                credentials.getTgtTicket();
+            } catch (Throwable e) {
+                failure.set(e);
+                interruptRestored.set(Thread.currentThread().isInterrupted());
+            }
+        });
+
+        thread.start();
+        thread.join(TimeUnit.SECONDS.toMillis(10));
+
+        assertFalse(thread.isAlive());
+        assertSame(expectedFailure, failure.get());
+        assertTrue(interruptRestored.get());
+        assertSame(refreshedTgt, credentials.getTgtTicket());
+        assertEquals(2, requesterCalls.get());
+    }
+
+    @Test
+    void concurrentCallersShareNullTgtValidationFailure() throws Exception {
+        AtomicInteger requesterCalls = new AtomicInteger();
+        CountDownLatch requestStarted = new CountDownLatch(1);
+        CountDownLatch allowResult = new CountDownLatch(1);
+        KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
+            requesterCalls.incrementAndGet();
+            requestStarted.countDown();
+            if (!allowResult.await(10, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Timed out waiting to return null TGT");
+            }
+            return null;
+        });
+
+        int callerCount = 20;
+        ExecutorService executor = Executors.newFixedThreadPool(callerCount);
+        CountDownLatch start = new CountDownLatch(1);
+        IllegalStateException sharedFailure = null;
+        try {
+            List<Future<TgtTicket>> results = java.util.stream.IntStream.range(0, callerCount)
+                    .mapToObj(ignored -> executor.submit(() -> {
+                        start.await();
+                        return credentials.getTgtTicket();
+                    }))
+                    .toList();
+            start.countDown();
+            assertTrue(requestStarted.await(10, TimeUnit.SECONDS));
+            allowResult.countDown();
+
+            for (Future<TgtTicket> result : results) {
+                ExecutionException failure = assertThrows(ExecutionException.class,
+                        () -> result.get(10, TimeUnit.SECONDS));
+                assertTrue(failure.getCause() instanceof IllegalStateException);
+                if (sharedFailure == null) {
+                    sharedFailure = (IllegalStateException) failure.getCause();
+                } else {
+                    assertSame(sharedFailure, failure.getCause());
+                }
+            }
+        } finally {
+            allowResult.countDown();
+            executor.shutdownNow();
+        }
+
+        assertTrue(sharedFailure.getMessage().contains("returned null"));
+        assertSame(sharedFailure, assertThrows(IllegalStateException.class, credentials::getTgtTicket));
+        assertEquals(1, requesterCalls.get());
+    }
+
+    @Test
+    void tgtExpiringDuringAcquisitionIsNotPublishedAndFailureIsShared() throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        TgtTicket expiredAtCompletion = tgt(NOW.plusSeconds(1));
+        TgtTicket refreshedTgt = tgt(NOW.plusSeconds(600));
+        AtomicInteger requesterCalls = new AtomicInteger();
+        KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
+            if (requesterCalls.incrementAndGet() == 1) {
+                clock.advance(Duration.ofSeconds(2));
+                return expiredAtCompletion;
+            }
+            return refreshedTgt;
+        }, clock);
+
+        IllegalStateException firstFailure = assertThrows(IllegalStateException.class, credentials::getTgtTicket);
+        assertTrue(firstFailure.getMessage().contains("expired TGT"));
+        assertSame(firstFailure, assertThrows(IllegalStateException.class, credentials::getTgtTicket));
+        assertEquals(1, requesterCalls.get());
+
+        clock.advance(Duration.ofSeconds(1));
+        assertSame(refreshedTgt, credentials.getTgtTicket());
+        assertEquals(2, requesterCalls.get());
+    }
+
+    @Test
+    void invalidatingOldTgtMakesItsCachedRefreshFailureIrrelevant() throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        TgtTicket oldTgt = tgt(NOW.plusSeconds(30));
+        TgtTicket refreshedTgt = tgt(NOW.plusSeconds(600));
+        KrbException expectedFailure = new KrbException("old generation failed");
+        AtomicInteger requesterCalls = new AtomicInteger();
+        KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
+            int call = requesterCalls.incrementAndGet();
+            if (call == 1) {
+                return oldTgt;
+            }
+            if (call == 2) {
+                throw expectedFailure;
+            }
+            return refreshedTgt;
+        }, clock);
+
+        assertSame(oldTgt, credentials.getTgtTicket());
+        assertSame(expectedFailure, assertThrows(KrbException.class, credentials::getTgtTicket));
+        credentials.invalidateTgtTicket(oldTgt);
+
+        assertSame(refreshedTgt, credentials.getTgtTicket());
+        assertEquals(3, requesterCalls.get());
+    }
+
+    @Test
+    void nearExpiryRefreshIsSharedAndRetriedAtAdaptivePoint() throws Exception {
         MutableClock clock = new MutableClock(NOW);
         TgtTicket initialTgt = tgt(NOW.plusSeconds(30));
         TgtTicket stillNearExpiry = tgt(NOW.plusSeconds(45));
@@ -169,6 +406,10 @@ class KerbyCredentialsTest {
             assertEquals(2, requesterCalls.get());
 
             clock.advance(Duration.ofSeconds(1));
+            assertSame(stillNearExpiry, credentials.getTgtTicket());
+            assertEquals(2, requesterCalls.get());
+
+            clock.advance(Duration.ofMillis(21_500));
             assertSame(freshTgt, credentials.getTgtTicket());
             assertSame(freshTgt, credentials.getTgtTicket());
             assertEquals(3, requesterCalls.get());
@@ -179,9 +420,9 @@ class KerbyCredentialsTest {
     }
 
     @Test
-    void repeatedSameNearExpiryTgtIsThrottledAndNeverReturnedAfterExpiry() throws Exception {
+    void repeatedSameNearExpiryTgtUsesAdaptiveRetriesAndIsNeverReturnedAfterExpiry() throws Exception {
         MutableClock clock = new MutableClock(NOW);
-        TgtTicket nearExpiryTgt = tgt(NOW.plusSeconds(1));
+        TgtTicket nearExpiryTgt = tgt(NOW.plusSeconds(30));
         AtomicInteger requesterCalls = new AtomicInteger();
         KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() -> {
             requesterCalls.incrementAndGet();
@@ -190,14 +431,23 @@ class KerbyCredentialsTest {
 
         assertSame(nearExpiryTgt, credentials.getTgtTicket());
         assertSame(nearExpiryTgt, credentials.getTgtTicket());
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 14; i++) {
+            clock.advance(Duration.ofSeconds(1));
             assertSame(nearExpiryTgt, credentials.getTgtTicket());
         }
         assertEquals(2, requesterCalls.get());
 
         clock.advance(Duration.ofSeconds(1));
-        assertThrows(IllegalStateException.class, credentials::getTgtTicket);
+        assertSame(nearExpiryTgt, credentials.getTgtTicket());
         assertEquals(3, requesterCalls.get());
+
+        clock.advance(Duration.ofMillis(7_500));
+        assertSame(nearExpiryTgt, credentials.getTgtTicket());
+        assertEquals(4, requesterCalls.get());
+
+        clock.advance(Duration.ofMillis(7_500));
+        assertThrows(IllegalStateException.class, credentials::getTgtTicket);
+        assertEquals(5, requesterCalls.get());
     }
 
     @Test
@@ -212,6 +462,40 @@ class KerbyCredentialsTest {
         credentials.invalidateTgtTicket(failedTgt);
 
         assertSame(refreshedTgt, credentials.getTgtTicket());
+        assertEquals(2, requesterCalls.get());
+    }
+
+    @Test
+    void invalidatingNearExpiryTgtBypassesAdaptiveRetryTime() throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        TgtTicket failedTgt = tgt(NOW.plusSeconds(30));
+        TgtTicket refreshedTgt = tgt(NOW.plusSeconds(600));
+        AtomicInteger requesterCalls = new AtomicInteger();
+        KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(() ->
+                requesterCalls.incrementAndGet() < 3 ? failedTgt : refreshedTgt, clock);
+
+        assertSame(failedTgt, credentials.getTgtTicket());
+        assertSame(failedTgt, credentials.getTgtTicket());
+        assertEquals(2, requesterCalls.get());
+
+        credentials.invalidateTgtTicket(failedTgt);
+        assertSame(refreshedTgt, credentials.getTgtTicket());
+        assertEquals(3, requesterCalls.get());
+    }
+
+    @Test
+    void healthyTgtResetsAdaptiveRetryState() throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        TgtTicket nearExpiryTgt = tgt(NOW.plusSeconds(30));
+        TgtTicket healthyTgt = tgt(NOW.plusSeconds(600));
+        AtomicInteger requesterCalls = new AtomicInteger();
+        KerbySpnegoClientProvider.KerbyCredentials credentials = credentials(
+                sequence(nearExpiryTgt, healthyTgt, requesterCalls), clock);
+
+        assertSame(nearExpiryTgt, credentials.getTgtTicket());
+        assertSame(healthyTgt, credentials.getTgtTicket());
+        clock.advance(Duration.ofSeconds(30));
+        assertSame(healthyTgt, credentials.getTgtTicket());
         assertEquals(2, requesterCalls.get());
     }
 

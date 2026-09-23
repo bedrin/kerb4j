@@ -49,7 +49,9 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
 
     public static final String NAME = "apache-kerby";
     private static final Duration DEFAULT_TGT_REFRESH_MARGIN = Duration.ofSeconds(60);
-    private static final Duration TGT_REFRESH_RETRY_COOLDOWN = Duration.ofSeconds(1);
+    private static final Duration REFRESH_FAILURE_COOLDOWN = Duration.ofSeconds(1);
+    private static final Duration MIN_PROACTIVE_RETRY_DELAY = Duration.ofSeconds(1);
+    private static final Duration MAX_PROACTIVE_RETRY_DELAY = Duration.ofSeconds(30);
 
     @Override
     public String getName() {
@@ -206,7 +208,9 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         private final Clock clock;
         private final Duration tgtRefreshMargin;
         private final Lock lock = new ReentrantLock();
-        private @Nullable TgtCacheState tgtState;
+        private TgtCacheState tgtState = TgtCacheState.empty();
+        // Guarded by lock and tied by identity to the cache generation that failed.
+        private @Nullable TgtRefreshFailure refreshFailure;
 
         private KerbyCredentials(Callable<TgtTicket> tgtRequester) {
             this(tgtRequester, Clock.systemUTC(), DEFAULT_TGT_REFRESH_MARGIN);
@@ -265,33 +269,71 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
         }
 
         TgtTicket getTgtTicket() throws Exception {
+            Instant refreshRequestedAt = clock.instant();
             lock.lock();
             try {
                 TgtCacheState state = tgtState;
-                if (state == null || state.requiresRefresh(clock, tgtRefreshMargin)) {
-                    Instant refreshedAt = clock.instant();
-                    TgtTicket refreshedTgt = tgtRequester.call();
-                    if (!isCurrent(refreshedTgt, refreshedAt)) {
-                        throw new IllegalStateException("Kerby TGT requester returned no current TGT");
-                    }
-                    // A still-near-expiry result is usable, but retry at most once per second.
-                    Instant retryAt = state != null && isInsideMargin(refreshedTgt, refreshedAt, tgtRefreshMargin)
-                            ? refreshedAt.plus(TGT_REFRESH_RETRY_COOLDOWN) : refreshedAt;
-                    state = new TgtCacheState(refreshedTgt, retryAt);
-                    tgtState = state;
+                if (state.requiresRefresh(clock, tgtRefreshMargin)) {
+                    throwCachedRefreshFailure(state, refreshRequestedAt);
+                    state = refreshTgt(state);
                 }
-                return state.tgt;
+                return Objects.requireNonNull(state.tgt);
             } finally {
                 lock.unlock();
             }
+        }
+
+        private TgtCacheState refreshTgt(TgtCacheState refreshTarget) throws Exception {
+            try {
+                TgtTicket refreshedTgt = tgtRequester.call();
+                // Validate against completion time so a TGT that expired during acquisition is never published.
+                Instant refreshedAt = clock.instant();
+                Instant endTime = requireCurrentTgtEndTime(refreshedTgt, refreshedAt);
+                // Retry halfway through the remaining lifetime, with bounds that avoid request-rate polling.
+                Instant retryAt = refreshTarget.tgt != null
+                        && !endTime.isAfter(refreshedAt.plus(tgtRefreshMargin))
+                        ? nextProactiveRefreshAt(refreshedAt, endTime) : refreshedAt;
+                TgtCacheState refreshedState = TgtCacheState.withTgt(refreshedTgt, retryAt);
+                tgtState = refreshedState;
+                refreshFailure = null;
+                return refreshedState;
+            } catch (InterruptedException e) {
+                // Interruption is caller-specific and must not become a shared authentication failure.
+                Thread.currentThread().interrupt();
+                throw e;
+            } catch (RuntimeException e) {
+                publishRefreshFailure(refreshTarget, e);
+                throw e;
+            } catch (Exception e) {
+                publishRefreshFailure(refreshTarget, e);
+                throw e;
+            }
+        }
+
+        private void throwCachedRefreshFailure(TgtCacheState refreshTarget, Instant refreshRequestedAt)
+                throws Exception {
+            if (refreshFailure == null) {
+                return;
+            }
+            if (refreshFailure.refreshTarget == refreshTarget
+                    && (refreshRequestedAt.isBefore(refreshFailure.retryAt)
+                        || clock.instant().isBefore(refreshFailure.retryAt))) {
+                throw refreshFailure.failure;
+            }
+            refreshFailure = null;
+        }
+
+        private void publishRefreshFailure(TgtCacheState refreshTarget, Exception failure) {
+            refreshFailure = new TgtRefreshFailure(refreshTarget, failure,
+                    clock.instant().plus(REFRESH_FAILURE_COOLDOWN));
         }
 
         void invalidateTgtTicket(TgtTicket failedTgt) {
             lock.lock();
             try {
                 // Identity comparison prevents a late failure from evicting a newer TGT.
-                if (tgtState != null && tgtState.tgt == failedTgt) {
-                    tgtState = null;
+                if (tgtState.tgt == failedTgt) {
+                    tgtState = TgtCacheState.empty();
                 }
             } finally {
                 lock.unlock();
@@ -466,14 +508,48 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             return !isCurrent(tgtTicket, now.plus(refreshMargin));
         }
 
+        private static Instant requireCurrentTgtEndTime(@Nullable TgtTicket tgtTicket, Instant instant) {
+            if (tgtTicket == null) {
+                throw new IllegalStateException("Kerby TGT requester returned null");
+            }
+            EncKdcRepPart encKdcRepPart = tgtTicket.getEncKdcRepPart();
+            KerberosTime endTime = encKdcRepPart == null ? null : encKdcRepPart.getEndTime();
+            if (endTime == null) {
+                throw new IllegalStateException("Kerby TGT requester returned a malformed TGT without an end time");
+            }
+            Instant end = Instant.ofEpochMilli(endTime.getTime());
+            if (!end.isAfter(instant)) {
+                throw new IllegalStateException("Kerby TGT requester returned an expired TGT");
+            }
+            return end;
+        }
+
+        private static Instant nextProactiveRefreshAt(Instant now, Instant endTime) {
+            Duration delay = Duration.between(now, endTime).dividedBy(2);
+            if (delay.compareTo(MIN_PROACTIVE_RETRY_DELAY) < 0) {
+                delay = MIN_PROACTIVE_RETRY_DELAY;
+            } else if (delay.compareTo(MAX_PROACTIVE_RETRY_DELAY) > 0) {
+                delay = MAX_PROACTIVE_RETRY_DELAY;
+            }
+            return now.plus(delay);
+        }
+
         private static class TgtCacheState {
 
-            private final TgtTicket tgt;
+            private final @Nullable TgtTicket tgt;
             private final Instant proactiveRetryAt;
 
-            private TgtCacheState(TgtTicket tgt, Instant proactiveRetryAt) {
+            private TgtCacheState(@Nullable TgtTicket tgt, Instant proactiveRetryAt) {
                 this.tgt = tgt;
                 this.proactiveRetryAt = proactiveRetryAt;
+            }
+
+            private static TgtCacheState empty() {
+                return new TgtCacheState(null, Instant.MIN);
+            }
+
+            private static TgtCacheState withTgt(TgtTicket tgt, Instant proactiveRetryAt) {
+                return new TgtCacheState(tgt, proactiveRetryAt);
             }
 
             private boolean requiresRefresh(Clock clock, Duration refreshMargin) {
@@ -482,6 +558,19 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
                     return true;
                 }
                 return isInsideMargin(tgt, now, refreshMargin) && !now.isBefore(proactiveRetryAt);
+            }
+        }
+
+        private static class TgtRefreshFailure {
+
+            private final TgtCacheState refreshTarget;
+            private final Exception failure;
+            private final Instant retryAt;
+
+            private TgtRefreshFailure(TgtCacheState refreshTarget, Exception failure, Instant retryAt) {
+                this.refreshTarget = refreshTarget;
+                this.failure = failure;
+                this.retryAt = retryAt;
             }
         }
 

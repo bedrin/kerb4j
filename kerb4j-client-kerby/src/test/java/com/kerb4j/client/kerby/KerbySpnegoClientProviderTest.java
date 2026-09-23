@@ -371,6 +371,39 @@ class KerbySpnegoClientProviderTest extends KerberosSecurityTestcase {
         assertEquals(1, tokenCalls.get());
     }
 
+    @Test
+    void kerbyNoCredInvalidationBypassesAdaptiveRetryTime() throws Exception {
+        TgtTicket nearExpiryTgt = tgt((byte) 1, NOW.plusSeconds(30));
+        TgtTicket refreshedTgt = tgt((byte) 2);
+        AtomicInteger requesterCalls = new AtomicInteger();
+        AtomicInteger serviceCalls = new AtomicInteger();
+        AtomicInteger contextCalls = new AtomicInteger();
+        KerbySpnegoClientProvider.KerbyCredentials credentials =
+                new KerbySpnegoClientProvider.KerbyCredentials(() ->
+                        requesterCalls.incrementAndGet() < 3 ? nearExpiryTgt : refreshedTgt, CLOCK);
+
+        assertSame(nearExpiryTgt, credentials.getTgtTicket());
+        assertSame(nearExpiryTgt, credentials.getTgtTicket());
+        KerbySpnegoClientProvider.KerbySpnegoClientBackend backend = backend(
+                credentials,
+                (ignoredTgt, ignoredSpn) -> {
+                    serviceCalls.incrementAndGet();
+                    return new Subject();
+                },
+                (subject, ignored) -> {
+                    if (contextCalls.incrementAndGet() == 1) {
+                        throw new PrivilegedActionException(new GSSException(GSSException.NO_CRED));
+                    }
+                    return mock(GSSContext.class);
+                });
+
+        try (SpnegoContext ignored = backend.createContextForSPN(null, "HTTP/localhost")) {
+            assertEquals(3, requesterCalls.get());
+            assertEquals(2, serviceCalls.get());
+            assertEquals(2, contextCalls.get());
+        }
+    }
+
     private static void assertSubjectMode(SpnegoClientBackend backend, String expectedMode) throws Exception {
         Field subjectMode = SubjectBasedSpnegoClientBackend.class.getDeclaredField("subjectMode");
         subjectMode.setAccessible(true);
@@ -401,8 +434,12 @@ class KerbySpnegoClientProviderTest extends KerberosSecurityTestcase {
     }
 
     private static TgtTicket tgt(byte id) {
+        return tgt(id, NOW.plusSeconds(600));
+    }
+
+    private static TgtTicket tgt(byte id, Instant endTime) {
         EncKdcRepPart part = mock(EncKdcRepPart.class);
-        when(part.getEndTime()).thenReturn(new KerberosTime(NOW.plusSeconds(600).toEpochMilli()));
+        when(part.getEndTime()).thenReturn(new KerberosTime(endTime.toEpochMilli()));
         TgtTicket tgt = mock(TgtTicket.class, "tgt-" + id);
         when(tgt.getEncKdcRepPart()).thenReturn(part);
         return tgt;

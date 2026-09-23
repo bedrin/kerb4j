@@ -39,8 +39,9 @@ import java.util.concurrent.locks.ReentrantLock;
 public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
 
     private static final Duration DEFAULT_TGT_REFRESH_MARGIN = Duration.ofSeconds(60);
-    // Failed or still-near-expiry refreshes are shared for one second before another caller may retry.
-    private static final Duration REFRESH_RETRY_COOLDOWN = Duration.ofSeconds(1);
+    private static final Duration REFRESH_FAILURE_COOLDOWN = Duration.ofSeconds(1);
+    private static final Duration MIN_PROACTIVE_RETRY_DELAY = Duration.ofSeconds(1);
+    private static final Duration MAX_PROACTIVE_RETRY_DELAY = Duration.ofSeconds(30);
     private static final int POSTDATED_TICKET_FLAG = 6;
     private static final int INVALID_TICKET_FLAG = 7;
 
@@ -137,12 +138,14 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
 
             Instant refreshedAt = clock.instant();
             KerberosTicket refreshedTgt = selectTgt(refreshedSubject, clock);
+            Instant refreshedTgtEndTime = ticketEndTime(refreshedTgt);
             SubjectCacheState refreshedState;
-            if (refreshedTgt != null) {
-                // A near-expiry result remains usable, but one refresh attempt per second bounds KDC/cache load.
+            if (refreshedTgt != null && refreshedTgtEndTime != null
+                    && isTicketUsableAt(refreshedTgt, refreshedAt)) {
+                // Retry halfway through the remaining lifetime, with bounds that avoid request-rate polling.
                 Instant retryAt = refreshTarget.tgtWasPublished
                         && !isTicketUsableAt(refreshedTgt, refreshedAt.plus(tgtRefreshMargin))
-                        ? refreshedAt.plus(REFRESH_RETRY_COOLDOWN) : refreshedAt;
+                        ? nextProactiveRefreshAt(refreshedAt, refreshedTgtEndTime) : refreshedAt;
                 refreshedState = SubjectCacheState.withTgt(refreshedSubject, refreshedTgt, retryAt);
             } else if (subjectMode == SubjectMode.INITIATOR || refreshTarget.tgtWasPublished) {
                 throw new IllegalStateException("Refreshed Subject for initiator backend '"
@@ -183,7 +186,26 @@ public class SubjectBasedSpnegoClientBackend implements SpnegoClientBackend {
 
     private void publishRefreshFailure(SubjectCacheState refreshTarget, RuntimeException failure) {
         refreshFailure = new RefreshFailure(refreshTarget, failure,
-                clock.instant().plus(REFRESH_RETRY_COOLDOWN));
+                clock.instant().plus(REFRESH_FAILURE_COOLDOWN));
+    }
+
+    private static Instant nextProactiveRefreshAt(Instant now, Instant endTime) {
+        Duration delay = Duration.between(now, endTime).dividedBy(2);
+        if (delay.compareTo(MIN_PROACTIVE_RETRY_DELAY) < 0) {
+            delay = MIN_PROACTIVE_RETRY_DELAY;
+        } else if (delay.compareTo(MAX_PROACTIVE_RETRY_DELAY) > 0) {
+            delay = MAX_PROACTIVE_RETRY_DELAY;
+        }
+        return now.plus(delay);
+    }
+
+    private static @Nullable Instant ticketEndTime(@Nullable KerberosTicket ticket) {
+        try {
+            Date endTime = ticket == null || ticket.isDestroyed() ? null : ticket.getEndTime();
+            return endTime == null ? null : endTime.toInstant();
+        } catch (IllegalStateException | NullPointerException ignored) {
+            return null;
+        }
     }
 
     static @Nullable KerberosTicket selectTgt(Subject subject, Clock clock) {

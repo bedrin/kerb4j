@@ -266,7 +266,7 @@ class SubjectBasedSpnegoClientBackendTest {
     }
 
     @Test
-    void nearExpiryRefreshIsSharedAndRetriedOnceAfterCooldown() throws Exception {
+    void nearExpiryRefreshIsSharedAndRetriedAtAdaptivePoint() throws Exception {
         MutableClock clock = new MutableClock(NOW);
         Subject initialSubject = subjectWithTgt(NOW.plusSeconds(30));
         Subject stillNearExpiry = subjectWithTgt(NOW.plusSeconds(45));
@@ -317,6 +317,10 @@ class SubjectBasedSpnegoClientBackendTest {
             assertEquals(2, supplierCalls.get());
 
             clock.advance(Duration.ofSeconds(1));
+            assertSame(stillNearExpiry, backend.getSubject());
+            assertEquals(2, supplierCalls.get());
+
+            clock.advance(Duration.ofMillis(21_500));
             assertSame(freshSubject, backend.getSubject());
             assertSame(freshSubject, backend.getSubject());
             assertEquals(3, supplierCalls.get());
@@ -327,9 +331,9 @@ class SubjectBasedSpnegoClientBackendTest {
     }
 
     @Test
-    void repeatedSameNearExpiryTicketIsThrottledAndNeverReturnedAfterExpiry() {
+    void repeatedSameNearExpiryTicketUsesAdaptiveRetriesAndIsNeverReturnedAfterExpiry() {
         MutableClock clock = new MutableClock(NOW);
-        Subject nearExpirySubject = subjectWithTgt(NOW.plusSeconds(1));
+        Subject nearExpirySubject = subjectWithTgt(NOW.plusSeconds(30));
         AtomicInteger supplierCalls = new AtomicInteger();
         SubjectBasedSpnegoClientBackend backend = backend(() -> {
             supplierCalls.incrementAndGet();
@@ -338,15 +342,40 @@ class SubjectBasedSpnegoClientBackendTest {
 
         assertSame(nearExpirySubject, backend.getSubject());
         assertSame(nearExpirySubject, backend.getSubject());
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 14; i++) {
+            clock.advance(Duration.ofSeconds(1));
             assertSame(nearExpirySubject, backend.getSubject());
         }
         assertEquals(2, supplierCalls.get());
 
         clock.advance(Duration.ofSeconds(1));
+        assertSame(nearExpirySubject, backend.getSubject());
+        assertEquals(3, supplierCalls.get());
+
+        clock.advance(Duration.ofMillis(7_500));
+        assertSame(nearExpirySubject, backend.getSubject());
+        assertEquals(4, supplierCalls.get());
+
+        clock.advance(Duration.ofMillis(7_500));
         IllegalStateException failure = assertThrows(IllegalStateException.class, backend::getSubject);
         assertTrue(failure.getMessage().contains("contains no usable Kerberos TGT"));
-        assertEquals(3, supplierCalls.get());
+        assertEquals(5, supplierCalls.get());
+    }
+
+    @Test
+    void healthySubjectResetsAdaptiveRetryState() {
+        MutableClock clock = new MutableClock(NOW);
+        Subject nearExpirySubject = subjectWithTgt(NOW.plusSeconds(30));
+        Subject healthySubject = subjectWithTgt(NOW.plusSeconds(600));
+        AtomicInteger supplierCalls = new AtomicInteger();
+        SubjectBasedSpnegoClientBackend backend = backend(
+                sequence(new Subject[]{nearExpirySubject, healthySubject}, supplierCalls), clock);
+
+        assertSame(nearExpirySubject, backend.getSubject());
+        assertSame(healthySubject, backend.getSubject());
+        clock.advance(Duration.ofSeconds(30));
+        assertSame(healthySubject, backend.getSubject());
+        assertEquals(2, supplierCalls.get());
     }
 
     @Test
@@ -719,6 +748,33 @@ class SubjectBasedSpnegoClientBackendTest {
     }
 
     @Test
+    void noCredInvalidationBypassesAdaptiveRetryTime() throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        Subject nearExpirySubject = subjectWithTgt(NOW.plusSeconds(30));
+        Subject refreshedSubject = subjectWithTgt(NOW.plusSeconds(600));
+        AtomicInteger supplierCalls = new AtomicInteger();
+        AtomicInteger contextCalls = new AtomicInteger();
+        SubjectBasedSpnegoClientBackend backend = backend(() ->
+                        supplierCalls.incrementAndGet() < 3 ? nearExpirySubject : refreshedSubject,
+                clock, (subject, ignored) -> {
+                    if (contextCalls.incrementAndGet() == 1) {
+                        throw new PrivilegedActionException(gssException(GSSException.NO_CRED));
+                    }
+                    return tokenContext(new AtomicReference<>(), null);
+                });
+
+        assertSame(nearExpirySubject, backend.getSubject());
+        assertSame(nearExpirySubject, backend.getSubject());
+        assertEquals(2, supplierCalls.get());
+
+        createInitiatorContext(backend);
+
+        assertSame(refreshedSubject, backend.getSubject());
+        assertEquals(3, supplierCalls.get());
+        assertEquals(2, contextCalls.get());
+    }
+
+    @Test
     void doesNotRetryNonNoCredFailure() {
         AtomicInteger supplierCalls = new AtomicInteger();
         AtomicInteger contextCalls = new AtomicInteger();
@@ -876,7 +932,12 @@ class SubjectBasedSpnegoClientBackendTest {
 
     private static SubjectBasedSpnegoClientBackend backend(Callable<Subject> supplier,
                                                             ContextFactory contextFactory) {
-        return new SubjectBasedSpnegoClientBackend("test", supplier, CLOCK) {
+        return backend(supplier, CLOCK, contextFactory);
+    }
+
+    private static SubjectBasedSpnegoClientBackend backend(Callable<Subject> supplier, Clock clock,
+                                                            ContextFactory contextFactory) {
+        return new SubjectBasedSpnegoClientBackend("test", supplier, clock) {
             @Override
             protected GSSContext getGSSContext(Subject subject, GSSName gssName)
                     throws GSSException, PrivilegedActionException {
