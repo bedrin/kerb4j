@@ -334,7 +334,7 @@ public final class SpnegoClient {
         private static CacheKey usernamePassword(String provider, String username, String password) {
             return new CacheKey("username-password", provider, username, password);
         }
-
+      
         private static CacheKey enterprisePrincipal(String provider, String enterprisePrincipal, String password) {
             return new CacheKey("enterprise-principal", provider, enterprisePrincipal, password);
         }

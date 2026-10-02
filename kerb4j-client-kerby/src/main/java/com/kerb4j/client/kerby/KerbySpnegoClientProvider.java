@@ -21,6 +21,8 @@ import org.apache.kerby.kerberos.kerb.type.base.PrincipalName;
 import org.apache.kerby.kerberos.kerb.type.kdc.EncKdcRepPart;
 import org.apache.kerby.kerberos.kerb.type.ticket.*;
 import org.ietf.jgss.GSSException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosPrincipal;
@@ -38,6 +40,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class KerbySpnegoClientProvider implements SpnegoClientProvider {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(KerbySpnegoClientProvider.class);
 
     public static final String NAME = "apache-kerby";
 
@@ -336,8 +340,23 @@ public class KerbySpnegoClientProvider implements SpnegoClientProvider {
             return value == null || value.trim().isEmpty();
         }
 
-        private static boolean isExpired(TgtTicket tgtTicket) {
-            return tgtTicket.getEncKdcRepPart().getEndTime().lessThan(System.currentTimeMillis());
+        private static final long TGT_REFRESH_MARGIN_MILLIS = 60_000L;
+
+        private static boolean isExpired(TgtTicket tgt) {
+            if (tgt == null || null == tgt.getEncKdcRepPart() || null == tgt.getEncKdcRepPart().getEndTime()) {
+                return true;
+            }
+
+            try {
+                synchronized (tgt) {
+                    KerberosTime endTime = tgt.getEncKdcRepPart().getEndTime();
+                    return endTime == null
+                            || endTime.getTime() <= System.currentTimeMillis() + TGT_REFRESH_MARGIN_MILLIS;
+                }
+            } catch (Exception e) {
+                LOGGER.error("Failed to get Kerberos ticket end time", e);
+                return true;
+            }
         }
 
     }
