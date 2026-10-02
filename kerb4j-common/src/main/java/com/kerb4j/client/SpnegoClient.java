@@ -364,10 +364,18 @@ public final class SpnegoClient {
             this.subject = subject;
         }
 
+        private static final long TGT_REFRESH_MARGIN_MILLIS = 60_000L;
+
         private boolean isExpired() {
+            if (tgt == null || tgt.isDestroyed()) {
+                return true;
+            }
+
             try {
                 synchronized (tgt) {
-                    return tgt.getEndTime().before(new Date());
+                    Date endTime = tgt.getEndTime();
+                    return endTime == null
+                            || endTime.getTime() <= System.currentTimeMillis() + TGT_REFRESH_MARGIN_MILLIS;
                 }
             } catch (Exception e) {
                 LOGGER.error("Failed to get Kerberos ticket end time", e);
