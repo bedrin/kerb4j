@@ -30,8 +30,8 @@
         <apacheDirServerVersion>2.0.0.AM26</apacheDirServerVersion>
         <kerby.version>2.1.2</kerby.version>
         <hamcrest.version>3.0</hamcrest.version>
-        <mokito.version>5.23.0</mokito.version>
-        <slf4j.version>2.0.19</slf4j.version>
+        <mokito.version>5.24.0</mokito.version>
+        <slf4j.version>2.0.20</slf4j.version>
         <jspecify.version>1.0.1</jspecify.version>
     </properties>
 
