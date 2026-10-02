@@ -2,6 +2,9 @@ package com.kerb4j.server.marshall.pac;
 
 import com.kerb4j.server.marshall.Kerb4JException;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 public class PacSid {
 
     private static final String FORMAT = "%1$02x";
@@ -114,9 +117,25 @@ public class PacSid {
         return sid;
     }
 
-    // https://msdn.microsoft.com/en-us/library/ff632068.aspx
-    public String toHumanReadableString() {
+    /**
+     * Returns the canonical SID string representation (for example {@code S-1-5-21-...}).
+     * This method does not resolve SID values to account or group names.
+     *
+     * @return canonical SID string
+     */
+    public String toSidString() {
         return convertSidToStringSid(getBytes());
+    }
+
+    // https://msdn.microsoft.com/en-us/library/ff632068.aspx
+    /**
+     * Returns the canonical SID string representation (for example {@code S-1-5-21-...}).
+     * This method does not resolve SID values to account or group names.
+     *
+     * @return canonical SID string
+     */
+    public String toHumanReadableString() {
+        return toSidString();
     }
 
     public String toString() {
@@ -155,6 +174,29 @@ public class PacSid {
         System.arraycopy(subs, 0, bytes, 8, subs.length);
 
         return bytes;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof PacSid)) {
+            return false;
+        }
+        PacSid pacSid = (PacSid) o;
+        return revision == pacSid.revision
+                && subCount == pacSid.subCount
+                && Arrays.equals(authority, pacSid.authority)
+                && Arrays.equals(subs, pacSid.subs);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(revision, subCount);
+        result = 31 * result + Arrays.hashCode(authority);
+        result = 31 * result + Arrays.hashCode(subs);
+        return result;
     }
 
 }

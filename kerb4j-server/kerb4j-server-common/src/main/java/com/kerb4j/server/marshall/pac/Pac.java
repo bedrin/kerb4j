@@ -20,6 +20,7 @@ public class Pac {
 
     private PacLogonInfo logonInfo;
     private PacCredentialType credentialType;
+    private PacUpnDnsInfo upnDnsInfo;
     private List<PacDelegationInfo> delegationInfos = new ArrayList<>();
     private List<PacDelegationInfo> delegationInfosReadOnly = Collections.unmodifiableList(delegationInfos);
 
@@ -61,6 +62,10 @@ public class Pac {
                         // PAC Credential Type
                         credentialType = new PacCredentialType(bufferData);
                         break;
+                    case PacConstants.UPN_DNS_INFO:
+                        // PAC UPN_DNS_INFO
+                        upnDnsInfo = new PacUpnDnsInfo(bufferData);
+                        break;
                     case PacConstants.S4U_DELEGATION_INFO:
                         // PAC S4U Delegation Info Type, according to [MS-PAC] �2.9, can "be used multiple times"
                         delegationInfos.add(new PacDelegationInfo(bufferData));
@@ -101,6 +106,10 @@ public class Pac {
 
     public PacLogonInfo getLogonInfo() {
         return logonInfo;
+    }
+
+    public PacUpnDnsInfo getUpnDnsInfo() {
+        return upnDnsInfo;
     }
 
     public PacCredentialType getCredentialType() {

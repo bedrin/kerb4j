@@ -1,0 +1,115 @@
+package com.kerb4j.server.spring;
+
+import org.springframework.security.core.GrantedAuthority;
+
+import javax.security.auth.Subject;
+import javax.security.auth.kerberos.KerberosKey;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Collection;
+
+/**
+ * Result of ticket validation
+ */
+public class SpnegoAuthenticationToken extends SpnegoRequestToken {
+
+    private final String username;
+    private final byte[] responseToken;
+    private final Subject subject;
+    private final KerberosKey[] kerberosKeys;
+
+    private final String etype;
+
+    // TODO: should contain everything for delegated auhentication
+
+    public SpnegoAuthenticationToken(
+            Collection<? extends GrantedAuthority> authorities,
+            byte[] spnegoInitToken,
+            String username,
+            byte[] responseToken,
+            Subject subject,
+            KerberosKey[] kerberosKeys,
+            String etype) {
+        super(authorities, spnegoInitToken);
+        this.username = username;
+        this.responseToken = responseToken;
+        this.subject = subject;
+        this.kerberosKeys = kerberosKeys;
+        this.etype = etype;
+    }
+
+    public SpnegoAuthenticationToken(
+            byte[] token,
+            String username,
+            byte[] responseToken,
+            Subject subject,
+            KerberosKey[] kerberosKeys,
+            String etype) {
+        super(token);
+        this.username = username;
+        this.responseToken = responseToken;
+        this.subject = subject;
+        this.kerberosKeys = kerberosKeys;
+        this.etype = etype;
+    }
+
+    public String username() {
+        return username;
+    }
+
+    public byte[] responseToken() {
+        return responseToken;
+    }
+
+    /**
+     * Determines whether an authenticated token has a response token
+     *
+     * @return whether a response token is available
+     */
+    public boolean hasResponseToken() {
+        return responseToken() != null;
+    }
+
+    /**
+     * Gets the (Base64) encoded response token assuming one is available.
+     *
+     * @return encoded response token
+     */
+    public String getEncodedResponseToken() {
+        if (!hasResponseToken()) {
+            throw new IllegalStateException("Unauthenticated or no response token");
+        }
+        return Base64.getEncoder().encodeToString(responseToken());
+    }
+
+    @Override
+    public boolean isAuthenticated() {
+        return true;
+    }
+
+    @Override
+    public void setAuthenticated(boolean authenticated) {
+        if (!authenticated) throw new IllegalArgumentException();
+    }
+
+    @Override
+    public Object getPrincipal() {
+        return username; // TODO: should return UserDetails
+    }
+
+    public Subject getSubject() {
+        return subject;
+    }
+
+    public KerberosKey[] getKerberosKeys() {
+        return kerberosKeys;
+    }
+
+    /**
+     * @since 0.1.3
+     */
+    public String getEtype() {
+        return etype;
+    }
+
+}

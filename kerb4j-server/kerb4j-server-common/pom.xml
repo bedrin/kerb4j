@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.kerb4j</groupId>
         <artifactId>kerb4j-server</artifactId>
-        <version>0.2.0</version>
+        <version>0.5.1</version>
     </parent>
 
     <artifactId>kerb4j-server-common</artifactId>
@@ -16,6 +16,11 @@
         <dependency>
             <groupId>org.apache.kerby</groupId>
             <artifactId>kerb-crypto</artifactId>
+            <version>${kerby.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kerby</groupId>
+            <artifactId>kerb-util</artifactId>
             <version>${kerby.version}</version>
         </dependency>
     </dependencies>

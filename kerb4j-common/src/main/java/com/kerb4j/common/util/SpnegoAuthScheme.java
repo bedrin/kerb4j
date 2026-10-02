@@ -18,7 +18,7 @@
 
 package com.kerb4j.common.util;
 
-import com.kerb4j.common.util.base64.Base64Codec;
+import java.util.Base64;
 
 /**
  * Example schemes are "Negotiate" and "Basic".
@@ -65,6 +65,6 @@ public class SpnegoAuthScheme {
      * @return copy of token
      */
     public byte[] getToken() {
-        return (null == this.token) ? EMPTY_BYTE_ARRAY : Base64Codec.decode(this.token);
+        return (null == this.token) ? EMPTY_BYTE_ARRAY : Base64.getDecoder().decode(this.token);
     }
 }

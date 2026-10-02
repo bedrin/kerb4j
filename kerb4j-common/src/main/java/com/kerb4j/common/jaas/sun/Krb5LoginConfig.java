@@ -1,18 +1,3 @@
-/*
- * Copyright 2015 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.kerb4j.common.jaas.sun;
 
 import com.sun.security.auth.module.Krb5LoginModule;
@@ -28,10 +13,14 @@ import java.util.Map;
 /**
  * Implementation of {@link Configuration} which uses Sun's JAAS
  * Krb5LoginModule.
+ * <p>
+ * JDK JAAS support is implemented by the {@code kerb4j-client-jdk} provider module. This compatibility type remains
+ * in {@code kerb4j-common} for existing callers that configure the JDK provider directly.
  *
  * @author Nelson Rodrigues
  * @author Janne Valkealahti
  */
+@Deprecated
 public class Krb5LoginConfig extends Configuration {
 
     private static final Logger LOG = LoggerFactory.getLogger(Krb5LoginConfig.class);

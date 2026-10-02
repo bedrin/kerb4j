@@ -14,8 +14,15 @@ Main features:
 
 Java Compatibility
 ========
-Version 0.2.x+ requires Java 17 or higher
-Version 0.1.x+ supports Java 7+
+Version 0.2.x and higher requires Java 17 or higher
+Version 0.1.x supports Java 7+
+
+Spring Compatibility
+========
+Version 0.5.x and higher supports Spring 7.x and Spring Boot 4.1.x
+Version 0.3.x and higher supports Spring 7.x and Spring Boot 4.0.x
+Version 0.2.x and higher supports Spring 6.x and Spring Boot 3.x
+Version 0.1.x supports Spring 5.x and Spring Boot 2.x
 
 Installation
 ========
@@ -28,7 +35,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-client</artifactId>
-    <version>0.2.0</version>
+    <version>0.5.1</version>
 </dependency>
 ```
 
@@ -38,7 +45,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-server-spring-security</artifactId>
-    <version>0.2.0</version>
+    <version>0.5.1</version>
 </dependency>
 ```
 
@@ -48,7 +55,7 @@ Kerb4J is available from Maven Central repo:
 <dependency>
     <groupId>com.kerb4j</groupId>
     <artifactId>kerb4j-server-tomcat</artifactId>
-    <version>0.2.0</version>
+    <version>0.5.1</version>
 </dependency>
 ```
 
@@ -62,7 +69,19 @@ and `SpnegoContext`
 - `SpnegoContext` is responsible for accessing downstream systems, creating and validating appropriate security HTTP
   headers.
 
-`SpnegoClient` supports authentication using name and password, keytab file or ticket cache.
+`SpnegoClient` supports authentication using name and password, enterprise principal name and password, keytab file or
+ticket cache.
+
+**Client implementation modules**
+
+The public `SpnegoClient` API lives in `kerb4j-common`; runtime behavior is provided by implementation modules:
+
+- `kerb4j-client-kerby` uses Apache Kerby for active TGT/TGS acquisition and then builds SPNEGO tokens from Kerby-acquired tickets.
+- `kerb4j-client-jdk` uses the JDK JAAS/JGSS Kerberos stack and is the fallback implementation.
+
+Provider selection is built-in and classpath based. If `kerb4j-client-kerby` is present, `SpnegoClient` uses it. Otherwise, it falls back to `kerb4j-client-jdk`. Existing `kerb4j-client` HTTP helpers depend on `kerb4j-client-jdk`, so their default behavior remains JDK/JGSS unless applications add the Kerby module.
+
+You can force a provider with `-Dkerb4j.spnego.provider=jdk`, `-Dkerb4j.spnego.provider=kerby`, or a fully qualified `SpnegoClientProvider` class name.
 
 Example usage:
 
@@ -70,8 +89,19 @@ Example usage:
 SpnegoClient spnegoClient = SpnegoClient.loginWithKeyTab("svc_consumer", "/opt/myapp/consumer.keytab");
 ```
 
+Enterprise principal names, such as Active Directory UPNs, are supported by the Kerby client implementation:
+
+```java
+SpnegoClient spnegoClient = SpnegoClient.loginWithEnterprisePrincipal("dmitry.bedrin@db.com", password);
+```
+
+Use `loginWithEnterprisePrincipal` when the `@` suffix is the enterprise login name and not the Kerberos realm. The
+Kerby provider sends the client name as Kerberos `NT_ENTERPRISE` to the configured default realm. The JDK provider does
+not expose the required low-level request control and throws `UnsupportedOperationException` for this factory.
+
 `SpnegoContext` allows creating 'Authorization: Negotiate XXXXX' header and optionally validating `WWW-Authenticate`
-response header for SPNEGO mutual authentication
+response header for SPNEGO mutual authentication. A `SpnegoContext` is stateful, short-lived, and not thread-safe.
+Create a new context for each request or token exchange.
 
 Example usage:
 
@@ -132,8 +162,11 @@ SpnegoInitToken spnegoInitToken = new SpnegoInitToken(decoded);
 SpnegoKerberosMechToken spnegoKerberosMechToken = spnegoInitToken.getSpnegoKerberosMechToken();
 Pac pac = spnegoKerberosMechToken.getPac(spnegoClient.getKerberosKeys());
 PacLogonInfo logonInfo = pac.getLogonInfo();
-List<String> roles = Stream.of(logonInfo.getGroupSids()).map(PacSid::toHumanReadableString).collect(Collectors.toList());
+List<String> roles = Stream.of(logonInfo.getAllGroupSids()).map(PacSid::toSidString).collect(Collectors.toList());
 ```
+
+Use `getAllGroupSids()` when you need all PAC authorization group-like SIDs in one collection.
+Advanced callers can inspect `getGroupSids()`, `getResourceGroupSids()`, and `getExtraSids()` separately.
 
 This functionality is specific to Microsoft Active Directory and supported both by Kerb4J Tomcat and Spring Security
 integrations. 

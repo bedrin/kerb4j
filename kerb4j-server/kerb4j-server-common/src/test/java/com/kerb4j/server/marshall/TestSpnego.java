@@ -131,6 +131,7 @@ public class TestSpnego {
             PacLogonInfo logonInfo = pac.getLogonInfo();
             Assertions.assertNotNull(logonInfo);
             Assertions.assertNotNull(logonInfo.getGroupSids());
+            Assertions.assertNotNull(logonInfo.getExtraSids());
 
             boolean found = false;
 
@@ -141,6 +142,14 @@ public class TestSpnego {
             }
 
             Assertions.assertTrue(found);
+
+            boolean foundExtraSid = false;
+            for (PacSid extraSid : logonInfo.getExtraSids()) {
+                if ("S-1-5-21-4028881986-3284141023-698984075-572".equals(extraSid.toHumanReadableString())) {
+                    foundExtraSid = true;
+                }
+            }
+            Assertions.assertTrue(foundExtraSid);
 
 
         } catch (Exception e) {

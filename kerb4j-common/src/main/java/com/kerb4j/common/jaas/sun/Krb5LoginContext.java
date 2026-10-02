@@ -9,6 +9,13 @@ import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 import java.util.Collections;
 
+/**
+ * JDK JAAS login context helper.
+ * <p>
+ * JDK JAAS support is implemented by the {@code kerb4j-client-jdk} provider module. This compatibility type remains
+ * in {@code kerb4j-common} for existing callers that configure the JDK provider directly.
+ */
+@Deprecated
 public class Krb5LoginContext extends LoginContext {
 
     private final static String UNUSED_CONFIGURATION_NAME = "";
