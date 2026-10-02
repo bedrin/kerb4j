@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.5.2
+
+### Bug fixes
+- Check if TGT ticket is destroyed while checking if its valid
+- Add a grace period of 60 seconds to the TGT ticket expiration check to avoid false negatives when the ticket is about to expire
+### Dependencies
+- Updated `org.springframework.boot` from `4.1.0` to `4.1.1`.
+- Updated `org.jspecify` from `1.0.0` to `1.0.1`.
+- Updated `org.slf4j` from `2.0.19` to `2.0.20`.
+
 ## 0.5.1
 
 ### Dependencies
