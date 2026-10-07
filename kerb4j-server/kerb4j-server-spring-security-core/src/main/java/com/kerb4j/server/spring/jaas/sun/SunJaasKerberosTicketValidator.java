@@ -2,6 +2,10 @@ package com.kerb4j.server.spring.jaas.sun;
 
 import com.kerb4j.client.SpnegoClient;
 import com.kerb4j.client.SpnegoContext;
+import com.kerb4j.common.exception.Kerb4JKerberosException;
+import com.kerb4j.common.exception.KerberosFailureAnalyzer;
+import com.kerb4j.common.exception.KerberosFailureCategory;
+import com.kerb4j.common.exception.KerberosFailureCode;
 import com.kerb4j.server.MultiPrincipalManager;
 import com.kerb4j.server.SpnegoTokenFixer;
 import com.kerb4j.server.marshall.Kerb4JException;
@@ -24,7 +28,6 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.util.Assert;
 
 import java.io.IOException;
-import java.security.PrivilegedActionException;
 
 /**
  * Implementation of {@link KerberosTicketValidator} which uses the SUN JAAS
@@ -62,19 +65,37 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
         try {
             SpnegoClient clientToUse = resolveSpnegoClient(token);
             if (clientToUse == null) {
-                throw new BadCredentialsException("Kerberos validation not successful");
+                throw diagnosticBadCredentials(KerberosFailureAnalyzer.explicit(
+                        "spnego.resolve-service-credentials",
+                        KerberosFailureCode.KEYTAB_MISSING_PRINCIPAL,
+                        KerberosFailureCategory.CREDENTIALS,
+                        "No Kerberos service credentials are configured for validating this token.",
+                        null,
+                        "The ticket validator was used before a service principal/keytab/password client was available",
+                        "Configure servicePrincipal with keyTabLocation/servicePassword, or configure MultiPrincipalManager"));
             }
 
-            SpnegoContext acceptContext = clientToUse.createAcceptContext();
-            byte[] responseToken = acceptContext.acceptToken(token);
-            GSSName srcName = acceptContext.getSrcName();
+            SpnegoContext acceptContext = clientToUse.createAcceptContextOrThrow();
+            byte[] responseToken;
+            GSSName srcName;
+            try {
+                responseToken = acceptContext.acceptTokenOrThrow(token);
+                srcName = acceptContext.getSrcName();
+            } finally {
+                if (!holdOnToGSSContext) {
+                    acceptContext.close();
+                }
+            }
 
             if (null == srcName) {
-                throw new BadCredentialsException("Kerberos validation not successful");
-            }
-
-            if (!holdOnToGSSContext) {
-                acceptContext.close();
+                throw diagnosticBadCredentials(KerberosFailureAnalyzer.explicit(
+                        "spnego.accept-token",
+                        KerberosFailureCode.MUTUAL_AUTHENTICATION_FAILED,
+                        KerberosFailureCategory.GSS_CONTEXT,
+                        "Kerberos validation succeeded far enough to produce no source principal.",
+                        null,
+                        "JGSS accepted the token but did not expose the authenticated client name",
+                        "Check provider behavior and enable Kerberos debug logging"));
             }
 
             EncryptionType encryptionType = null;
@@ -97,8 +118,8 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
             );
             // TODO: check that it doesn't involve network
 
-        } catch (IOException | GSSException | PrivilegedActionException e) {
-            throw new BadCredentialsException("Kerberos validation not successful", e);
+        } catch (IOException | GSSException | Kerb4JKerberosException e) {
+            throw diagnosticBadCredentials(KerberosFailureAnalyzer.wrap("spnego.validate-ticket", e));
         }
 
     }
@@ -219,10 +240,23 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
         SpnegoClient selectedClient = configuredManager.getSpnegoClientForSpn(targetSpn);
         if (selectedClient == null) {
             if (targetSpn == null) {
-                throw new BadCredentialsException(
-                        "Failed to extract SPN from token and no matching/fallback principal is configured");
+                throw diagnosticBadCredentials(KerberosFailureAnalyzer.explicit(
+                        "spnego.resolve-target-spn",
+                        KerberosFailureCode.TOKEN_MALFORMED,
+                        KerberosFailureCategory.SPNEGO_TOKEN,
+                        "Failed to extract SPN from token and no matching/fallback principal is configured.",
+                        null,
+                        "The token is malformed, not SPNEGO/Kerberos, or its target service cannot be read",
+                        "Verify the Authorization: Negotiate token and configure an explicit fallback only if that is acceptable"));
             }
-            throw new BadCredentialsException("No principal configured for SPN: " + targetSpn);
+            throw diagnosticBadCredentials(KerberosFailureAnalyzer.explicit(
+                    "spnego.resolve-target-spn",
+                    KerberosFailureCode.SERVER_PRINCIPAL_NOT_FOUND,
+                    KerberosFailureCategory.SERVICE_PRINCIPAL,
+                    "No principal configured for SPN: " + targetSpn,
+                    null,
+                    "The incoming token targets a service principal that MultiPrincipalManager does not know",
+                    "Add this SPN/keytab to MultiPrincipalManager or make clients request a configured SPN"));
         }
         return selectedClient;
     }
@@ -237,5 +271,9 @@ public class SunJaasKerberosTicketValidator implements KerberosTicketValidator, 
             LOG.debug("Failed to extract SPN from token", e);
             return null;
         }
+    }
+
+    private static BadCredentialsException diagnosticBadCredentials(Kerb4JKerberosException exception) {
+        return new BadCredentialsException(exception.getDiagnostic().toSupportString(), exception);
     }
 }

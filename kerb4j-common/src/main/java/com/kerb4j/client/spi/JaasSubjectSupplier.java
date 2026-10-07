@@ -1,5 +1,6 @@
 package com.kerb4j.client.spi;
 
+import com.kerb4j.common.exception.KerberosFailureAnalyzer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +26,7 @@ public final class JaasSubjectSupplier {
                     subject = loginContext.getSubject();
                 } catch (LoginException e) {
                     LOGGER.error(e.getMessage(), e);
-                    throw new RuntimeException(e);
+                    throw KerberosFailureAnalyzer.wrap("kerberos.login-context-refresh", e);
                 }
             }
             return subject;

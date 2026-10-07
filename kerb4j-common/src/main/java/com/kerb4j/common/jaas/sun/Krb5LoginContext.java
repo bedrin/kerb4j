@@ -1,5 +1,6 @@
 package com.kerb4j.common.jaas.sun;
 
+import com.kerb4j.common.exception.KerberosFailureAnalyzer;
 import com.kerb4j.common.util.SpnegoProvider;
 
 import javax.security.auth.Subject;
@@ -38,8 +39,7 @@ public class Krb5LoginContext extends LoginContext {
             krb5LoginContext.login();
             return krb5LoginContext;
         } catch (LoginException e) {
-            // TODO: here and in other places consider throwing LoginException instead of RuntimeException(LoginException)
-            throw new RuntimeException(e);
+            throw KerberosFailureAnalyzer.wrap("kerberos.login-with-keytab", e);
         }
     }
 
@@ -55,7 +55,7 @@ public class Krb5LoginContext extends LoginContext {
             krb5LoginContext.login();
             return krb5LoginContext;
         } catch (LoginException e) {
-            throw new RuntimeException(e);
+            throw KerberosFailureAnalyzer.wrap("kerberos.login-with-ticket-cache", e);
         }
     }
 
@@ -68,7 +68,7 @@ public class Krb5LoginContext extends LoginContext {
             krb5LoginContext.login();
             return krb5LoginContext;
         } catch (LoginException e) {
-            throw new RuntimeException(e);
+            throw KerberosFailureAnalyzer.wrap("kerberos.login-with-password", e);
         }
     }
 
